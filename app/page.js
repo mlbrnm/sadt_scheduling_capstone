@@ -15,25 +15,6 @@ export default function Login() {
   const [stage, setStage] = useState("email"); // 'email' or 'password'
   const [redirecting, setRedirecting] = useState(false);
 
-  //For Editing Purposes - can take out when done
-  const DEV_MODE = process.env.NODE_ENV === "development";
-
-  //useEffect(() => {
-  //  if (DEV_MODE) {
-  //    setRedirecting(true); // trigger render showing "Redirecting..."
-  //    router.push("/Frontend/Home");
-  //  }
-  //}, [DEV_MODE, router]);
-
-  if (DEV_MODE && redirecting) {
-    // render a placeholder while redirecting
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">Redirecting to Home (Dev Mode)...</p>
-      </div>
-    );
-  }
-
   // Calls the Edge Function to check the user's status and determines the next step.
   const checkEmail = async (e) => {
     e.preventDefault();
