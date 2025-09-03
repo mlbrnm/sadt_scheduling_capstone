@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Global Styles */
+.background-primary {
+  background-color: #e0e0e0;
+}
+
+/* Button Styles */
+.button-primary {
+  background-color: #ae132a;
+  transition: background-color 0.2s ease;
+}
+.button-primary:hover {
+  background-color: #b91c1c;
+}
+.button-clicked {
+  background-color: #333333;
+}
+
+/* Header-Footer Styles */
+.background-headerfooter {
+  background-color: #005eb8;
+}
+
+.sadt_blue_light {
+  color: #005eb8;
+}
