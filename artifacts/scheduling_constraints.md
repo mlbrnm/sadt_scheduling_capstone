@@ -67,3 +67,7 @@ for s in sections:
 
 
 # It was at this point in my research that I realized the above is flawed because sections have multiple timeslots, not just one, so it'll need to be a bit different. I also realized I should go to bed for now.
+
+# I also just realized that I need to keep in mind that there are sort of two situations we need to account for (and more if you include the certificate scheduling):
+## 1 - creating a fresh schedule. Timeslots don't matter here, we're only concerned with qualifications, instructional hours, and ensuring every section has an instructor.
+## 2 - modifying a schedule. At this point we will have timeslots, and need the system to be able to recommend instructors to fill an empty section, or sections to fill an empty instructor.
