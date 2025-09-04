@@ -65,7 +65,7 @@ export default function InstructorWorkload() {
     },
     {
       id: 19387,
-      name: "Robert Chen",
+      name: "Dill Pickles",
       contract: "C",
       semesterHours: 205,
       totalHours: 800,
@@ -76,7 +76,7 @@ export default function InstructorWorkload() {
       name: "Taylor Morgan",
       contract: "TS",
       semesterHours: 205,
-      totalHours: 615,
+      totalHours: 410,
       status: "Available",
     },
     {
@@ -129,13 +129,25 @@ export default function InstructorWorkload() {
   ).length;
 
   return (
-    <div className="p-8">
+    <div className="p-6">
       <h1 className="text-2xl text-center font-bold mb-6">
         Instructor Workload
       </h1>
       <div>
         <h2>Semester: Spring 2025 | Program: SD</h2>
       </div>
+
+      {/* Search bar */}
+      <div>
+        <input
+          type="text"
+          placeholder="Search Instructors..."
+          className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+          value={searchInstructor}
+          onChange={(e) => setSearchInstructor(e.target.value)}
+        />
+      </div>
+
       {/* Summary */}
       <div className="flex gap-6 mb-6 text-sm">
         <span>Total Instructors: {totalInstructors}</span>
@@ -143,38 +155,168 @@ export default function InstructorWorkload() {
         <span>On Break: {onBreak}</span>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col mb-4 p-4">
-        <div>
-          <span>Instructors:</span>
+      {/* Filter Container */}
+      <div className="flex flex-col gap-4 mb-4 p-4 bg-white rounded-lg">
+        {/* Filters */}
+        <div className="flex flex-col gap-4">
+          {/* Status filter */}
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700 mb-1">
+              Availability:
+            </legend>
+            <div className="flex gap-4">
+              <div className="flex items-center">
+                <input
+                  id="status-all"
+                  name="status-filter"
+                  type="radio"
+                  checked={statusFilter === "All"}
+                  onChange={() => setStatusFilter("All")}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <label
+                  htmlFor="status-all"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Show All Instructors
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="status-available"
+                  name="status-filter"
+                  type="radio"
+                  checked={statusFilter === "Available"}
+                  onChange={() => setStatusFilter("Available")}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <label
+                  htmlFor="status-available"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Show Available Instructors
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          {/* Hours filter */}
+          <fieldset>
+            <legend className="text-sm font-medium text-gray-700 mb-1">
+              Hours:
+            </legend>
+            <div className="flex gap-4">
+              <div className="flex items-center">
+                <input
+                  id="hours-all"
+                  name="hours-filter"
+                  type="radio"
+                  checked={hoursFilter === "All"}
+                  onChange={() => setHoursFilter("All")}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <label
+                  htmlFor="hours-all"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Show All Instructors
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="hours-remaining"
+                  name="hours-filter"
+                  type="radio"
+                  checked={hoursFilter === "hasRemaining"}
+                  onChange={() => setHoursFilter("hasRemaining")}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <label
+                  htmlFor="hours-remaining"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Show Instructors With Remaining Hours
+                </label>
+              </div>
+            </div>
+          </fieldset>
+          {/* Contract legend */}
+          <div className="flex flex-col mb-4 text-sm text-gray-600">
+            <p className="font-bold">Contract Types:</p>
+            <p>P = Permanent</p>
+            <p>TS = Temp Salaried</p>
+            <p>C = Contract</p>
+            <p>Ad = Adjunct</p>
+          </div>
         </div>
       </div>
 
       {/* Instructor Table */}
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Contract</th>
-            <th>Semester Hours</th>
-            <th>Total Hours</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {mockData.map((instructor) => (
-            <tr key={instructor.id}>
-              <td>{instructor.id}</td>
-              <td>{instructor.name}</td>
-              <td>{instructor.contract}</td>
-              <td>{instructor.semesterHours}</td>
-              <td>{instructor.totalHours}</td>
-              <td>{instructor.status}</td>
+      <div className="bg-white rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-300">
+          <thead className="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              >
+                ID
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              >
+                Name
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              >
+                Contract
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              >
+                Semester Hours
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              >
+                Total Hours
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+              >
+                Status
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-300">
+            {filteredInstructors.map((instructor) => (
+              <tr key={instructor.id}>
+                <td className="px-6 py-4 text-sm">{instructor.id}</td>
+                <td className="px-6 py-4 text-sm">{instructor.name}</td>
+                <td className="px-6 py-4 text-sm">{instructor.contract}</td>
+                <td className="px-6 py-4 text-sm">
+                  {`${instructor.semesterHours} h`}
+                </td>
+                <td className="px-6 py-4 text-sm">{`${instructor.totalHours}/${
+                  instructor.contract === "C" ? "800" : "615"
+                } h`}</td>
+                <td className="px-6 py-4 text-sm">{instructor.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filteredInstructors.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            No instructors found.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
