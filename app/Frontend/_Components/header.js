@@ -24,7 +24,7 @@ export default function Header() {
       <nav className="flex flex-1 justify-between items-stretch h-full">
         <div className="flex-1 h-full relative">
           <Link
-            href={"#"}
+            href={"/Frontend/Dashboards"}
             className="
             absolute inset-0 flex justify-center items-center
             text-white hover:bg-[#00A3E0] transition-colors font-medium
