@@ -113,7 +113,20 @@ status = solver.Solve(model)
 
 The return value of the Solve() method is OPTIMAL, FEASIBLE
 
-TO BE CONTINUED. I HAVE ONCE AGAIN REACHED "BED TIME".
+## Prototype:
+
+Create an example with fake hardcoded data for the following use cases:
+
+1. Optimal initial schedule generation using OR-Tools.
+2. Modifying a schedule - find teachers available to fill a section.
+3. Modifying a schedule - show sections an instructor is available to fill.
+
+Present in a table somewhat similar to our final goal design.
+
+Data Incorporated:
+1. Instructors with just first name, last name, list of qualified courses.
+2. Courses with timeslots (I'll ignore sections for now.)
+3. Timeslots with days, start time, end time.
 
 ## Notes As I Continue To Learn This:
 * I don't think we actually need the OR-Tools solver for our later modifications to schedules, only the initial optimization. The later modifications can just be done with normal filters to flag/highlight available instructors/sections.
