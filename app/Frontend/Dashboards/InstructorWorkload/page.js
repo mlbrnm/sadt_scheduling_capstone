@@ -128,40 +128,33 @@ export default function InstructorWorkload() {
     (instructor) => instructor.status === "On Break"
   ).length;
 
+  // Determine color based on total hours utilization
+  const getUtilizationColor = (instructor) => {
+    const yearlyMax = instructor.contract === "C" ? 800 : 615;
+    const utilization = (instructor.totalHours / yearlyMax) * 100;
+
+    if (utilization >= 100) {
+      return "bg-red-300 rounded-sm p-2";
+    } else if (utilization > 60) {
+      return "bg-yellow-300 rounded-sm p-2";
+    } else {
+      return "bg-green-300 rounded-sm p-2";
+    }
+  };
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl text-center font-bold mb-6">
+    <div className="p-4">
+      <h1 className="text-xl text-center font-bold mb-6">
         Instructor Workload
       </h1>
-      <div>
-        <h2>Semester: Spring 2025 | Program: SD</h2>
-      </div>
 
-      {/* Search bar */}
-      <div>
-        <input
-          type="text"
-          placeholder="Search Instructors..."
-          className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-          value={searchInstructor}
-          onChange={(e) => setSearchInstructor(e.target.value)}
-        />
-      </div>
-
-      {/* Summary */}
-      <div className="flex gap-6 mb-6 text-sm">
-        <span>Total Instructors: {totalInstructors}</span>
-        <span>Over Max Hours: {overMaxHours}</span>
-        <span>On Break: {onBreak}</span>
-      </div>
-
-      {/* Filter Container */}
-      <div className="flex flex-col gap-4 mb-4 p-4 bg-white rounded-lg">
-        {/* Filters */}
-        <div className="flex flex-col gap-4">
+      {/* Filter + Main Content Container */}
+      <div className="flex flex-row">
+        {/* Filter Container */}
+        <div className="flex flex-col gap-4 p-4 bg-white rounded-lg w-60 h-100 mt-27 mr-4">
           {/* Status filter */}
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-1">
+            <legend className="text-sm font-bold text-gray-700 mb-1">
               Availability:
             </legend>
             <div className="flex gap-4">
@@ -199,10 +192,9 @@ export default function InstructorWorkload() {
               </div>
             </div>
           </fieldset>
-
           {/* Hours filter */}
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-1">
+            <legend className="text-sm font-bold text-gray-700 mb-1">
               Hours:
             </legend>
             <div className="flex gap-4">
@@ -241,7 +233,7 @@ export default function InstructorWorkload() {
             </div>
           </fieldset>
           {/* Contract legend */}
-          <div className="flex flex-col mb-4 text-sm text-gray-600">
+          <div className="flex flex-col text-sm text-gray-600">
             <p className="font-bold">Contract Types:</p>
             <p>P = Permanent</p>
             <p>TS = Temp Salaried</p>
@@ -249,73 +241,113 @@ export default function InstructorWorkload() {
             <p>Ad = Adjunct</p>
           </div>
         </div>
-      </div>
 
-      {/* Instructor Table */}
-      <div className="bg-white rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                ID
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Name
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Contract
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Semester Hours
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Total Hours
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-              >
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-300">
-            {filteredInstructors.map((instructor) => (
-              <tr key={instructor.id}>
-                <td className="px-6 py-4 text-sm">{instructor.id}</td>
-                <td className="px-6 py-4 text-sm">{instructor.name}</td>
-                <td className="px-6 py-4 text-sm">{instructor.contract}</td>
-                <td className="px-6 py-4 text-sm">
-                  {`${instructor.semesterHours} h`}
-                </td>
-                <td className="px-6 py-4 text-sm">{`${instructor.totalHours}/${
-                  instructor.contract === "C" ? "800" : "615"
-                } h`}</td>
-                <td className="px-6 py-4 text-sm">{instructor.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredInstructors.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No instructors found.
+        {/* Main Content Container */}
+        <div className="flex-1">
+          {/* Semester & Program Data */}
+          <div className="flex justify-end mb-2">
+            <h2>Semester: Spring 2025 | Program: SD</h2>
           </div>
-        )}
+
+          {/* Search bar */}
+          <div className="flex justify-center my-2">
+            <input
+              type="text"
+              placeholder="Search Instructors..."
+              className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              value={searchInstructor}
+              onChange={(e) => setSearchInstructor(e.target.value)}
+            />
+          </div>
+
+          {/* Summary */}
+          <div className="flex gap-6 mb-2 text-sm">
+            <span>Total Instructors: {totalInstructors}</span>
+            <span>Over Max Hours: {overMaxHours}</span>
+            <span>On Break: {onBreak}</span>
+          </div>
+
+          {/* Instructor Table */}
+          <div className="bg-white rounded-lg overflow-auto max-h-125">
+            <table className="min-w-full divide-y divide-gray-300">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    ID
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Name
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Contract
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Semester Hours
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Total Hours
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-300">
+                {filteredInstructors.map((instructor) => (
+                  <tr key={instructor.id}>
+                    <td className="px-6 py-4 text-sm">{instructor.id}</td>
+                    <td className="px-6 py-4 text-sm">{instructor.name}</td>
+                    <td className="px-6 py-4 text-sm">{instructor.contract}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {`${instructor.semesterHours} h`}
+                    </td>
+                    <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                      <span className={getUtilizationColor(instructor)}>
+                        {`${instructor.totalHours}/${
+                          instructor.contract === "C" ? "800" : "615"
+                        } h`}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                      <span
+                        className={`${
+                          instructor.status === "Available"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        } rounded-sm p-2`}
+                      >
+                        {instructor.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredInstructors.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No instructors found.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
