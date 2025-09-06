@@ -287,9 +287,9 @@ export default function UploadData() {
             </div>
 
             {/* Upload File Button & Restore button */}
-            <div className="bg-[#D4D4D4] p-4 space-x-4 rounded-lg">
-              <div className="flex items-center space-x-4 mb-2">
-                <p className="font-bold mb-2 md:mb-0">Upload New Data:</p>
+            <div className="bg-[#D4D4D4] p-2 space-x-4 rounded-lg">
+              <div className="flex items-center space-x-4">
+                <p className="font-bold mb-2">Upload New Data:</p>
                 <label
                   className={`button-primary hover:button-hover text-white cursor-pointer px-4 py-2 rounded-lg inline-block text-center ${
                     isLoading ? "opacity-50 cursor-not-allowed" : ""
@@ -328,12 +328,15 @@ export default function UploadData() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
             </div>
           ) : previewData.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg">
+            <div className="bg-white rounded-lg overflow-auto max-h-80">
               <table className="w-full bg-white">
-                <thead>
+                <thead className="bg-gray-50 sticky top-0">
                   <tr className="bg-gray-100">
                     {Object.keys(previewData[0]).map((key) => (
-                      <th key={key} className="py-3 px-4 text-left border-b">
+                      <th
+                        key={key}
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
                         {key}
                       </th>
                     ))}
@@ -341,12 +344,12 @@ export default function UploadData() {
                 </thead>
                 <tbody>
                   {previewData.map((row, rowIndex) => (
-                    <tr
-                      key={rowIndex}
-                      className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                    >
+                    <tr key={rowIndex}>
                       {Object.values(row).map((cell, cellIndex) => (
-                        <td key={cellIndex} className="py-2 px-4 border-b">
+                        <td
+                          key={cellIndex}
+                          className="py-2 px-4 border-b text-sm"
+                        >
                           {cell}
                         </td>
                       ))}

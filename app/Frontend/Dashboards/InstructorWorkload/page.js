@@ -1,108 +1,26 @@
 "use client";
 import { useState } from "react";
+import mockdata from "./mockdata.json";
 
 export default function InstructorWorkload() {
   const [searchInstructor, setSearchInstructor] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [hoursFilter, setHoursFilter] = useState("All");
+  const [instructorWorkloadData, setInstructorWorkloadData] =
+    useState(mockdata);
+  const [selectedSemester, setSelectedSemester] = useState("");
 
-  const mockData = [
-    {
-      id: 16491,
-      name: "Elizabeth Moore",
-      contract: "P",
-      semesterHours: 205,
-      totalHours: 205,
-      status: "Available",
-    },
-    {
-      id: 23756,
-      name: "Sarah Johnson",
-      contract: "P",
-      semesterHours: 0,
-      totalHours: 615,
-      status: "On Break",
-    },
-    {
-      id: 48921,
-      name: "Michael Brennan",
-      contract: "C",
-      semesterHours: 205,
-      totalHours: 410,
-      status: "Available",
-    },
-    {
-      id: 75234,
-      name: "Robert Chen",
-      contract: "TS",
-      semesterHours: 0,
-      totalHours: 410,
-      status: "On Break",
-    },
-    {
-      id: 91583,
-      name: "Daniel Kim",
-      contract: "P",
-      semesterHours: 205,
-      totalHours: 410,
-      status: "Available",
-    },
-    {
-      id: 34672,
-      name: "Priya Kapoor",
-      contract: "P",
-      semesterHours: 205,
-      totalHours: 205,
-      status: "Available",
-    },
-    {
-      id: 62845,
-      name: "Ethan Carter",
-      contract: "P",
-      semesterHours: 0,
-      totalHours: 410,
-      status: "On Break",
-    },
-    {
-      id: 19387,
-      name: "Dill Pickles",
-      contract: "C",
-      semesterHours: 205,
-      totalHours: 800,
-      status: "Available",
-    },
-    {
-      id: 50618,
-      name: "Taylor Morgan",
-      contract: "TS",
-      semesterHours: 205,
-      totalHours: 410,
-      status: "Available",
-    },
-    {
-      id: 87412,
-      name: "Olivia Bennett",
-      contract: "P",
-      semesterHours: 0,
-      totalHours: 615,
-      status: "Available",
-    },
-    {
-      id: 68753,
-      name: "Daniel Warren",
-      contract: "P",
-      semesterHours: 0,
-      totalHours: 615,
-      status: "Available",
-    },
-  ];
+  const mockSemesters = ["Fall 2025", "Spring 2025", "Summer 2025"];
 
   // Filter the list of instructors
-  const filteredInstructors = mockData.filter((instructor) => {
+  const filteredInstructors = instructorWorkloadData.filter((instructor) => {
     // Filter by searching name
     const matchesName = instructor.name
       .toLowerCase()
       .includes(searchInstructor.toLowerCase());
+
+    // Filter by searching ID
+    const matchesID = instructor.id.toString().includes(searchInstructor);
 
     // Filter by status
     const matchesStatus =
@@ -115,16 +33,16 @@ export default function InstructorWorkload() {
       matchesHours = instructor.totalHours < yearlyMax;
     }
 
-    return matchesName && matchesStatus && matchesHours;
+    return (matchesID || matchesName) && matchesStatus && matchesHours;
   });
 
   // Summary details
-  const totalInstructors = mockData.length;
-  const overMaxHours = mockData.filter(
+  const totalInstructors = instructorWorkloadData.length;
+  const overMaxHours = instructorWorkloadData.filter(
     (instructor) =>
       instructor.totalHours >= (instructor.contract === "C" ? 800 : 615)
   ).length;
-  const onBreak = mockData.filter(
+  const onBreak = instructorWorkloadData.filter(
     (instructor) => instructor.status === "On Break"
   ).length;
 
@@ -151,7 +69,7 @@ export default function InstructorWorkload() {
       {/* Filter + Main Content Container */}
       <div className="flex flex-row">
         {/* Filter Container */}
-        <div className="flex flex-col gap-4 p-4 bg-white rounded-lg w-60 h-100 mt-27 mr-4">
+        <div className="flex flex-col gap-2 p-4 bg-white rounded-lg w-60 h-100 mt-29 mr-4">
           {/* Status filter */}
           <fieldset>
             <legend className="text-sm font-bold text-gray-700 mb-1">
@@ -245,16 +163,29 @@ export default function InstructorWorkload() {
         {/* Main Content Container */}
         <div className="flex-1">
           {/* Semester & Program Data */}
-          <div className="flex justify-end mb-2">
-            <h2>Semester: Spring 2025 | Program: SD</h2>
+          <div className="flex flex-row items-baseline justify-between">
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="text-md"
+            >
+              {mockSemesters.map((semester) => (
+                <option key={semester} value={semester}>
+                  {semester}
+                </option>
+              ))}
+            </select>
+            <div className="mb-2">
+              <h2>Semester: {selectedSemester} | Program: SD</h2>
+            </div>
           </div>
 
           {/* Search bar */}
           <div className="flex justify-center my-2">
             <input
               type="text"
-              placeholder="Search Instructors..."
-              className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="Search Instructors by Name or ID..."
+              className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-xs"
               value={searchInstructor}
               onChange={(e) => setSearchInstructor(e.target.value)}
             />
@@ -269,7 +200,7 @@ export default function InstructorWorkload() {
 
           {/* Instructor Table */}
           <div className="bg-white rounded-lg overflow-auto max-h-125">
-            <table className="min-w-full divide-y divide-gray-300">
+            <table className="min-w-full">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   <th
@@ -310,7 +241,7 @@ export default function InstructorWorkload() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-300">
+              <tbody className="bg-white divide-y divide-black">
                 {filteredInstructors.map((instructor) => (
                   <tr key={instructor.id}>
                     <td className="px-6 py-4 text-sm">{instructor.id}</td>
