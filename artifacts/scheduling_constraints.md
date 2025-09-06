@@ -79,6 +79,10 @@ for i in instructors:
 under_deviation = model.NewIntVar(0, 100, f'under_{i}') # 0 is lower bound, 100 is upper bound, string is the debug name
 over_deviation = model.NewIntVar(0, 100, f'over_{i})
 
+# these are sort of like if statements in constraint programming. The model is set to minimize so these will basically be 0 if it's ideal, and get further from 0 the more the hours differ from the ideal.
+model.Add(under_deviation >= 18 - total_hours)  # Will be 0 if total_hours >= 18
+model.Add(over_deviation >= total_hours - 20)   # Will be 0 if total_hours <= 20
+
 total_hour_cost += under_deviation
 total_hour_cost += over_deviation
 ```
