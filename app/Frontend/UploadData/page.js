@@ -301,11 +301,6 @@ export default function UploadData() {
                     className="hidden"
                     accept=".xlsx, .csv"
                     onChange={(e) => {
-                      const table = tableMap[selectedDataType];
-                      if (!table) {
-                        setError("Please select a valid data type first.");
-                        return;
-                      }
                       handleFileUpload(e);
                     }}
                     disabled={isLoading}
