@@ -149,13 +149,17 @@ def generate_time_slots(courses, course_durations):
     return time_slots
 
 
-def find_compatible_courses(instructor, all_courses, time_slots, assignments, solver):
+def find_compatible_courses(instructor, all_courses, time_slots, assignments, solver, course_duration_hours):
     instructor_courses = []
+    total_instructor_hours = 0
+    
+    # Get instructor's current courses and calculate total hours
     for c in all_courses:
         if solver.Value(assignments[(instructor, c)]):
             instructor_courses.append(c)
+            total_instructor_hours += course_duration_hours[c]
 
-    compatible_courses = []
+    time_compatible_courses = []
     
     # Get the instructor's current time slots
     instructor_slots = []
@@ -163,7 +167,7 @@ def find_compatible_courses(instructor, all_courses, time_slots, assignments, so
         if course in time_slots:
             instructor_slots.append(time_slots[course])
     
-    # Check each course not taught by the instructor
+    # Check each course not taught by the instructor for time conflicts
     for course in all_courses:
         if course not in instructor_courses and course in time_slots:
             course_start, course_end = time_slots[course]
@@ -177,9 +181,19 @@ def find_compatible_courses(instructor, all_courses, time_slots, assignments, so
                     break
             
             if not conflict_found:
-                compatible_courses.append(course)
+                time_compatible_courses.append(course)
     
-    return compatible_courses
+    # Separate courses into two categories
+    time_and_hour_compatible = []
+    time_only_compatible = []
+    
+    for course in time_compatible_courses:
+        if course_duration_hours[course] <= (20 - total_instructor_hours):
+            time_and_hour_compatible.append(course)
+        else:
+            time_only_compatible.append(course)
+    
+    return time_and_hour_compatible, time_only_compatible
 
 
 def create_scheduling_model(instructors, courses, course_duration_hours):
@@ -268,16 +282,41 @@ def main():
     time_slots = generate_time_slots(courses, course_duration_hours)
     
     # Find compatible courses for instructor_1
-    compatible_courses = find_compatible_courses('instructor_1', courses, time_slots, assignments, solver)
+    time_and_hour_compatible, time_only_compatible = find_compatible_courses(
+        'instructor_1', courses, time_slots, assignments, solver, course_duration_hours
+    )
 
-    print("\nCOMPATIBLE:\n---------------")
-    for course in compatible_courses:
-        print(course)
-    print("\n")
-    print("INCOMPATIBLE:\n---------------")
-    incompatible_courses = [course for course in courses if course not in compatible_courses]
-    for course in incompatible_courses:
-        print(course)
+    print("\nCOMPATIBLE (Time and Hours):\n---------------")
+    if time_and_hour_compatible:
+        for course in time_and_hour_compatible:
+            print(f"  - {course} ({course_duration_hours[course]} hours)")
+    else:
+        print("  No courses available that fit both time and hour constraints")
+
+    print("\nCOMPATIBLE (Time Only - Would Exceed Hour Limit):\n---------------")
+    if time_only_compatible:
+        for course in time_only_compatible:
+            print(f"  - {course} ({course_duration_hours[course]} hours)")
+    else:
+        print("  No courses that fit time-wise but exceed hour limits")
+
+    print("\nINCOMPATIBLE (Time Conflicts):\n---------------")
+    all_time_compatible = time_and_hour_compatible + time_only_compatible
+    incompatible_courses = [course for course in courses if course not in all_time_compatible]
+    
+    # Remove courses already assigned to instructor_1
+    instructor_courses = []
+    for c in courses:
+        if solver.Value(assignments[('instructor_1', c)]):
+            instructor_courses.append(c)
+    
+    incompatible_courses = [course for course in incompatible_courses if course not in instructor_courses]
+    
+    if incompatible_courses:
+        for course in incompatible_courses:
+            print(f"  - {course} ({course_duration_hours[course]} hours)")
+    else:
+        print("  No courses with time conflicts")
 
 
 if __name__ == "__main__":
