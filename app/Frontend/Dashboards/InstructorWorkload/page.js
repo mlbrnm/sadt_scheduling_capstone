@@ -24,7 +24,7 @@ export default function InstructorWorkload() {
 
     // Filter by status
     const matchesStatus =
-      statusFilter === "All" || instructor.status === "Available";
+      statusFilter === "All" || instructor.status === statusFilter;
 
     // Filter by hours
     let matchesHours = true;
