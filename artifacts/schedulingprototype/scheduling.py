@@ -133,7 +133,7 @@ def generate_time_slots(courses, course_durations):
     for course in courses:
         duration_minutes = course_durations[course] * 60
         
-        # Generate a random day (0-6 for Monday-Friday)
+        # Generate a random day (0-4 for Monday-Friday)
         day = random.randint(0, 4)
         
         # Generate a random start time between 8:00 AM and 6:00 PM (in minutes)
