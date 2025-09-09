@@ -1,35 +1,33 @@
 "use client";
 
-// Homepage directed to after logging in. In the real application,
-// it would conditionally render based on user, for now make it look like Vanessa's.
 export default function Home() {
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-150">
       {/* Personalized Greeting Header */}
       <div className="text-center mb-6">
         <h1 className="text-5xl font-bold text-gray-800 mb-2">
           Hello, Vanessa!
         </h1>
-        <p className="text-xl sadt_blue_light">Current Semester: Spring 2025</p>
+        <p className="text-2xl font-bold text-red-600 m-6">Current Semester: Fall 2025</p>
       </div>
 
-      {/* Progress Timeline - Full Width */}
-      <div className="mb-6">
+      {/*Semester Tracker*/}
+      <div className="mb-6 pb-2">
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <div className="relative pt-4">
             {/* Progress Bar */}
             <div className="h-4 w-full bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full background-headerfooter rounded-full"
-                style={{ width: "60%" }}
+                style={{ width: "15%" }}
               ></div>
             </div>
 
             {/* Date Markers */}
             <div className="flex justify-between mt-2 text-sm">
-              <div className="text-left">May 5</div>
-              <div className="text-center">Week 9/14</div>
-              <div className="text-right">Aug 21</div>
+              <div className="text-left font-semibold">Sept 2</div>
+              <div className="text-center">Week 2/14</div>
+              <div className="text-right font-semibold">Dec 17</div>
             </div>
           </div>
         </div>
@@ -39,8 +37,8 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Announcements */}
         <div>
-          <h2 className="text-2xl font-semibold sadt_blue_light mb-4">
-            Announcements
+          <h2 className="text-2xl font-bold sadt_blue_light mb-4">
+            Daily Digest
           </h2>
           <div className="space-y-4">
             {/* Announcement 1 */}
@@ -49,8 +47,7 @@ export default function Home() {
                 ×
               </button>
               <p className="pr-6">
-                This is an annoucement about a system outage. Sometimes systems
-                need maintenance. It sucks, but deal with it.
+                Your schedule "SD BTech Fall '25" has been approved.
               </p>
             </div>
 
@@ -83,7 +80,7 @@ export default function Home() {
 
         {/* Middle Column - Status Updates */}
         <div>
-          <h2 className="text-2xl font-semibold sadt_blue_light mb-4">
+          <h2 className="text-2xl font-bold sadt_blue_light mb-4">
             Status Updates
           </h2>
 
@@ -102,7 +99,7 @@ export default function Home() {
                 <p className="text-sm text-gray-600">Edited Submissions</p>
               </div>
               <div>
-                <p className="text-4xl font-bold text-blue-500">11</p>
+                <p className="text-4xl font-bold text-red-600">11</p>
                 <p className="text-sm text-gray-600">New Conflicts Detected</p>
               </div>
             </div>
@@ -125,19 +122,19 @@ export default function Home() {
                 </p>
               </div>
               <div>
-                <div className="flex items-center justify-center mb-1">
+                <div className="flex items-center justify-left mb-1">
                   <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
                   <span className="text-sm">
                     <span className="font-bold">6</span> Major
                   </span>
                 </div>
-                <div className="flex items-center justify-center mb-1">
+                <div className="flex items-center justify-left mb-1">
                   <span className="inline-block w-3 h-3 rounded-full bg-yellow-500 mr-2"></span>
                   <span className="text-sm">
                     <span className="font-bold">26</span> Moderate
                   </span>
                 </div>
-                <div className="flex items-center justify-center">
+                <div className="flex items-center justify-left">
                   <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
                   <span className="text-sm">
                     <span className="font-bold">5</span> Minor
@@ -150,7 +147,7 @@ export default function Home() {
 
         {/* Right Column - Calendar */}
         <div>
-          <h2 className="text-2xl font-semibold text-center mb-4">July 2025</h2>
+          <h2 className="text-2xl font-bold text-center mb-4">July 2025</h2>
           <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
             <div className="grid grid-cols-7 gap-1">
               {/* Days of Week */}
