@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "./Frontend/supabaseClient";
+//import { supabase } from "./Frontend/supabaseClient";
 import Footer from "./Frontend/_Components/footer";
 
 export default function Login() {
