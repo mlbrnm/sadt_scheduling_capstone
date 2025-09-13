@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import mockdata from "./mockdata.json";
+import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 export default function InstructorWorkload() {
   const [searchInstructor, setSearchInstructor] = useState("");
@@ -48,20 +49,6 @@ export default function InstructorWorkload() {
   const onBreak = instructorWorkloadData.filter(
     (instructor) => instructor.Instructor_Status === "On Break"
   ).length;
-
-  // Determine color based on total hours utilization
-  const getUtilizationColor = (instructor) => {
-    const yearlyMax = instructor.Contract_Type === "CS" ? 800 : 615;
-    const utilization = (instructor.Total_Hours / yearlyMax) * 100;
-
-    if (utilization >= 100) {
-      return "bg-red-300 rounded-sm p-2";
-    } else if (utilization > 60) {
-      return "bg-yellow-300 rounded-sm p-2";
-    } else {
-      return "bg-green-300 rounded-sm p-2";
-    }
-  };
 
   return (
     <div className="p-4">
