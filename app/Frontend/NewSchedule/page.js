@@ -30,7 +30,10 @@ export default function NewSchedule() {
       <h1 className="text-2xl font-bold mb-4">New Schedule Page</h1>
       <div className="flex flex-col h-screen">
         {/* Top Controls Year, Semester Toggles, Save/Clear Buttons */}
-        <ScheduleControls metaData={newScheduleDraft.metaData} />
+        <ScheduleControls
+          metaData={newScheduleDraft.metaData}
+          setNewScheduleDraft={setNewScheduleDraft}
+        />
 
         {/* Main Grid Area */}
         <div className="flex flex-1">
