@@ -25,6 +25,14 @@ export default function NewSchedule() {
     setCourseData(mockCourses);
   }, []);
 
+  // Handler function to add an instructor to the newScheduleDraft state
+  const handleAddInstructor = (instructor) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedInstructors: [...prevDraft.addedInstructors, instructor],
+    }));
+  }
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">New Schedule Page</h1>
@@ -38,7 +46,7 @@ export default function NewSchedule() {
         {/* Main Grid Area */}
         <div className="flex flex-1">
           {/* Left Component: Instructor Section */}
-          <InstructorSection instructors={instructorData} />
+          <InstructorSection instructors={instructorData} onAddInstructor={handleAddInstructor} />
 
           {/* Top + Center Components */}
           <div className="flex flex-1 flex-col">
