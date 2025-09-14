@@ -11,13 +11,21 @@ export default function InstructorSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const tableHeaders = [
+  const instructorCardHeaders = [
     "Contract",
     "Win",
     "Sp/Su",
     "Fall",
     "Total",
     "Instructor",
+  ];
+  const instructorListHeaders = [
+    "ID",
+    "Name",
+    "Contract",
+    "Semester Hours",
+    "Total Hours",
+    "Status",
   ];
 
   // Handler function to add the selected instructor
@@ -68,11 +76,11 @@ export default function InstructorSection({
             <table>
               <thead className="bg-gray-50">
                 <tr>
-                  {tableHeaders.map((header) => (
+                  {instructorCardHeaders.map((header) => (
                     <th
                       key={header}
                       scope="col"
-                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      className="px-1 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
                     >
                       {header}
                     </th>
@@ -84,7 +92,7 @@ export default function InstructorSection({
             <table>
               <thead>
                 <tr>
-                  {tableHeaders.map((header) => (
+                  {instructorCardHeaders.map((header) => (
                     <th
                       key={header}
                       scope="col"
@@ -105,8 +113,11 @@ export default function InstructorSection({
                     <td className="px-3 py-2 text-sm">
                       {instructor.Contract_Type}
                     </td>
+                    {/* Placeholder for Winter Hours - REPLACE!!! */}
                     <td className="px-3 py-2 text-sm">0</td>
+                    {/* Placeholder for Spring/Summer Hours - REPLACE!!! */}
                     <td className="px-3 py-2 text-sm">0</td>
+                    {/* Placeholder for Fall Hours - REPLACE!!! */}
                     <td className="px-3 py-2 text-sm">0</td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor(
@@ -158,42 +169,15 @@ export default function InstructorSection({
               <table className="min-w-full">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      ID
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      Name
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      Contract
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      Semester Hours
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      Total Hours
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      Status
-                    </th>
+                    {instructorListHeaders.map((header) => (
+                      <th
+                        key={header}
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
+                        {header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-black">
