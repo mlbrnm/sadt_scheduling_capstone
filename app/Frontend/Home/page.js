@@ -19,14 +19,14 @@ export default function Home() {
             <div className="h-4 w-full bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full background-headerfooter rounded-full"
-                style={{ width: "15%" }}
+                style={{ width: "21%" }}
               ></div>
             </div>
 
             {/* Date Markers */}
             <div className="flex justify-between mt-2 text-sm">
               <div className="text-left font-semibold">Sept 2</div>
-              <div className="text-center">Week 2/14</div>
+              <div className="text-center">Week 3/14</div>
               <div className="text-right font-semibold">Dec 17</div>
             </div>
           </div>
