@@ -23,9 +23,9 @@ export default function ScheduleControls({ metaData, setNewScheduleDraft }) {
   };
 
   return (
-    <div className="flex items-center mb-4">
+    <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200 mb-4 rounded-md">
       {/* Left Side: Year and Semester Toggles */}
-      <div className="flex items-center">
+      <div className="flex items-center space-x-6">
         {/* Year Display */}
         <div className="text-lg font-semibold">Year: {metaData.year}</div>
 
@@ -59,18 +59,22 @@ export default function ScheduleControls({ metaData, setNewScheduleDraft }) {
             <label className="ml-2">Fall</label>
           </div>
         </div>
-        <button
-          className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          onClick={handleSave}
-        >
-          Save
-        </button>
-        <button
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-          onClick={handleClear}
-        >
-          Clear
-        </button>
+
+        {/* Right Side: Save and Clear Buttons */}
+        <div className="flex items-center space-x-3">
+          <button
+            className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            onClick={handleSave}
+          >
+            Save
+          </button>
+          <button
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+            onClick={handleClear}
+          >
+            Clear
+          </button>
+        </div>
       </div>
     </div>
   );
