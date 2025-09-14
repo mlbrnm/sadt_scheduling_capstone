@@ -3,6 +3,42 @@ import { useState } from "react";
 
 export default function Reports() {
 
+  const reportTypes = ["Program", "Instructor", "Instructor Utilization"];
+  const [selectedReportType, setSelectedReportType] = useState("");
+  const [dataForReport, setDataForReport] = useState([]);
+  const [generationDetails, setGenerationDetails] = useState({ fileName: "", uploadTime: "" });
+
+
+  const handleReportTypeSelect = (type) => {
+    setSelectedReportType(type);
+    setDataForReport([]);
+    setGenerationDetails({ fileName: "", uploadTime: "" });
+    setError(null);
+    setSuccessMessage("");
+  };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   return (
     /*Main Content Container*/
     <div className="p-4">
