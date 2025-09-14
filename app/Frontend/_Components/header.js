@@ -23,6 +23,7 @@ export default function Header() {
       {/* !!!WE SHOULD PROBABLY MAP THIS!!!*/}
       <nav className="flex flex-1 justify-between items-stretch h-full">
         <div className="flex-1 h-full relative">
+          {/* Need to add the dropdowns here for the different types of dashboards, cuz right now it's only linking to instructor workload!!*/}
           <Link
             href={"/Frontend/Dashboards/InstructorWorkload"}
             className="
@@ -33,8 +34,7 @@ export default function Header() {
             Dashboards
           </Link>
           <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
+        </div>  
         <div className="flex-1 h-full relative">
           <Link
             href={"/Frontend/UploadData"}
@@ -43,6 +43,7 @@ export default function Header() {
             text-white hover:bg-[#00A3E0] transition-colors font-medium
           "
           >
+            
             Upload Data
           </Link>
           <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
@@ -50,7 +51,7 @@ export default function Header() {
 
         <div className="flex-1 h-full relative">
           <Link
-            href={"#"}
+            href={"/Frontend/Reports"}
             className="
             absolute inset-0 flex justify-center items-center
             text-white hover:bg-[#00A3E0] transition-colors font-medium
