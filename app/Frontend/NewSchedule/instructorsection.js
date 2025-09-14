@@ -245,7 +245,9 @@ export default function InstructorSection({
                   {filteredInstructors.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="px-6 py-4 text-sm text-center">
-                        No instructors found.
+                        {searchTerm
+                          ? "No instructors match your search."
+                          : "All available instructors have been added."}
                       </td>
                     </tr>
                   ) : (
