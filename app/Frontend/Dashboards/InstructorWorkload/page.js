@@ -11,6 +11,14 @@ export default function InstructorWorkload() {
     useState(mockdata);
   const [selectedSemester, setSelectedSemester] = useState("");
 
+  const tableHeaders = [
+    "ID",
+    "Name",
+    "Contract",
+    "Semester Hours",
+    "Total Hours",
+    "Status",
+  ];
   const mockSemesters = ["Fall 2025", "Spring 2025", "Summer 2025"];
 
   // Filter the list of instructors
@@ -182,7 +190,7 @@ export default function InstructorWorkload() {
           </div>
 
           {/* Summary */}
-          <div className="flex gap-6 mb-2 text-sm">
+          <div className="flex gap-6 mb-2 text-sm font-bold text-gray-700">
             <span>Total Instructors: {totalInstructors}</span>
             <span>Over Max Hours: {overMaxHours}</span>
             <span>On Break: {onBreak}</span>
@@ -193,42 +201,15 @@ export default function InstructorWorkload() {
             <table className="min-w-full">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    ID
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Name
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Contract
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Semester Hours
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Total Hours
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Status
-                  </th>
+                  {tableHeaders.map((header) => (
+                    <th
+                      key={header}
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-black">
