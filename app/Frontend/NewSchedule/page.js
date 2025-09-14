@@ -45,7 +45,7 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">New Schedule Page</h1>
+      <h1 className="text-2xl font-bold mb-4">New Schedule</h1>
       <div className="flex flex-col h-screen">
         {/* Top Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
@@ -53,7 +53,7 @@ export default function NewSchedule() {
           setNewScheduleDraft={setNewScheduleDraft}
         />
 
-        {/* Main Grid Area */}
+        {/* Main Area */}
         <div className="flex flex-1">
           {/* Left Component: Instructor Section */}
           <InstructorSection

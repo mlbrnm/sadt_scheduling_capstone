@@ -11,6 +11,15 @@ export default function InstructorSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const tableHeaders = [
+    "Contract",
+    "Win",
+    "Sp/Su",
+    "Fall",
+    "Total",
+    "Instructor",
+  ];
+
   // Handler function to add the selected instructor
   const handleAddInstructor = (instructor) => {
     onAddInstructor(instructor);
@@ -59,42 +68,15 @@ export default function InstructorSection({
             <table>
               <thead className="bg-gray-50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Contract
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Win
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Sp/Su
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Fall
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Total
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Instructor
-                  </th>
+                  {tableHeaders.map((header) => (
+                    <th
+                      key={header}
+                      scope="col"
+                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
             </table>
@@ -102,42 +84,15 @@ export default function InstructorSection({
             <table>
               <thead>
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Contract
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Win
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Sp/Su
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Fall
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Total
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                  >
-                    Instructor
-                  </th>
+                  {tableHeaders.map((header) => (
+                    <th
+                      key={header}
+                      scope="col"
+                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-black">
