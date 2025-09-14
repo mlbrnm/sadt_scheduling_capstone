@@ -1,10 +1,15 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
+import { useRouter } from "next/navigation";
 import mockdata from "./mockdata.json";
 
 export default function Users() {
   const [usersData, setUsersData] = useState(mockdata);
+  const router = useRouter();
+
+  const handleEditUser = (userId) => {
+    router.push(`/Frontend/Users/Edit?id=${userId}`);
+  };
 
   // Get role badge styling
   const getRoleBadgeStyle = (role) => {
@@ -24,7 +29,7 @@ export default function Users() {
           Manage User Accounts
         </h1>
         <div className="flex justify-end -mt-8">
-          <button className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+          <button className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer">
             Add User
           </button>
         </div>
@@ -68,10 +73,13 @@ export default function Users() {
 
             {/* Right Section - Edit/Delete */}
             <div className="flex items-center justify-end space-x-3 flex-grow">
-              <button className="text-gray-600 hover:text-blue-600 text-sm font-medium transition-colors">
+              <button
+                onClick={() => handleEditUser(user.id)}
+                className="text-gray-600 hover:text-blue-600 text-sm font-medium transition-colors cursor-pointer"
+              >
                 Edit Account/Permissions...
               </button>
-              <button className="text-blue-600 hover:text-blue-800 transition-colors">
+              <button className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
                 <img src="/trash.svg" alt="Delete User" className="w-4 h-4" />
               </button>
             </div>
