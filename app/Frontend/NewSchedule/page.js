@@ -18,11 +18,27 @@ export default function NewSchedule() {
   });
   const [instructorData, setInstructorData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [courseData, setCourseData] = useState([]); // Currently holds Mock data for courses - REPLACE WITH API CALL
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // "Fetching" mock data on component mount
   useEffect(() => {
-    setInstructorData(mockInstructors);
-    setCourseData(mockCourses);
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // REPLACE WITH API CALL
+        // const response = await fetch("");
+        // const instructorData = await response.json();
+        setInstructorData(mockInstructors);
+        setCourseData(mockCourses);
+      } catch (error) {
+        setError("Failed to fetch data.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   // Handler function to add an instructor to the newScheduleDraft state
