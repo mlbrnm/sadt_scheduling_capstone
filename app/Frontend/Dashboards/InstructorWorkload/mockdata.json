@@ -1,90 +1,101 @@
 [
   {
-    "id": 16491,
-    "name": "Elizabeth Moore",
-    "contract": "P",
-    "semesterHours": 205,
-    "totalHours": 205,
-    "status": "Available"
+    "Instructor_ID": 16491,
+    "Instructor_LastName": "Moore",
+    "Instructor_Name": "Elizabeth",
+    "Contract_Type": "FT",
+    "Semester_Hours": 205,
+    "Total_Hours": 205,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 23756,
-    "name": "Sarah Johnson",
-    "contract": "P",
-    "semesterHours": 0,
-    "totalHours": 615,
-    "status": "On Break"
+    "Instructor_ID": 23756,
+    "Instructor_LastName": "Johnson",
+    "Instructor_Name": "Sarah",
+    "Contract_Type": "FT",
+    "Semester_Hours": 0,
+    "Total_Hours": 615,
+    "Instructor_Status": "On Break"
   },
   {
-    "id": 48921,
-    "name": "Michael Brennan",
-    "contract": "C",
-    "semesterHours": 205,
-    "totalHours": 410,
-    "status": "Available"
+    "Instructor_ID": 48921,
+    "Instructor_LastName": "Brennan",
+    "Instructor_Name": "Michael",
+    "Contract_Type": "CS",
+    "Semester_Hours": 205,
+    "Total_Hours": 410,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 75234,
-    "name": "Robert Chen",
-    "contract": "TS",
-    "semesterHours": 0,
-    "totalHours": 410,
-    "status": "On Break"
+    "Instructor_ID": 75234,
+    "Instructor_LastName": "Chen",
+    "Instructor_Name": "Robert",
+    "Contract_Type": "PT",
+    "Semester_Hours": 0,
+    "Total_Hours": 410,
+    "Instructor_Status": "On Break"
   },
   {
-    "id": 91583,
-    "name": "Daniel Kim",
-    "contract": "P",
-    "semesterHours": 205,
-    "totalHours": 410,
-    "status": "Available"
+    "Instructor_ID": 91583,
+    "Instructor_LastName": "Kim",
+    "Instructor_Name": "Daniel",
+    "Contract_Type": "FT",
+    "Semester_Hours": 205,
+    "Total_Hours": 410,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 34672,
-    "name": "Priya Kapoor",
-    "contract": "P",
-    "semesterHours": 205,
-    "totalHours": 205,
-    "status": "Available"
+    "Instructor_ID": 34672,
+    "Instructor_LastName": "Kapoor",
+    "Instructor_Name": "Priya",
+    "Contract_Type": "FT",
+    "Semester_Hours": 205,
+    "Total_Hours": 205,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 62845,
-    "name": "Ethan Carter",
-    "contract": "P",
-    "semesterHours": 0,
-    "totalHours": 410,
-    "status": "On Break"
+    "Instructor_ID": 62845,
+    "Instructor_LastName": "Carter",
+    "Instructor_Name": "Ethan",
+    "Contract_Type": "FT",
+    "Semester_Hours": 0,
+    "Total_Hours": 410,
+    "Instructor_Status": "On Break"
   },
   {
-    "id": 19387,
-    "name": "Dill Pickles",
-    "contract": "C",
-    "semesterHours": 205,
-    "totalHours": 800,
-    "status": "Available"
+    "Instructor_ID": 19387,
+    "Instructor_LastName": "Pickles",
+    "Instructor_Name": "Dill",
+    "Contract_Type": "CS",
+    "Semester_Hours": 205,
+    "Total_Hours": 800,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 50618,
-    "name": "Taylor Morgan",
-    "contract": "TS",
-    "semesterHours": 205,
-    "totalHours": 410,
-    "status": "Available"
+    "Instructor_ID": 50618,
+    "Instructor_LastName": "Morgan",
+    "Instructor_Name": "Taylor",
+    "Contract_Type": "PT",
+    "Semester_Hours": 205,
+    "Total_Hours": 410,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 87412,
-    "name": "Olivia Bennett",
-    "contract": "P",
-    "semesterHours": 0,
-    "totalHours": 615,
-    "status": "Available"
+    "Instructor_ID": 87412,
+    "Instructor_LastName": "Bennett",
+    "Instructor_Name": "Olivia",
+    "Contract_Type": "FT",
+    "Semester_Hours": 0,
+    "Total_Hours": 615,
+    "Instructor_Status": "Available"
   },
   {
-    "id": 68753,
-    "name": "Daniel Warren",
-    "contract": "P",
-    "semesterHours": 0,
-    "totalHours": 615,
-    "status": "Available"
+    "Instructor_ID": 68753,
+    "Instructor_LastName": "Warren",
+    "Instructor_Name": "Daniel",
+    "Contract_Type": "P",
+    "Semester_Hours": 0,
+    "Total_Hours": 615,
+    "Instructor_Status": "Available"
   }
 ]

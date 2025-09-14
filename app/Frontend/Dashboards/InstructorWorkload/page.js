@@ -15,22 +15,25 @@ export default function InstructorWorkload() {
   // Filter the list of instructors
   const filteredInstructors = instructorWorkloadData.filter((instructor) => {
     // Filter by searching name
-    const matchesName = instructor.name
+    const name =
+      instructor.Instructor_Name + " " + instructor.Instructor_LastName;
+    const matchesName = name
       .toLowerCase()
       .includes(searchInstructor.toLowerCase());
 
     // Filter by searching ID
-    const matchesID = instructor.id.toString().includes(searchInstructor);
+    const matchesID =
+      instructor.Instructor_ID.toString().includes(searchInstructor);
 
     // Filter by status
     const matchesStatus =
-      statusFilter === "All" || instructor.status === statusFilter;
+      statusFilter === "All" || instructor.Instructor_Status === statusFilter;
 
     // Filter by hours
     let matchesHours = true;
     if (hoursFilter === "hasRemaining") {
-      const yearlyMax = instructor.contract === "C" ? 800 : 615;
-      matchesHours = instructor.totalHours < yearlyMax;
+      const yearlyMax = instructor.Contract_Type === "CS" ? 800 : 615;
+      matchesHours = instructor.Total_Hours < yearlyMax;
     }
 
     return (matchesID || matchesName) && matchesStatus && matchesHours;
@@ -40,16 +43,16 @@ export default function InstructorWorkload() {
   const totalInstructors = instructorWorkloadData.length;
   const overMaxHours = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.totalHours >= (instructor.contract === "C" ? 800 : 615)
+      instructor.Total_Hours >= (instructor.Contract_Type === "CS" ? 800 : 615)
   ).length;
   const onBreak = instructorWorkloadData.filter(
-    (instructor) => instructor.status === "On Break"
+    (instructor) => instructor.Instructor_Status === "On Break"
   ).length;
 
   // Determine color based on total hours utilization
   const getUtilizationColor = (instructor) => {
-    const yearlyMax = instructor.contract === "C" ? 800 : 615;
-    const utilization = (instructor.totalHours / yearlyMax) * 100;
+    const yearlyMax = instructor.Contract_Type === "CS" ? 800 : 615;
+    const utilization = (instructor.Total_Hours / yearlyMax) * 100;
 
     if (utilization >= 100) {
       return "bg-red-300 rounded-sm p-2";
@@ -153,10 +156,10 @@ export default function InstructorWorkload() {
           {/* Contract legend */}
           <div className="flex flex-col text-sm text-gray-600">
             <p className="font-bold">Contract Types:</p>
-            <p>P = Permanent</p>
-            <p>TS = Temp Salaried</p>
-            <p>C = Contract</p>
-            <p>Ad = Adjunct</p>
+            <p>FT = Permanent</p>
+            <p>PT = Temp Salaried</p>
+            <p>CS = Contract</p>
+            <p>AD = Adjunct</p>
           </div>
         </div>
 
@@ -243,29 +246,36 @@ export default function InstructorWorkload() {
               </thead>
               <tbody className="bg-white divide-y divide-black">
                 {filteredInstructors.map((instructor) => (
-                  <tr key={instructor.id}>
-                    <td className="px-6 py-4 text-sm">{instructor.id}</td>
-                    <td className="px-6 py-4 text-sm">{instructor.name}</td>
-                    <td className="px-6 py-4 text-sm">{instructor.contract}</td>
+                  <tr key={instructor.Instructor_ID}>
                     <td className="px-6 py-4 text-sm">
-                      {`${instructor.semesterHours} h`}
+                      {instructor.Instructor_ID}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {instructor.Instructor_Name}{" "}
+                      {instructor.Instructor_LastName}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {instructor.Contract_Type}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      {`${instructor.Semester_Hours} h`}
                     </td>
                     <td className="px-2 py-1 text-sm font-semibold rounded-full">
                       <span className={getUtilizationColor(instructor)}>
-                        {`${instructor.totalHours}/${
-                          instructor.contract === "C" ? "800" : "615"
+                        {`${instructor.Total_Hours}/${
+                          instructor.Contract_Type === "CS" ? "800" : "615"
                         } h`}
                       </span>
                     </td>
                     <td className="px-2 py-1 text-sm font-semibold rounded-full">
                       <span
                         className={`${
-                          instructor.status === "Available"
+                          instructor.Instructor_Status === "Available"
                             ? "bg-green-100 text-green-800"
                             : "bg-yellow-100 text-yellow-800"
                         } rounded-sm p-2`}
                       >
-                        {instructor.status}
+                        {instructor.Instructor_Status}
                       </span>
                     </td>
                   </tr>
