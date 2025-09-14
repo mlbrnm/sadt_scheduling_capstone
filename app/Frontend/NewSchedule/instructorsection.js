@@ -37,7 +37,13 @@ export default function InstructorSection({
 
   // Handler function to remove an instructor
   const handleRemoveInstructor = (instructor) => {
-    onRemoveInstructor(instructor);
+    // USED AI Q: how can we add a confirmation message for removing an added instructor without making a custom modal? (https://chat.deepseek.com/a/chat/s/cdbd0a66-d6f9-47e0-b1da-c564f09c6e7d)
+    const confirmRemove = window.confirm(
+      `Are you sure you want to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}?`
+    );
+    if (confirmRemove) {
+      onRemoveInstructor(instructor);
+    }
   };
 
   // Filter instructors based on search term
@@ -141,8 +147,14 @@ export default function InstructorSection({
 
       {/* Modal for selecting instructors */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <div className="bg-gray-100 p-4 rounded-md">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-gray-100 p-4 rounded-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-end">
               <button
                 className="text-gray-600 hover:text-gray-800 text-xl font-bold px-2 cursor-pointer"
