@@ -2,7 +2,12 @@
 import { useState } from "react";
 import { getUtilizationColor } from "../_Utils/utilizationColorsUtil";
 
-export default function InstructorSection({ instructors, onAddInstructor }) {
+export default function InstructorSection({
+  instructors,
+  onAddInstructor,
+  onRemoveInstructor,
+  addedInstructors,
+}) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -13,8 +18,19 @@ export default function InstructorSection({ instructors, onAddInstructor }) {
     setSearchTerm("");
   };
 
+  // Handler function to remove an instructor
+  const handleRemoveInstructor = (instructor) => {
+    onRemoveInstructor(instructor);
+  };
+
   // Filter instructors based on search term
   const filteredInstructors = instructors.filter((instructor) => {
+    // Check if instructor is already added
+    // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
+    const isAlreadyAdded = addedInstructors.some(
+      (i) => i.Instructor_ID === instructor.Instructor_ID
+    );
+
     // Filter by searching name
     const name =
       instructor.Instructor_Name + " " + instructor.Instructor_LastName;
@@ -23,18 +39,139 @@ export default function InstructorSection({ instructors, onAddInstructor }) {
     // Filter by searching ID
     const matchesID = instructor.Instructor_ID.toString().includes(searchTerm);
 
-    return matchesID || matchesName;
+    return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
   return (
     <div>
-      <h2 className="text-lg font-bold mb-4">Instructors</h2>
-      <button
-        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        onClick={() => setIsModalOpen(true)}
-      >
-        + Add Instructor
-      </button>
+      {/* Added Instructors + Add Instructor Button */}
+      <div className="max-w-auto p-2 bg-gray-50 rounded-md">
+        <button
+          className="cursor-pointer hover:bg-green-100 p-2"
+          onClick={() => setIsModalOpen(true)}
+        >
+          + Add Instructor
+        </button>
+
+        {/* Display added instructors */}
+        <div>
+          {addedInstructors.length === 0 ? (
+            <table>
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Contract
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Win
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Sp/Su
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Fall
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Total
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Instructor
+                  </th>
+                </tr>
+              </thead>
+            </table>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Contract
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Win
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Sp/Su
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Fall
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Total
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                  >
+                    Instructor
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black">
+                {addedInstructors.map((instructor) => (
+                  <tr
+                    key={instructor.Instructor_ID}
+                    onClick={() => handleRemoveInstructor(instructor)}
+                    className="cursor-pointer hover:bg-red-100"
+                  >
+                    <td className="px-3 py-2 text-sm">
+                      {instructor.Contract_Type}
+                    </td>
+                    <td className="px-3 py-2 text-sm">0</td>
+                    <td className="px-3 py-2 text-sm">0</td>
+                    <td className="px-3 py-2 text-sm">0</td>
+                    <td
+                      className={`px-3 py-2 text-sm ${getUtilizationColor(
+                        instructor
+                      )}`}
+                    >
+                      {`${instructor.Total_Hours} h`}
+                    </td>
+                    <td className="px-3 py-2 text-sm">
+                      {instructor.Instructor_Name +
+                        " " +
+                        instructor.Instructor_LastName}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
       {/* Modal for selecting instructors */}
       {isModalOpen && (

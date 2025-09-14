@@ -31,7 +31,17 @@ export default function NewSchedule() {
       ...prevDraft,
       addedInstructors: [...prevDraft.addedInstructors, instructor],
     }));
-  }
+  };
+
+  // Handler function to remove an instructor from the newScheduleDraft state
+  const handleRemoveInstructor = (instructor) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedInstructors: prevDraft.addedInstructors.filter(
+        (i) => i.Instructor_ID !== instructor.Instructor_ID
+      ),
+    }));
+  };
 
   return (
     <div className="p-4">
@@ -46,7 +56,12 @@ export default function NewSchedule() {
         {/* Main Grid Area */}
         <div className="flex flex-1">
           {/* Left Component: Instructor Section */}
-          <InstructorSection instructors={instructorData} onAddInstructor={handleAddInstructor} />
+          <InstructorSection
+            instructors={instructorData}
+            onAddInstructor={handleAddInstructor}
+            onRemoveInstructor={handleRemoveInstructor}
+            addedInstructors={newScheduleDraft.addedInstructors}
+          />
 
           {/* Top + Center Components */}
           <div className="flex flex-1 flex-col">
