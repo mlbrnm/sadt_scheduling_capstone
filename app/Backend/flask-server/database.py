@@ -50,7 +50,36 @@ def test_connection():
     except Exception as e:
         print("Supabase connection failed:", e)
 
+import pandas as pd
+import numpy as np
+from datetime import datetime
 
+TABLE_PRIMARY_KEYS = {
+    "courses" : "course_id",
+    "instructors" : "instructor_id"
+}
+
+# data is formatted for JSON, while also using primary keys to determine if data row should be skipped
+def formatted_data(df, primary_key):
+    # Timestamp and datetime values are converted to ISO format
+    df = df.map(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime)) else x)
+    # map() applies the lambda function to all the elements of the dataframe 
+    # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
+    # if it isnt either, it is not changed
+
+    # Replace invalid numeric values
+    df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
+    df = df.where(pd.notnull(df), None)
+    # this acts as a type of safety net using True/False condition (if False then replaced with None)
+
+
+    # Drop rows where the primary key is missing
+    if primary_key and primary_key in df.columns:
+        df = df[df[primary_key].notnull()]
+    # checks if the value is a primary key in the dataframe column
+    # if df[primary_key].notnull() returns true then the row is kept, if not it is skipped
+
+    return df
 
 
 # GENERIC HELPER FUNCTION
@@ -71,8 +100,8 @@ def upload_file(file_path, table_name, column_standardization, uploaded_by):
     df = df.rename(columns = column_standardization)
     # uses the standardization performed in the table-specific functions
 
-    df = df.rename(columns=column_standardization)
-    df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
+
+    df = formatted_data(df, primary_key=TABLE_PRIMARY_KEYS[table_name])
 
     df['uploaded_at'] = datetime.now().isoformat()
     df['uploaded_by'] = uploaded_by
