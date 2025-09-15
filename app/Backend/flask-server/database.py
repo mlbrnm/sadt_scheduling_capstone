@@ -82,10 +82,6 @@ def upload_file(file_path, table_name, column_standardization, uploaded_by):
     # converts the data in the dataframe to a list of dictionaries (best structure for supabase)
     # orient = "records" best data orientation (row oriented) for supabase insert
 
-        # 🔍 Debug print here
-    print("DEBUG about to insert into", table_name)
-    for i, record in enumerate(data_asDictionaries[:5]):
-        print(f"Row {i}: {record}")
 
     supabase_client.table(table_name).insert(data_asDictionaries).execute()
     # uploads the data to supabase
