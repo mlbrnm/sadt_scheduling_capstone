@@ -167,7 +167,8 @@ export default function EditUser() {
                     </div>
                     {/* I used AI to generate the SVGs. Prompt:
                         <insert code here>
-                        Add an SVG checkmark and SVG remove icon (X) to these divs.  */}
+                        Add an SVG checkmark and SVG remove icon (X) to these divs.  
+                        I did the same for the + icon a little further down. */}
                     <button class="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
                       <svg
                         class="w-4 h-4 text-white"
