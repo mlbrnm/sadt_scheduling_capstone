@@ -149,12 +149,40 @@ export default function EditUser() {
                   className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
                 >
                   <span className="text-gray-900">{program}</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                      {/* Need to add checkmark icon */}
+                  <div class="flex items-center space-x-2">
+                    <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg
+                        class="w-4 h-4 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="3"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
                     </div>
-                    {/* Need to add remove button */}
-                    <button className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors"></button>
+                    {/* I used AI to generate the SVGs. Prompt:
+                        <insert code here>
+                        Add an SVG checkmark and SVG remove icon (X) to these divs.  */}
+                    <button class="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
+                      <svg
+                        class="w-4 h-4 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="3"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -173,8 +201,20 @@ export default function EditUser() {
                   className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
                 >
                   <span className="text-gray-900">{program}</span>
-                  <button className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
-                    {/* Need to add plus icon */}
+                  <button class="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
+                    <svg
+                      class="w-4 h-4 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="3"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M12 6v12m6-6H6"
+                      />
+                    </svg>
                   </button>
                 </div>
               ))}
