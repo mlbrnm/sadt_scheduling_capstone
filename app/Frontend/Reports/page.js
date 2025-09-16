@@ -127,8 +127,26 @@ export default function Reports() {
 
   // GENERATE INSTRUCTOR UTILIZATION REPORT
   const generateInstructorUtilizationReport = () => {
+    // initiate report generation
     setIsLoading(true);
-    //TODO: Add logic to generate instructor utilization report based on dataForReport
+    // check if there's data to generate the report
+    if (!dataForReport || dataForReport.length === 0) {
+      setError("No data available for report generation.");
+      setIsLoading(false);
+      return;
+    }
+    // map the data + add additional details
+    const reportData = dataForReport.map(item => ({
+      "Report Type": "Instructor Utilization",
+      ...item
+    }));
+    // set the mapped data to be used in the report
+    setDataForReport(reportData);
+    // name + timestamp the file
+    setGenerationDetails({ fileName: `Instructor_Utilization_Report_${new Date().toLocaleDateString().replace(/\//g, "-")}.csv`, generationTime: new Date().toLocaleString() });
+    setError(null);   //no errors because it should've worked if you get to this point
+    // complete report generation
+    setIsLoading(false);
   }
 
   // CONVERTING REPORT TO CSV FOR EASE
