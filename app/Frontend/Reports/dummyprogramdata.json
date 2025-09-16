@@ -1,0 +1,60 @@
+[
+    {
+        "program": "ITS",
+        "programType": "Diploma",
+        "programData": [
+            {
+                "semester": "Winter 2024",
+                "studentsApplied": 150,
+                "studentsNewlyAdmitted": 65,
+                "studentsContinuing": 120,
+                "studentsCompleted": 30,
+                "academicChair": "Roderick MacIntosh"
+            },
+            {
+                "semester": "Fall 2023",
+                "studentsApplied": 80,
+                "studentsNewlyAdmitted": 70,
+                "studentsContinuing": 110,
+                "studentsCompleted": 25,
+                "academicChair": "Roderick MacIntosh"
+            }
+        ]
+    },
+    {
+        "program": "SD",
+        "programType": "Diploma",
+        "programData": [
+            {
+                "semester": "Spring 2025",
+                "studentsApplied": 90,
+                "studentsNewlyAdmitted": 76,
+                "studentsContinuing": 185,
+                "studentsCompleted": 112,
+                "academicChair": "Ali Moussa"
+            },
+            {
+                "semester": "Winter 2025",
+                "studentsApplied": 120,
+                "studentsNewlyAdmitted": 80,
+                "studentsContinuing": 190,
+                "studentsCompleted": 100,
+                "academicChair": "Omar Wahdan"
+            }
+        ]
+    },
+    {
+        "program": "SD BTech",
+        "programType": "Bachelors",
+        "programData": [
+            {
+                "semester": "Fall 2025",
+                "studentsApplied": 200,
+                "studentsNewlyAdmitted": 150,
+                "studentsContinuing": 0,
+                "studentsCompleted": 0,
+                "academicChair": "Omar Wahdan"
+            }
+        ]
+    }
+]
