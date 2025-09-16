@@ -87,12 +87,15 @@ export default function Reports() {
 
   // GENERATE PROGRAM REPORT
   const generateProgramReport = () => {
+    // initiate report generation
     setIsLoading(true);
+    // check if there's data to generate the report
     if (!dataForReport || dataForReport.length === 0) {
       setError("No data available for report generation.");
       setIsLoading(false);
       return;
     }
+    // map the data + add additional details
     const programInfo = dataForReport[0].program;
     const reportData = programInfo.programData.map(enrolInfo => ({
       "Program": programInfo.program,
@@ -105,18 +108,13 @@ export default function Reports() {
       "Students Graduated": enrolInfo.graduated,
       "Academic Chair": enrolInfo.academicChair,
     }));
-
+    // set the mapped data to be used in the report
     setDataForReport(reportData);
+    // name + timestamp the file
     setGenerationDetails({ fileName: `Program_Report_${programInfo.program.replace(/\s+/g, "_")}.csv`, generationTime: new Date().toLocaleString() });
+    // complete report generation
     setIsLoading(false);
     setError(null);
-
-
-    // // Simulate report generation
-    // setTimeout(() => {
-    //   setIsLoading(false);
-    //   setSuccessMessage(`Program report generated successfully for ${programName}.`);
-    // }, 2000);
   };
 
   // GENERATE INSTRUCTOR REPORT
