@@ -28,17 +28,29 @@
 
 /* Loading Spinner */
 .spinner{
-  border: 4px solid #ae132a;
-  border-left-color: #005eb8;
+  border: 4px solid #e0e0e0;
+  border-left-color: #ae132a;
   border-radius: 50%;
   width: 24px;
   height: 24px;
   animation: spin 1s linear infinite;
   display: inline-block;
-  margin-right: 8px;
 }
 
 @keyframes spin {
   0%{ transform: rotate(0deg); }
   100%{ transform: rotate(360deg); }
+}
+
+/* Overlay */
+.overlay{
+  position: fixed;
+  inset:0;
+  width: 20%;
+  height: 10%;
+  background-color: rgba(0, 0, 0, 0.4);
+  /* display: flex;
+  justify-content: center;
+  align-items: center; */
+  z-index: 50;
 }

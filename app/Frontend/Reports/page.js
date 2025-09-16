@@ -106,7 +106,7 @@ export default function Reports() {
       return;
     }
     // map the data + add additional details
-    const programInfo = dataForReport[0].program;
+    const programInfo = dataForReport[0];
     const reportData = programInfo.programData.map((enrolInfo) => ({
       Program: programInfo.program,
       "Program Type": programInfo.programType,
@@ -258,6 +258,23 @@ export default function Reports() {
   return (
     /*Main Content Container*/
     <div className="p-4">
+      {/* Generating Report (Loading...) Overlay*/}
+      {isLoading && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+        >
+          <div className="bg-neutral-100 p-8 rounded-xl shadow-2xl opacity-80 flex-col items-center justify-center">
+            <div className="flex justify-center mb-4">
+              <div className="spinner"></div>
+            </div>
+            <p className="text-md font-semibold text-gray-600">
+              Generating Report...
+            </p>
+          </div>
+        </div>
+      )}
+
       <h1 className="text-2xl text-center font-bold mb-6">Reports</h1>
       {/*Generate Reports Section*/}
       <h2 className="text-xl text-center mb-6">
@@ -363,12 +380,20 @@ export default function Reports() {
           >
             {isLoading ? (
               <>
-                <div className="spinner"></div>
                 Processing...
               </>
             ) : (
               "Generate Report"
             )}
+          </button>
+        </div>
+      )}
+
+      {/* Download Report Button */}
+      {dataForReport && dataForReport.length > 0 && generationDetails.fileName && !isLoading && (
+        <div className="text-center mb-6">
+          <button onClick={downloadCSV} className="px-6 py-3 rounded-lg text-white cursor-pointer button-secondary hover:button-hover">
+            Download Report
           </button>
         </div>
       )}
