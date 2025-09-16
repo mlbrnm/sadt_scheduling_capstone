@@ -64,7 +64,7 @@ export default function Header() {
 
         <div className="flex-1 h-full relative">
           <Link
-            href={"#"}
+            href={"/Frontend/Forecasting"}
             className="
             absolute inset-0 flex justify-center items-center
             text-white hover:bg-[#00A3E0] transition-colors font-medium
