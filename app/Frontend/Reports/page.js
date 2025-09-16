@@ -18,6 +18,7 @@ export default function Reports() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  //PICK WHICH TYPE OF REPORT YOU WANT
   const handleReportTypeSelect = (type) => {
     setSelectedReportType(type);
     setSelectedProgram("");
@@ -32,6 +33,7 @@ export default function Reports() {
     setSuccessMessage("");
   };
 
+  //GET THE DATA FOR THE PROGRAM YOU WANT
   const handleProgramSelect = (program) => {
     setSelectedProgram(program);
     //mapping program options to according ones in dummy data
@@ -55,6 +57,7 @@ export default function Reports() {
     setSuccessMessage("");
   }
 
+  //GET THE DATA FOR THE INSTRUCTOR YOU WANT
   const handleInstructorSelect = (instructor) => {
     setSelectedInstructor(instructor);  //this is the instructor we want
     // find that instructor's data 
@@ -71,15 +74,67 @@ export default function Reports() {
     setSuccessMessage("");
   }
 
+  {/* GENERATE PROGRAM REPORT */}
+  const generateProgramReport = () => {
+    setIsLoading(true);
+    if (!dataForReport || dataForReport.length === 0) {
+      setError("No data available for report generation.");
+      setIsLoading(false);
+      return;
+    }
+    const programInfo = dataForReport[0].program;
+    const reportData = programInfo.programData.map(enrolInfo => ({
+      "Program": programInfo.program,
+      "Program Type": programInfo.type,
+      "Semester": enrolInfo.semester,
+      "Students Applied": enrolInfo.applied,
+      "Semester": enrolInfo.semester,
+      "Students Newly Admitted": enrolInfo.newlyAdmitted,
+      "Students Continuing": enrolInfo.continuing,
+      "Students Graduated": enrolInfo.graduated,
+      "Academic Chair": enrolInfo.academicChair,
+    }));
+
+    setDataForReport(reportData);
+    setGenerationDetails({ fileName: `Program_Report_${programInfo.program.replace(/\s+/g, "_")}.csv`, generationTime: new Date().toLocaleString() });
+    setError(null);
+
+
+    // Simulate report generation
+    setTimeout(() => {
+      setIsLoading(false);
+      setSuccessMessage(`Program report generated successfully for ${programName}.`);
+    }, 2000);
+  };
+
+  {/* GENERATE INSTRUCTOR REPORT */}
+
+
+  {/* GENERATE INSTRUCTOR UTILIZATION REPORT */}
 
 
 
 
-
-
-
-
-
+  // CONVERTING REPORT TO CSV FOR EASE
+  // This code block is AI generated using perplexity
+  const convertToCSV = (data) => {
+    if (!data || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvHeaders = headers.join(',');
+    
+    const csvRows = data.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        // Escape commas and quotes
+        return typeof value === 'string' && value.includes(',') 
+          ? `"${value.replace(/"/g, '""')}"` 
+          : value;
+      }).join(',')
+    );
+    
+    return [csvHeaders, ...csvRows].join('\n');
+  };
 
 
 
@@ -112,7 +167,7 @@ export default function Reports() {
         ))}
       </div>
 
-      {/* This code is AI generated using perplexity*/}
+      {/* This code block is AI generated using perplexity*/}
       {/* Error Message */}
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
@@ -120,7 +175,7 @@ export default function Reports() {
         </div>
       )}
 
-      {/* This code is AI generated using perplexity*/} 
+      {/* This code block is AI generated using perplexity*/} 
       {/* Success Message */}
       {successMessage && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
