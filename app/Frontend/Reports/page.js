@@ -7,10 +7,13 @@ export default function Reports() {
   const [selectedReportType, setSelectedReportType] = useState("");
   const [dataForReport, setDataForReport] = useState([]);
   const [generationDetails, setGenerationDetails] = useState({ fileName: "", generationTime: "" });
-  const dummyPrograms = ["Software Development Diploma", "ITS Diploma", "Film & Video Production Diploma", "Web Development Certificate", "Software Development BTech"];
+  const dummyPrograms = ["Software Development Diploma", "ITS Diploma", "Software Development BTech"];
+  const dummyInstructors = ["Olivia Benson", "Sonny Carisi", "Amanda Rollins"];
   const [selectedProgram, setSelectedProgram] = useState("");
+  const [selectedInstructor, setSelectedInstructor] = useState("");
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
 
 
@@ -50,6 +53,18 @@ export default function Reports() {
       <h1 className="text-2xl text-center font-bold mb-6">Reports</h1>
       {/*Generate Reports Section*/}
       <h2 className="text-xl text-center mb-6">Select the type of report you want to generate:</h2>
+      {/* Report Type Buttons */}
+      <div className="flex flex-wrap justify-center gap-4 mb-6">
+        {reportTypes.map((type) => (
+          <button
+            key={type}
+            onClick={() => handleReportTypeSelect(type)}
+            className={`px-4 py-2 rounded-lg text-white cursor-pointer  ${selectedReportType === type ? "button-clicked" : "button-primary hover:button-hover"} ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {type}
+          </button>
+        ))}
+      </div>
 
 
 
