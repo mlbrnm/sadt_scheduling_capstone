@@ -112,6 +112,22 @@ export default function Reports() {
         ))}
       </div>
 
+      {/* This code is AI generated using perplexity*/}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* This code is AI generated using perplexity*/} 
+      {/* Success Message */}
+      {successMessage && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
+          <p>{successMessage}</p>
+        </div>
+      )}
+
 
 
 
