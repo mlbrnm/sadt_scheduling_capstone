@@ -22,7 +22,11 @@ export default function Reports() {
     setSelectedReportType(type);
     setSelectedProgram("");
     setSelectedInstructor("");
-    setDataForReport(null);
+    if (type === "Instructor Utilization") {
+      setDataForReport(dummyutilizationData);
+    } else {
+      setDataForReport(null);
+    }
     setGenerationDetails({ fileName: "", generationTime: "" });
     setError(null);
     setSuccessMessage("");
@@ -30,21 +34,40 @@ export default function Reports() {
 
   const handleProgramSelect = (program) => {
     setSelectedProgram(program);
-    const programData = [...dummyProgramData];
-    setDataForReport(programData);
-    const genDate = new Date().toLocaleString();
+    //mapping program options to according ones in dummy data
+    const programMapping = {
+    "Software Development Diploma": "SD",
+    "ITS Diploma": "ITS", 
+    "Software Development BTech": "SD BTech"
+  };
+    //find the corresponding data for the selected program
+    const desiredProgram = programMapping[program];
+    const desiredProgramData = dummyProgramData.filter(item => item.program === desiredProgram);
+    if (desiredProgramData && desiredProgramData.length > 0) {
+      setDataForReport(desiredProgramData);
+      setError(null);
+    } else {
+      setDataForReport(null);
+      setError("No data found for this program.");
+    }
+    // const genDate = new Date().toLocaleString();
     // setGenerationDetails({ fileName: `${genDate} - ${program}`, generationTime: genDate }); ---WAIT to do this!!
-    setError(null);
     setSuccessMessage("");
   }
 
   const handleInstructorSelect = (instructor) => {
-    setSelectedInstructor(instructor);
-    const instructorData = [...dummyInstructorData];
-    const genDate = new Date().toLocaleString();
-    setDataForReport(instructorData);
+    setSelectedInstructor(instructor);  //this is the instructor we want
+    // find that instructor's data 
+    const specificInstructorData = dummyInstructorData.find(item => item.name === instructor);
+    if (specificInstructorData) {
+      setDataForReport(specificInstructorData);
+      setError(null);
+    } else {
+      setDataForReport(null);
+      setError("No data found for this instructor.");
+    }
+    // const genDate = new Date().toLocaleString();
     // setGenerationDetails({ fileName: `${genDate} - ${instructor}`, generationTime: genDate }); ---WAIT to do this!!
-    setError(null);
     setSuccessMessage("");
   }
 

@@ -2,6 +2,7 @@
     {
         "program": "ITS",
         "programType": "Diploma",
+        "admissionRate": "65%",
         "programData": [
             {
                 "semester": "Winter 2024",
@@ -24,6 +25,7 @@
     {
         "program": "SD",
         "programType": "Diploma",
+        "admissionRate": "76%",
         "programData": [
             {
                 "semester": "Spring 2025",
@@ -46,6 +48,7 @@
     {
         "program": "SD BTech",
         "programType": "Bachelors",
+        "admissionRate": "75%",
         "programData": [
             {
                 "semester": "Fall 2025",
