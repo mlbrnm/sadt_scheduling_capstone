@@ -132,7 +132,7 @@ export default function Reports() {
     setError(null);
   };
 
-  //TEMPORARY COMMENT OUIATT!!!!
+  //TEMPORARY COMMENT OUTT!!!!
   // GENERATE INSTRUCTOR REPORT
   // const generateInstructorReport = () => {
   //   // initiate report generation
@@ -203,6 +203,7 @@ export default function Reports() {
   //   setIsLoading(false);
   // };
 
+  // AI generated for debugging purposes ONLY --> will be changed back to original function above that's commented out once debugging is complete
   const generateInstructorReport = () => {
   console.log("🔥 STARTING - Setting isLoading to TRUE");
   setIsLoading(true);
@@ -303,37 +304,7 @@ export default function Reports() {
   // MAIN RETURN OF PAGE.JS
   return (
     /*Main Content Container*/
-    <div className="p-4">
-      {/*ADDED for trying --- DELET AFTER DEBUGS*/}
-      {/* DEBUG - ADD THIS RIGHT BEFORE YOUR OVERLAY */}
-      <div
-        style={{
-          position: "fixed",
-          top: "10px",
-          left: "10px",
-          background: "red",
-          color: "white",
-          padding: "10px",
-          zIndex: 9999,
-        }}
-      >
-        isLoading: {isLoading ? "TRUE" : "FALSE"}
-      </div>
-      {/* YOUR OVERLAY */}
-      {isLoading && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
-        >
-          <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center">
-            <div className="spinner mb-4"></div>
-            <p className="text-lg font-semibold text-gray-700">
-              Generating Report...
-            </p>
-          </div>
-        </div>
-      )}
-      
+    <div className="p-4">      
       {/* Generating Report (Loading...) Overlay*/}
       {isLoading && (
         <div
@@ -460,26 +431,12 @@ export default function Reports() {
           <div className="text-center mb-6">
             <button
               onClick={downloadCSV}
-              className="px-6 py-3 rounded-lg text-white cursor-pointer button-secondary hover:button-hover"
+              className="px-6 py-3 rounded-lg text-gray-500 cursor-pointer button-secondary hover:button-hover hover:text-underline"
             >
               Download Report
             </button>
           </div>
         )}
-      {/* <div className="mt-4">
-        <label htmlFor="programSelect" className="flex mb-2">Select Program:</label>
-        <select
-          id="programSelect"
-          value={selectedProgram}
-          onChange={(e) => setSelectedProgram(e.target.value)}
-          className="border border-gray-300 rounded-md p-2"
-        >
-          <option value="">-- Select a Program --</option>
-          {dummyPrograms.map((program) => (
-            <option key={program} value={program}>{program}</option>
-          ))}
-        </select>
-      </div> */}
     </div>
   );
 }
