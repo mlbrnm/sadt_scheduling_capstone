@@ -25,3 +25,19 @@
 .sadt_blue_light {
   color: #005eb8;
 }
+
+.spinner{
+  border: 4px solid #ae132a;
+  border-left-color: #005eb8;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0%{ transform: rotate(0deg); }
+  100%{ transform: rotate(360deg); }
+}
