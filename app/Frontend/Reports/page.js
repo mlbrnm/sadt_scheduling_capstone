@@ -74,7 +74,18 @@ export default function Reports() {
     setSuccessMessage("");
   }
 
-  {/* GENERATE PROGRAM REPORT */}
+  // MAKE SURE TO GENERATE THE RIGHT TYPE OF REPORT
+  const handleGenerateReport = () => {
+    if (selectedReportType === "Program") {
+      generateProgramReport();
+    } else if (selectedReportType === "Instructor") {
+      generateInstructorReport();
+    } else if (selectedReportType === "Instructor Utilization") {
+      generateInstructorUtilizationReport();
+    }
+  };
+
+  // GENERATE PROGRAM REPORT
   const generateProgramReport = () => {
     setIsLoading(true);
     if (!dataForReport || dataForReport.length === 0) {
@@ -97,23 +108,28 @@ export default function Reports() {
 
     setDataForReport(reportData);
     setGenerationDetails({ fileName: `Program_Report_${programInfo.program.replace(/\s+/g, "_")}.csv`, generationTime: new Date().toLocaleString() });
+    setIsLoading(false);
     setError(null);
 
 
-    // Simulate report generation
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccessMessage(`Program report generated successfully for ${programName}.`);
-    }, 2000);
+    // // Simulate report generation
+    // setTimeout(() => {
+    //   setIsLoading(false);
+    //   setSuccessMessage(`Program report generated successfully for ${programName}.`);
+    // }, 2000);
   };
 
-  {/* GENERATE INSTRUCTOR REPORT */}
+  // GENERATE INSTRUCTOR REPORT
+  const generateInstructorReport = () => {
+    setIsLoading(true);
+    //TODO: Add logic to generate instructor report based on selectedInstructor and dataForReport
+  }
 
-
-  {/* GENERATE INSTRUCTOR UTILIZATION REPORT */}
-
-
-
+  // GENERATE INSTRUCTOR UTILIZATION REPORT
+  const generateInstructorUtilizationReport = () => {
+    setIsLoading(true);
+    //TODO: Add logic to generate instructor utilization report based on dataForReport
+  }
 
   // CONVERTING REPORT TO CSV FOR EASE
   // This code block is AI generated using perplexity
