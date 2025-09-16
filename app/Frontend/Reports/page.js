@@ -177,7 +177,7 @@ export default function Reports() {
     setDataForReport(reportData);
     // name + timestamp the file
     setGenerationDetails({
-      fileName: `Instructor_Report_${dataForReport.name.replace(
+      fileName: `Instructor_Report_${selectedInstructor.replace(
         /\s+/g,
         "_"
       )}.csv`,
@@ -361,7 +361,14 @@ export default function Reports() {
               isLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {/* {isLoading ? "Generating Report..." : "Generate Report"} */}
+            {isLoading ? (
+              <>
+                <div className="spinner"></div>
+                Processing...
+              </>
+            ) : (
+              "Generate Report"
+            )}
           </button>
         </div>
       )}
