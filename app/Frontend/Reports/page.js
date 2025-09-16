@@ -137,9 +137,17 @@ export default function Reports() {
   const generateInstructorReport = () => {
     // initiate report generation
     setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 5000);
     // check if there's data to generate the report
     if (!dataForReport) {
       setError("No data available for report generation.");
+      setIsLoading(false);
+      return;
+    }
+
+    // This code block is AI generated using perplexity
+    if (!dataForReport.teachingHistory) {
+      setError("Invalid instructor data.");
       setIsLoading(false);
       return;
     }
@@ -378,25 +386,25 @@ export default function Reports() {
               isLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {isLoading ? (
-              <>
-                Processing...
-              </>
-            ) : (
-              "Generate Report"
-            )}
+            {isLoading ? <>Processing...</> : "Generate Report"}
           </button>
         </div>
       )}
 
       {/* Download Report Button */}
-      {dataForReport && dataForReport.length > 0 && generationDetails.fileName && !isLoading && (
-        <div className="text-center mb-6">
-          <button onClick={downloadCSV} className="px-6 py-3 rounded-lg text-white cursor-pointer button-secondary hover:button-hover">
-            Download Report
-          </button>
-        </div>
-      )}
+      {dataForReport &&
+        dataForReport.length > 0 &&
+        generationDetails.fileName &&
+        !isLoading && (
+          <div className="text-center mb-6">
+            <button
+              onClick={downloadCSV}
+              className="px-6 py-3 rounded-lg text-white cursor-pointer button-secondary hover:button-hover"
+            >
+              Download Report
+            </button>
+          </div>
+        )}
 
       {/* <div className="mt-4">
         <label htmlFor="programSelect" className="flex mb-2">Select Program:</label>
