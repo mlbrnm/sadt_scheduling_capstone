@@ -112,7 +112,6 @@ export default function Reports() {
       "Program Type": programInfo.programType,
       Semester: enrolInfo.semester,
       "Students Applied": enrolInfo.applied,
-      Semester: enrolInfo.semester,
       "Students Newly Admitted": enrolInfo.newlyAdmitted,
       "Students Continuing": enrolInfo.continuing,
       "Students Graduated": enrolInfo.graduated,
@@ -133,68 +132,107 @@ export default function Reports() {
     setError(null);
   };
 
+  //TEMPORARY COMMENT OUIATT!!!!
   // GENERATE INSTRUCTOR REPORT
-  const generateInstructorReport = () => {
-    // initiate report generation
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 5000);
-    // check if there's data to generate the report
-    if (!dataForReport) {
-      setError("No data available for report generation.");
-      setIsLoading(false);
-      return;
-    }
+  // const generateInstructorReport = () => {
+  //   // initiate report generation
+  //   setIsLoading(true);
+  //   // check if there's data to generate the report
+  //   if (!dataForReport) {
+  //     setError("No data available for report generation.");
+  //     setIsLoading(false);
+  //     return;
+  //   }
 
-    // This code block is AI generated using perplexity
-    if (!dataForReport.teachingHistory) {
+  //   // // This code block is AI generated using perplexity
+  //   // if (!dataForReport.teachingHistory) {
+  //   //   setError("Invalid instructor data.");
+  //   //   setIsLoading(false);
+  //   //   return;
+  //   // }
+
+  //   setTimeout(() => {
+  //     if (!dataForReport?.teachingHistory) {
+  //       setError("Invalid instructor data.");
+  //       setIsLoading(false);
+  //       return;
+  //     }
+  //   });
+
+  //   // make inital section (instructor details)
+  //   const instructorDetails = {
+  //     Section: "\n~~~~~~INSTRUCTOR DETAILS~~~~~~\n",
+  //     Name: dataForReport.name,
+  //     "Current Contract": dataForReport.contract,
+  //     "Active?": `------Status - ${dataForReport.active}-------`,
+  //     "Current Semester Hours": dataForReport.currentSemesterHours,
+  //     "Current Total Hours": dataForReport.currentTotalHours,
+  //     Status: dataForReport.status,
+  //     "Teaching Since": dataForReport.teachingSince,
+  //     "Course Taught": dataForReport.coursesTaught.join(", "),
+  //   };
+
+  //   // make teaching history section (map teaching history data)
+  //   const teachingHistoryData = dataForReport.teachingHistory.map(
+  //     (history) => ({
+  //       Section: "\n~~~~~~~~~~~~~~~~TEACHING HISTORY~~~~~~~~~~~~~~~~\n",
+  //       Year: history.year,
+  //       Semester: history.semester,
+  //       Contract: history.contract,
+  //       "Semester Hours": history.semesterHours,
+  //       "Target Hours": history.targetHours,
+  //       "Met Target?": `------Target Hours Met? - ${history.metTarget}-------`,
+  //       "Courses Taught": history.coursesTaught.join(", "),
+  //     })
+  //   );
+
+  //   // combine instructor details + teaching history to make full data
+  //   const reportData = [instructorDetails, ...teachingHistoryData];
+  //   // set the mapped data to be used in the report
+  //   setDataForReport(reportData);
+  //   // name + timestamp the file
+  //   setGenerationDetails({
+  //     fileName: `Instructor_Report_${selectedInstructor.replace(
+  //       /\s+/g,
+  //       "_"
+  //     )}.csv`,
+  //     generationTime: new Date().toLocaleString(),
+  //   });
+  //   setError(null); //no errors because it should've worked if you get to this point
+  //   // complete report generation
+  //   setIsLoading(false);
+  // };
+
+  const generateInstructorReport = () => {
+  console.log("🔥 STARTING - Setting isLoading to TRUE");
+  setIsLoading(true);
+  
+  setTimeout(() => {
+    console.log("🔥 TIMEOUT STARTED");
+    
+    if (!dataForReport?.teachingHistory) {
       setError("Invalid instructor data.");
       setIsLoading(false);
       return;
     }
 
-    // make inital section (instructor details)
-    const instructorDetails = {
-      Section: "\n~~~~~~INSTRUCTOR DETAILS~~~~~~\n",
-      Name: dataForReport.name,
-      "Current Contract": dataForReport.contract,
-      "Active?": `------Status - ${dataForReport.active}-------`,
-      "Current Semester Hours": dataForReport.currentSemesterHours,
-      "Current Total Hours": dataForReport.currentTotalHours,
-      Status: dataForReport.status,
-      "Teaching Since": dataForReport.teachingSince,
-      "Course Taught": dataForReport.coursesTaught.join(", "),
-    };
-
-    // make teaching history section (map teaching history data)
-    const teachingHistoryData = dataForReport.teachingHistory.map(
-      (history) => ({
-        Section: "\n~~~~~~~~~~~~~~~~TEACHING HISTORY~~~~~~~~~~~~~~~~\n",
-        Year: history.year,
-        Semester: history.semester,
-        Contract: history.contract,
-        "Semester Hours": history.semesterHours,
-        "Target Hours": history.targetHours,
-        "Met Target?": `------Target Hours Met? - ${history.metTarget}-------`,
-        "Courses Taught": history.coursesTaught.join(", "),
-      })
-    );
-
-    // combine instructor details + teaching history to make full data
-    const reportData = [instructorDetails, ...teachingHistoryData];
-    // set the mapped data to be used in the report
+    // Your report generation logic here...
+    const reportData = [{
+      Section: "TEST",
+      Name: dataForReport.name || "Test Name",
+    }];
+    
     setDataForReport(reportData);
-    // name + timestamp the file
     setGenerationDetails({
-      fileName: `Instructor_Report_${selectedInstructor.replace(
-        /\s+/g,
-        "_"
-      )}.csv`,
+      fileName: `Test_Report.csv`,
       generationTime: new Date().toLocaleString(),
     });
-    setError(null); //no errors because it should've worked if you get to this point
-    // complete report generation
+    
+    console.log("🔥 FINISHED - Setting isLoading to FALSE");
     setIsLoading(false);
-  };
+  }, 3000); // 3 second delay
+};
+
 
   // GENERATE INSTRUCTOR UTILIZATION REPORT
   const generateInstructorUtilizationReport = () => {
@@ -266,13 +304,43 @@ export default function Reports() {
   return (
     /*Main Content Container*/
     <div className="p-4">
+      {/*ADDED for trying --- DELET AFTER DEBUGS*/}
+      {/* DEBUG - ADD THIS RIGHT BEFORE YOUR OVERLAY */}
+      <div
+        style={{
+          position: "fixed",
+          top: "10px",
+          left: "10px",
+          background: "red",
+          color: "white",
+          padding: "10px",
+          zIndex: 9999,
+        }}
+      >
+        isLoading: {isLoading ? "TRUE" : "FALSE"}
+      </div>
+      {/* YOUR OVERLAY */}
+      {isLoading && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
+        >
+          <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center">
+            <div className="spinner mb-4"></div>
+            <p className="text-lg font-semibold text-gray-700">
+              Generating Report...
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Generating Report (Loading...) Overlay*/}
       {isLoading && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
         >
-          <div className="bg-neutral-100 p-8 rounded-xl shadow-2xl opacity-80 flex-col items-center justify-center">
+          <div className="bg-neutral-100 p-8 rounded-xl shadow-2xl opacity-80 flex-col items-center">
             <div className="flex justify-center mb-4">
               <div className="spinner"></div>
             </div>
@@ -282,7 +350,6 @@ export default function Reports() {
           </div>
         </div>
       )}
-
       <h1 className="text-2xl text-center font-bold mb-6">Reports</h1>
       {/*Generate Reports Section*/}
       <h2 className="text-xl text-center mb-6">
@@ -305,7 +372,6 @@ export default function Reports() {
           </button>
         ))}
       </div>
-
       {/* This code block is AI generated using perplexity*/}
       {/* Error Message */}
       {error && (
@@ -313,7 +379,6 @@ export default function Reports() {
           <p>{error}</p>
         </div>
       )}
-
       {/* This code block is AI generated using perplexity*/}
       {/* Success Message */}
       {successMessage && (
@@ -321,7 +386,6 @@ export default function Reports() {
           <p>{successMessage}</p>
         </div>
       )}
-
       {/* Program Selection Dropdown */}
       {selectedReportType === "Program" && (
         <div className="mb-6">
@@ -347,7 +411,6 @@ export default function Reports() {
           </select>
         </div>
       )}
-
       {/* Instructor Selection Dropdown */}
       {selectedReportType === "Instructor" && (
         <div className="mb-6">
@@ -373,7 +436,6 @@ export default function Reports() {
           </select>
         </div>
       )}
-
       {/* Generate Report Button */}
       {((selectedReportType === "Program" && selectedProgram) ||
         (selectedReportType === "Instructor" && selectedInstructor) ||
@@ -390,7 +452,6 @@ export default function Reports() {
           </button>
         </div>
       )}
-
       {/* Download Report Button */}
       {dataForReport &&
         dataForReport.length > 0 &&
@@ -405,7 +466,6 @@ export default function Reports() {
             </button>
           </div>
         )}
-
       {/* <div className="mt-4">
         <label htmlFor="programSelect" className="flex mb-2">Select Program:</label>
         <select

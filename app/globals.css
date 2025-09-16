@@ -42,15 +42,3 @@
   100%{ transform: rotate(360deg); }
 }
 
-/* Overlay */
-.overlay{
-  position: fixed;
-  inset:0;
-  width: 20%;
-  height: 10%;
-  background-color: rgba(0, 0, 0, 0.4);
-  /* display: flex;
-  justify-content: center;
-  align-items: center; */
-  z-index: 50;
-}
