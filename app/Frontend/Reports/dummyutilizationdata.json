@@ -1,0 +1,37 @@
+[
+    {
+        "id": 16491,
+        "name": "Elizabeth Moore",
+        "contract": "P",
+        "utilization": "underutilized",
+        "hoursAvailable": 410
+    },
+    {
+        "id": 23756,
+        "name": "Sarah Johnson",
+        "contract": "P",
+        "utilization": "on break",
+        "hoursAvailable": 0
+    },
+    {
+        "id": 48921,
+        "name": "Michael Brennan",
+        "contract": "C",
+        "utilization": "fully utilized",
+        "hoursAvailable": 0
+    },
+    {
+        "id": 75234,
+        "name": "Robert Chen",
+        "contract": "TS",
+        "utilization": "overutilized",
+        "hoursAvailable": -205
+    },
+    {
+        "id": 91583,
+        "name": "Daniel Kim",
+        "contract": "P",
+        "utilization": "underutilized",
+        "hoursAvailable": 205
+    }
+]
