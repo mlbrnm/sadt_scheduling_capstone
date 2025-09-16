@@ -1,5 +1,8 @@
 "use client";
 import { useState } from "react";
+import dummyInstructorData from "./dummyinstructordata.json";
+import dummyProgramData from "./dummyprogramdata.json";
+import dummyutilizationData from "./dummyutilizationdata.json";
 
 export default function Reports() {
 
@@ -15,16 +18,35 @@ export default function Reports() {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-
-
   const handleReportTypeSelect = (type) => {
     setSelectedReportType(type);
-    setDataForReport([]);
+    setSelectedProgram("");
+    setSelectedInstructor("");
+    setDataForReport(null);
     setGenerationDetails({ fileName: "", generationTime: "" });
     setError(null);
     setSuccessMessage("");
   };
 
+  const handleProgramSelect = (program) => {
+    setSelectedProgram(program);
+    const programData = [...dummyProgramData];
+    setDataForReport(programData);
+    const genDate = new Date().toLocaleString();
+    // setGenerationDetails({ fileName: `${genDate} - ${program}`, generationTime: genDate }); ---WAIT to do this!!
+    setError(null);
+    setSuccessMessage("");
+  }
+
+  const handleInstructorSelect = (instructor) => {
+    setSelectedInstructor(instructor);
+    const instructorData = [...dummyInstructorData];
+    const genDate = new Date().toLocaleString();
+    setDataForReport(instructorData);
+    // setGenerationDetails({ fileName: `${genDate} - ${instructor}`, generationTime: genDate }); ---WAIT to do this!!
+    setError(null);
+    setSuccessMessage("");
+  }
 
 
 
@@ -52,7 +74,7 @@ export default function Reports() {
     <div className="p-4">
       <h1 className="text-2xl text-center font-bold mb-6">Reports</h1>
       {/*Generate Reports Section*/}
-      <h2 className="text-xl text-center mb-6">Select the type of report you want to generate:</h2>
+      <h2 className="text-xl text-center mb-6">Select the type of report you want to view or generate:</h2>
       {/* Report Type Buttons */}
       <div className="flex flex-wrap justify-center gap-4 mb-6">
         {reportTypes.map((type) => (
@@ -60,6 +82,7 @@ export default function Reports() {
             key={type}
             onClick={() => handleReportTypeSelect(type)}
             className={`px-4 py-2 rounded-lg text-white cursor-pointer  ${selectedReportType === type ? "button-clicked" : "button-primary hover:button-hover"} ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            disabled={isLoading}
           >
             {type}
           </button>
