@@ -136,7 +136,19 @@ export default function Reports() {
     return [csvHeaders, ...csvRows].join('\n');
   };
 
-
+  // FUNCTION TO ALLOW FOR DOWNLOAD OF CSV FILE
+  const downloadCSV = () => {
+    const csvData = convertToCSV(dataForReport);
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', generationDetails.fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
 
 
