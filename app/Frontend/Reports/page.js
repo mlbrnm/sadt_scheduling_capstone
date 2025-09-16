@@ -99,7 +99,7 @@ export default function Reports() {
     const programInfo = dataForReport[0].program;
     const reportData = programInfo.programData.map(enrolInfo => ({
       "Program": programInfo.program,
-      "Program Type": programInfo.type,
+      "Program Type": programInfo.programType,
       "Semester": enrolInfo.semester,
       "Students Applied": enrolInfo.applied,
       "Semester": enrolInfo.semester,
@@ -140,7 +140,7 @@ export default function Reports() {
       "Teaching Since": dataForReport.teachingSince,
       "Course Taught": dataForReport.coursesTaught.join(", ")
     };
-    
+
     // make teaching history section (map teaching history data)
     const teachingHistoryData = dataForReport.teachingHistory.map(history => ({
       "Section": "\n~~~~~~~~~~~~~~~~TEACHING HISTORY~~~~~~~~~~~~~~~~\n",
