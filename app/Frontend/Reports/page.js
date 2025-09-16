@@ -119,9 +119,50 @@ export default function Reports() {
 
   // GENERATE INSTRUCTOR REPORT
   const generateInstructorReport = () => {
+    // initiate report generation
     setIsLoading(true);
-    //TODO: Add logic to generate instructor report based on selectedInstructor and dataForReport
-  }
+    // check if there's data to generate the report
+    if (!dataForReport) {
+      setError("No data available for report generation.");
+      setIsLoading(false);
+      return;
+    }
+
+    // make inital section (instructor details)
+    const instructorDetails = {
+      "Section": "\n~~~~~~INSTRUCTOR DETAILS~~~~~~\n",
+      "Name": dataForReport.name,
+      "Current Contract": dataForReport.contract,
+      "Active?": `------Status - ${dataForReport.active}-------`,
+      "Current Semester Hours": dataForReport.currentSemesterHours,
+      "Current Total Hours": dataForReport.currentTotalHours,
+      "Status": dataForReport.status,
+      "Teaching Since": dataForReport.teachingSince,
+      "Course Taught": dataForReport.coursesTaught.join(", ")
+    };
+    
+    // make teaching history section (map teaching history data)
+    const teachingHistoryData = dataForReport.teachingHistory.map(history => ({
+      "Section": "\n~~~~~~~~~~~~~~~~TEACHING HISTORY~~~~~~~~~~~~~~~~\n",
+      "Year": history.year,
+      "Semester": history.semester,
+      "Contract": history.contract,
+      "Semester Hours": history.semesterHours,
+      "Target Hours": history.targetHours,
+      "Met Target?": `------Target Hours Met? - ${history.metTarget}-------`,
+      "Courses Taught": history.coursesTaught.join(", ")
+    }));
+
+    // combine instructor details + teaching history to make full data
+    const reportData = [instructorDetails, ...teachingHistoryData];
+    // set the mapped data to be used in the report
+    setDataForReport(reportData);
+    // name + timestamp the file
+    setGenerationDetails({ fileName: `Instructor_Report_${dataForReport.name.replace(/\s+/g, "_")}.csv`, generationTime: new Date().toLocaleString() });
+    setError(null);   //no errors because it should've worked if you get to this point
+    // complete report generation
+    setIsLoading(false);
+  };
 
   // GENERATE INSTRUCTOR UTILIZATION REPORT
   const generateInstructorUtilizationReport = () => {
