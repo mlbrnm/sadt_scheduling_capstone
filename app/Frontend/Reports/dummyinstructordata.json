@@ -1,0 +1,71 @@
+[
+    {
+        "id": 99999,
+        "name": "Olivia Benson",
+        "contract": "P",
+        "active": "Yes",
+        "currentSemesterHours": 69,
+        "currentTotalHours": 615,
+        "status": "Available",
+        "teachingSince": "2015",
+        "coursesTaught": [
+            "SVU101",
+            "HNT206",
+            "INTV106",
+            "CSI301",
+            "STNG204"
+        ],
+        "teachingHistory": [
+            {
+                "year": 2024,
+                "contract": "P",
+                "semester": "Spring",
+                "semesterHours": 307.5,
+                "targetHours": 307.5,
+                "metTarget": "Yes",
+                "coursesTaught": [
+                    "SVU101",
+                    "HNT206",
+                    "INTV106"
+                ]
+            },
+            {
+                "year": 2024,
+                "contract": "P",
+                "semester": "Winter",
+                "semesterHours": 307.5,
+                "targetHours": 615,
+                "metTarget": "Yes",
+                "coursesTaught": [
+                    "CSI301",
+                    "STNG204"
+                ]
+            },
+            {
+                "year": 2023,
+                "contract": "TS",
+                "semester": "Fall",
+                "semesterHours": 409,
+                "targetHours": 800,
+                "metTarget": "No",
+                "coursesTaught": [
+                    "SVU101",
+                    "INTV106"
+                ]
+            },
+            {
+                "year": 2022,
+                "contract": "TS",
+                "semester": "Winter",
+                "semesterHours": 354,
+                "targetHours": 800,
+                "metTarget": "No",
+                "coursesTaught": [
+                    "INTV106",
+                    "STNG204",
+                    "SVU101"
+                ]
+            }
+        ]
+    }
+]
