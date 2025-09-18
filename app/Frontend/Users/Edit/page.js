@@ -9,8 +9,19 @@ export default function EditUser() {
   const userId = searchParams.get("id");
 
   const [user, setUser] = useState(null);
+  const [formData, setFormData] = useState({
+    email: "",
+    first_name: "",
+    last_name: "",
+    role: "",
+  });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const [error, setError] = useState(null);
+  const [saveMessage, setSaveMessage] = useState(null);
+  const [resetMessage, setResetMessage] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [assignedPrograms] = useState(["Information Systems Security"]);
   const [unassignedPrograms] = useState([
     "Software Development",
@@ -68,6 +79,14 @@ export default function EditUser() {
       };
 
       setUser(formattedUser);
+
+      // Populate form data
+      setFormData({
+        email: formattedUser.email,
+        first_name: formattedUser.first_name,
+        last_name: formattedUser.last_name,
+        role: formattedUser.role,
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       setError(error.message);
@@ -81,6 +100,111 @@ export default function EditUser() {
       fetchUser();
     }
   }, [userId]);
+
+  // Add unsaved changes warning
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // Handle form input changes (excluding email which is read-only)
+  const handleInputChange = (field, value) => {
+    if (field === "email") return; // Email is read-only
+
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setHasUnsavedChanges(true);
+    setSaveMessage(null); // Clear any previous save messages
+  };
+
+  // Handle save functionality
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSaveMessage(null);
+
+      // Update the public users table (email is read-only, so we don't update auth table)
+      const { error: usersError } = await supabase
+        .from("users")
+        .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          role: formData.role,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (usersError) {
+        throw new Error(`Failed to update user data: ${usersError.message}`);
+      }
+
+      // Update the user state with new data
+      setUser((prev) => ({
+        ...prev,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        role: formData.role,
+      }));
+
+      setHasUnsavedChanges(false);
+      setSaveMessage("User updated successfully!");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error("Error saving user:", error);
+      setError("Failed to save user: " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle password reset functionality
+  const handlePasswordReset = async () => {
+    if (!window.confirm("Send a password reset email to this user?")) {
+      return;
+    }
+
+    try {
+      setSendingReset(true);
+      setError(null);
+      setResetMessage(null);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        formData.email,
+        {
+          redirectTo: `${window.location.origin}/update-password`,
+        }
+      );
+
+      if (error) {
+        throw new Error(`Failed to send password reset: ${error.message}`);
+      }
+
+      setResetMessage(`Password reset email sent to ${formData.email}`);
+
+      // Clear reset message after 5 seconds
+      setTimeout(() => setResetMessage(null), 5000);
+    } catch (error) {
+      console.error("Error sending password reset:", error);
+      setError("Failed to send password reset: " + error.message);
+    } finally {
+      setSendingReset(false);
+    }
+  };
 
   const handleBack = () => {
     router.push("/Frontend/Users");
@@ -117,7 +241,21 @@ export default function EditUser() {
       {/* Error Message */}
       {error && (
         <div className="mb-6 rounded-md p-4 bg-red-50 text-red-700">
-          Error loading user: {error}
+          {error}
+        </div>
+      )}
+
+      {/* Success Message */}
+      {saveMessage && (
+        <div className="mb-6 rounded-md p-4 bg-green-50 text-green-700">
+          {saveMessage}
+        </div>
+      )}
+
+      {/* Password Reset Message */}
+      {resetMessage && (
+        <div className="mb-6 rounded-md p-4 bg-blue-50 text-blue-700">
+          {resetMessage}
         </div>
       )}
 
@@ -177,23 +315,62 @@ export default function EditUser() {
                 </label>
                 <input
                   type="email"
-                  value={user.email}
-                  className="w-full px-4 py-3 border bg-white border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={formData.email}
                   readOnly
+                  className="w-full px-4 py-3 border bg-gray-100 border-gray-300 rounded-lg text-gray-600 cursor-not-allowed"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Email cannot be changed from this interface
+                </p>
               </div>
 
-              {/* Name */}
+              {/* First Name */}
               <div>
                 <label className="block text-gray-700 font-medium mb-2">
-                  Name:
+                  First Name:
                 </label>
                 <input
                   type="text"
-                  value={`${user.first_name} ${user.last_name}`}
+                  value={formData.first_name}
+                  onChange={(e) =>
+                    handleInputChange("first_name", e.target.value)
+                  }
                   className="w-full px-4 py-3 border bg-white border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  readOnly
+                  required
                 />
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Last Name:
+                </label>
+                <input
+                  type="text"
+                  value={formData.last_name}
+                  onChange={(e) =>
+                    handleInputChange("last_name", e.target.value)
+                  }
+                  className="w-full px-4 py-3 border bg-white border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              {/* Role */}
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Role:
+                </label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => handleInputChange("role", e.target.value)}
+                  className="w-full px-4 py-3 border bg-white border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select a role</option>
+                  <option value="Admin">Admin</option>
+                  <option value="AC">Academic Chair</option>
+                </select>
               </div>
 
               {/* Password */}
@@ -201,9 +378,18 @@ export default function EditUser() {
                 <label className="block text-gray-700 font-medium mb-2">
                   Password:
                 </label>
-                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors cursor-pointer">
-                  Click to send a password reset link to the registered email
-                  address.
+                <button
+                  onClick={handlePasswordReset}
+                  disabled={sendingReset}
+                  className={`text-sm font-medium transition-colors ${
+                    sendingReset
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-blue-600 hover:text-blue-800 cursor-pointer"
+                  }`}
+                >
+                  {sendingReset
+                    ? "Sending reset email..."
+                    : "Click to send a password reset link to the registered email address."}
                 </button>
               </div>
             </div>
@@ -299,8 +485,16 @@ export default function EditUser() {
 
           {/* Save Button */}
           <div className="flex justify-end mt-8">
-            <button className="button-primary hover:bg-red-700 text-white px-8 py-3 rounded-lg font-medium transition-colors cursor-pointer">
-              Save
+            <button
+              onClick={handleSave}
+              disabled={saving || !hasUnsavedChanges}
+              className={`px-8 py-3 rounded-lg font-medium transition-colors ${
+                saving || !hasUnsavedChanges
+                  ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                  : "button-primary hover:bg-red-700 text-white cursor-pointer"
+              }`}
+            >
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </div>
