@@ -73,16 +73,22 @@ export default function UploadData() {
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("table", table); //send table dynamically
+      //formData.append("table", table); //send table dynamically
 
-      const response = await fetch("http://localhost:5000/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `http://localhost:5000/admin/upload/${table}`, //uses table value to access courrect backend route
+        {
+          method: "POST",
+          headers: {
+            "X-User-Email": "testemail@sait.ca", //must change to get whoever is signed in
+          },
+          body: formData,
+        }
+      );
 
       const result = await response.json();
 
-      if (!result.success) throw new Error(result.error || "Upload failed");
+      if (!response.ok) throw new Error(result.error || "Upload failed");
 
       setUploadedFile(file);
       setUploadDetails({
