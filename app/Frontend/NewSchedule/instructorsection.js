@@ -67,15 +67,8 @@ export default function InstructorSection({
 
   return (
     <div>
-      {/* Added Instructors + Add Instructor Button */}
-      <div className="max-w-auto p-2 bg-gray-50">
-        <button
-          className="cursor-pointer hover:bg-green-100 p-2"
-          onClick={() => setIsModalOpen(true)}
-        >
-          + Add Instructor
-        </button>
-
+      {/* Added Instructors */}
+      <div className="p-1 bg-gray-50">
         {/* Display added instructors */}
         <div>
           {addedInstructors.length === 0 ? (
@@ -251,6 +244,15 @@ export default function InstructorSection({
           </div>
         </div>
       )}
+      {/* Add Instructor Button */}
+      <div>
+        <button
+          className="cursor-pointer hover:bg-green-100 text-xs font-semibold p-2"
+          onClick={() => setIsModalOpen(true)}
+        >
+          + Add Instructor
+        </button>
+      </div>
     </div>
   );
 }

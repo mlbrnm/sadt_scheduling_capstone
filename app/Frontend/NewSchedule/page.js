@@ -91,6 +91,7 @@ export default function NewSchedule() {
 
       <div className="flex flex-col">
         {/* Main Area - Grid Layout */}
+        {/* USED AI Q: How to use Grid layout to align the components? (https://chat.deepseek.com/a/chat/s/c88d63ad-6497-4312-a8cf-c4500768ce60) */}
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
           {/* Top-Right: Course Section */}
           <div className="col-start-2 row-start-1">

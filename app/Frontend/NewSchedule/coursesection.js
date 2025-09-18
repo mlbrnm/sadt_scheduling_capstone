@@ -61,9 +61,9 @@ export default function CourseSection({
   return (
     <div>
       {/* Added Courses + Add Course Button */}
-      <div className="max-w-auto p-2 bg-gray-50">
+      <div className="bg-gray-50">
         <button
-          className="cursor-pointer hover:bg-green-100 p-2"
+          className="cursor-pointer hover:bg-green-100 text-xs font-semibold p-2"
           onClick={() => setIsModalOpen(true)}
         >
           + Add Course
