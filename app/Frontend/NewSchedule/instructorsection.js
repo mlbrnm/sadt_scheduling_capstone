@@ -108,7 +108,7 @@ export default function InstructorSection({
                     key={instructor.Instructor_ID}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
-                    title="Click to remove"
+                    title="Click to remove instructor"
                   >
                     <td className="px-3 py-2 text-sm">
                       {instructor.Contract_Type}
@@ -247,8 +247,9 @@ export default function InstructorSection({
       {/* Add Instructor Button */}
       <div>
         <button
-          className="cursor-pointer hover:bg-green-100 text-xs font-semibold p-2"
+          className="cursor-pointer text-sm font-semibold p-2"
           onClick={() => setIsModalOpen(true)}
+          title="Add Instructor"
         >
           + Add Instructor
         </button>

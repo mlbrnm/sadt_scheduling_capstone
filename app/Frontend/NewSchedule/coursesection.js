@@ -60,15 +60,19 @@ export default function CourseSection({
 
   return (
     <div>
-      {/* Added Courses + Add Course Button */}
-      <div className="bg-gray-50">
+      {/* Add Course Button */}
+      <div>
         <button
-          className="cursor-pointer hover:bg-green-100 text-xs font-semibold p-2"
+          className="cursor-pointer text-sm font-semibold"
           onClick={() => setIsModalOpen(true)}
+          title="Add Course"
         >
           + Add Course
         </button>
+      </div>
 
+      {/* Added Courses */}
+      <div className="bg-gray-50">
         {/* Display added courses */}
         <div>
           <div>
@@ -79,7 +83,7 @@ export default function CourseSection({
                   key={course.Course_ID}
                   onClick={() => handleRemoveCourse(course)}
                   className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36 text-center"
-                  title="Click to remove"
+                  title="Click to remove course"
                 >
                   <span className="font-semibold">{course.Course_Code}</span>
                   <span>{course.Course_Name}</span>
