@@ -46,7 +46,7 @@ export default function InstructorSection({
     }
   };
 
-  // Filter instructors based on search term
+  // Filter instructors based on search term and if already added
   const filteredInstructors = instructors.filter((instructor) => {
     // Check if instructor is already added
     // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
@@ -148,7 +148,7 @@ export default function InstructorSection({
       {/* Modal for selecting instructors */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50"
           onClick={() => setIsModalOpen(false)}
         >
           <div
@@ -178,21 +178,21 @@ export default function InstructorSection({
 
             {/* Instructor List */}
             <div className="max-h-60 overflow-y-auto">
-              <table className="min-w-full">
+              <table className="min-w-full border border-gray-300">
                 <thead className="bg-gray-50 sticky top-0">
-                  <tr>
+                  <tr className="bg-gray-200">
                     {instructorListHeaders.map((header) => (
                       <th
                         key={header}
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                        className="px-3 py-2 text-left text-sm font-medium text-gray-700 border-b border-gray-300"
                       >
                         {header}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-black">
+                <tbody className="bg-white divide-y">
                   {filteredInstructors.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="px-6 py-4 text-sm text-center">
@@ -210,27 +210,27 @@ export default function InstructorSection({
                         }}
                         className="cursor-pointer hover:bg-gray-100"
                       >
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.Instructor_ID}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.Instructor_Name}{" "}
                           {instructor.Instructor_LastName}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.Contract_Type}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {`${instructor.Semester_Hours} h`}
                         </td>
-                        <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                        <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span className={getUtilizationColor(instructor)}>
                             {`${instructor.Total_Hours}/${
                               instructor.Contract_Type === "CS" ? "800" : "615"
                             } h`}
                           </span>
                         </td>
-                        <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                        <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span
                             className={`${
                               instructor.Instructor_Status === "Available"
