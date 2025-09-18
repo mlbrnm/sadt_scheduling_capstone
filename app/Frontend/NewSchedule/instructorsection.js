@@ -68,7 +68,7 @@ export default function InstructorSection({
   return (
     <div>
       {/* Added Instructors + Add Instructor Button */}
-      <div className="max-w-auto p-2 bg-gray-50 rounded-md">
+      <div className="max-w-auto p-2 bg-gray-50">
         <button
           className="cursor-pointer hover:bg-green-100 p-2"
           onClick={() => setIsModalOpen(true)}
@@ -86,7 +86,7 @@ export default function InstructorSection({
                     <th
                       key={header}
                       scope="col"
-                      className="px-1 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
                     >
                       {header}
                     </th>

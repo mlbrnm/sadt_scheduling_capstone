@@ -61,7 +61,7 @@ export default function CourseSection({
   return (
     <div>
       {/* Added Courses + Add Course Button */}
-      <div className="max-w-auto p-2 bg-gray-50 rounded-md">
+      <div className="max-w-auto p-2 bg-gray-50">
         <button
           className="cursor-pointer hover:bg-green-100 p-2"
           onClick={() => setIsModalOpen(true)}
@@ -71,29 +71,25 @@ export default function CourseSection({
 
         {/* Display added courses */}
         <div>
-          {addedCourses.length === 0 ? (
-            <p className="text-sm text-gray-500 mt-2">No courses added yet.</p>
-          ) : (
-            <div>
-              {/* Course list */}
-              <ul className="flex">
-                {addedCourses.map((course) => (
-                  <li
-                    key={course.Course_ID}
-                    onClick={() => handleRemoveCourse(course)}
-                    className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36"
-                    title="Click to remove"
-                  >
-                    <span className="font-semibold">{course.Course_Code}</span>
-                    <span>{course.Course_Name}</span>
-                    <span>{course.Delivery}</span>
-                    <span>{`Online ${course.Online}h`}</span>
-                    <span>{`Class ${course.Class}h`}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div>
+            {/* Course list */}
+            <ul className="flex">
+              {addedCourses.map((course) => (
+                <li
+                  key={course.Course_ID}
+                  onClick={() => handleRemoveCourse(course)}
+                  className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36 text-center"
+                  title="Click to remove"
+                >
+                  <span className="font-semibold">{course.Course_Code}</span>
+                  <span>{course.Course_Name}</span>
+                  <span>{course.Delivery}</span>
+                  <span>{`Online ${course.Online}h`}</span>
+                  <span>{`Class ${course.Class}h`}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 
