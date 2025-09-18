@@ -115,6 +115,7 @@ export default function InstructorSection({
                     key={instructor.Instructor_ID}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
+                    title="Click to remove"
                   >
                     <td className="px-3 py-2 text-sm">
                       {instructor.Contract_Type}
