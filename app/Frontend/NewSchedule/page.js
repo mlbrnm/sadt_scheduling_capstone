@@ -59,6 +59,24 @@ export default function NewSchedule() {
     }));
   };
 
+  // Handler function to add a course to the newScheduleDraft state
+  const handleAddCourse = (course) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedCourses: [...prevDraft.addedCourses, course],
+    }));
+  };
+
+  // Handler function to remove a course from the newScheduleDraft state
+  const handleRemoveCourse = (course) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedCourses: prevDraft.addedCourses.filter(
+        (c) => c.Course_ID !== course.Course_ID
+      ),
+    }));
+  };
+
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">New Schedule</h1>
@@ -82,7 +100,7 @@ export default function NewSchedule() {
           {/* Top + Center Components */}
           <div className="flex flex-1 flex-col">
             {/* Top Component: Course Section */}
-            <CourseSection courses={courseData} />
+            <CourseSection courses={courseData} onAddCourse={handleAddCourse} onRemoveCourse={handleRemoveCourse} addedCourses={newScheduleDraft.addedCourses} />
             {/* Center Component: Section Assignment Grid */}
             <AssignmentGrid instructors={instructorData} courses={courseData} />
           </div>
