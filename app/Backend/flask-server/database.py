@@ -80,6 +80,34 @@ TABLE_COLUMN_MAPPINGS = {
         "Duration (days)": "duration_days", 
         "Notes": "notes",
     },
+    "courses_backup": {
+        "Backup_ID": "backup_id",
+        "Version_ID": "version_id",
+        "Course_ID": "course_id", 
+        "Course_Code": "course_code", 
+        "Course_Name": "course_name", 
+        "Program/ Major": "program_major", 
+        "Group": "group", 
+        "Credits": "credits", 
+        "Contact Hours": "contact_hours",
+        "Modality": "modality", 
+        "Program_Type": "program_type", 
+        "Credential": "credential", 
+        "Req_Elec": "req_elec", 
+        "Delivery_Method": "delivery_method", 
+        "AC_Name": "ac_name", 
+        "School": "school",
+        "Exam_OTR": "exam_otr", 
+        "Semester": "semester", 
+        "Fall": "fall", 
+        "Winter": "winter", 
+        "Spring_Summer": "spring_summer", 
+        "Order": "order", 
+        "Duration (days)": "duration_days", 
+        "Notes": "notes",
+        "Uploaded_At": "uploaded_at",
+        "Uploaded_By": "uploaded_by",
+    },
     "instructors": {
         "Instructor_ID": "instructor_id",
         "Instructor_LastName": "instructor_lastname",
@@ -94,6 +122,24 @@ TABLE_COLUMN_MAPPINGS = {
         "Comments": "comments",
         "ID_Position": "id_position",
     },
+    "instructors_backup": {
+        "Backup_ID": "backup_id",
+        "Version_ID": "version_id",
+        "Instructor_ID": "instructor_id",
+        "Instructor_LastName": "instructor_lastname",
+        "Instructor_Name": "instructor_name",
+        "Contract_Type": "contract_type",
+        "Instructor_Status": "instructor_status",
+        "Start Date": "start_date",
+        "End Date": "end_date",
+        "Time off": "time_off",
+        "ID_Manager": "id_manager",
+        "Name_Manager": "name_manager",
+        "Comments": "comments",
+        "ID_Position": "id_position",
+        "Uploaded_At": "uploaded_at",
+        "Uploaded_By": "uploaded_by",
+    },
     "programs": {
         "Group": "group",
         "Acronym": "acronym",
@@ -105,6 +151,23 @@ TABLE_COLUMN_MAPPINGS = {
         "Intakes": "intakes",
         "Duration": "duration",
         "Starting Date": "starting_date",
+    },
+    "programs_backup": {
+        "Backup ID": "backup_id",
+        "Version ID": "version_id",
+        "Program ID": "program_id",
+        "Group": "group",
+        "Acronym": "acronym",
+        "Program": "program",
+        "Academic Chair": "academic_chair",
+        "Associate Dean": "associate_dean",
+        "Credential": "credential",
+        "Courses": "courses",
+        "Intakes": "intakes",
+        "Duration": "duration",
+        "Starting Date": "starting_date",
+        "Uploaded At": "uploaded_at",
+        "Uploaded By": "uploaded_by",
     }
 }
 
@@ -112,15 +175,21 @@ TABLE_COLUMN_MAPPINGS = {
 # dictionary used to validate which columns are allowed in each table by using the other dictionary to get the values
 TABLE_VALID_COLUMNS = {
     "courses": set(TABLE_COLUMN_MAPPINGS["courses"].values()),
+    "courses_backup": set(TABLE_COLUMN_MAPPINGS["courses_backup"].values()),
     "instructors": set(TABLE_COLUMN_MAPPINGS["instructors"].values()),
-    "programs": set(TABLE_COLUMN_MAPPINGS["programs"].values())
+    "instructors_backup": set(TABLE_COLUMN_MAPPINGS["instructors_backup"].values()),
+    "programs": set(TABLE_COLUMN_MAPPINGS["programs"].values()),
+    "programs_backup": set(TABLE_COLUMN_MAPPINGS["programs_backup"].values())
 }
 
 # dictionary of primary keys in the database so that my logic can check if row data for a primary key exists (used to skip empty rows)
 TABLE_PRIMARY_KEYS = {
     "courses" : "course_id",
+    "courses_backup": "backup_id",
     "instructors" : "instructor_id",
-    "programs": "program_id"
+    "instructors_backup": "backup_id",
+    "programs": "program_id",
+    "programs_backup": "backup_id"
 }
 
 # data is formatted for JSON format and database upload 
@@ -194,6 +263,30 @@ def upload_file(file_path, table_name, column_standardization, uploaded_by):
     # uploads the data to supabase
     # execute() is the function that actually sends this data through
 
+def backup_table(table_name):
+    backup_table_name = f"{table_name}_backup"
+    version_id = str(uuid.uuid4())
+
+    try:
+        response = supabase_client.table(table_name).select("*").execute()
+        data = response.data
+
+        if not data:
+            print(f"No data found in {table_name}, skipping backup.")
+            return
+        
+        backup_data = []
+        for row in data:
+            backup_row = row.copy()
+            backup_row["backup_id"] = str(uuid.uuid4())
+            backup_row["version_id"] = version_id
+            backup_data.append(backup_row)
+
+        supabase_client.table(backup_table_name).insert(backup_data).execute()
+        print(f"Backup successful: {len(backup_data)} rows saved with version_id {version_id}")
+    
+    except Exception as e:
+        print("Backup failed: ", e)
 
 def clear_table_data(table_name):
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
@@ -203,12 +296,14 @@ def clear_table_data(table_name):
     
     # the supabase api needs a filter to perform delete() so this will filter in a way that gets all rows anyway
     # will filter for rows with empty primary key value since all table values will have a primary key value
-    supabase_client.table(table_name).delete().neq(primary_key, "").execute()
+    supabase_client.table(table_name).delete().not_.is_(primary_key, None).execute()
     print(f"Successfully deleted old data from table: {table_name}")
 
 def upload_table(file_path, table_name, uploaded_by):
     if table_name not in TABLE_COLUMN_MAPPINGS:
         raise ValueError(f"Unsupported table: {table_name}")
+    
+    backup_table(table_name)
     
     # check if database table is empty
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
@@ -220,7 +315,7 @@ def upload_table(file_path, table_name, uploaded_by):
     # clear the old institutional data in database table if not empty
     if response.data:
         clear_table_data(table_name)
-    
+        
     column_standardization = TABLE_COLUMN_MAPPINGS[table_name]
     upload_file(file_path, table_name, column_standardization, uploaded_by)
 

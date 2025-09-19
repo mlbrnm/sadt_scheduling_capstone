@@ -1,29 +1,29 @@
 -- Create Course table with audit columns
 CREATE TABLE IF NOT EXISTS courses (
-    course_id VARCHAR(50) PRIMARY KEY,
-    course_code VARCHAR(50) NOT NULL,
-    course_name VARCHAR(255) NOT NULL,
-    program_major VARCHAR(255),
-    group_name VARCHAR(50),          
-    credits DECIMAL(4,2),            
-    course_hours INT,                
-    modality VARCHAR(50),              
-    program_type VARCHAR(100),          
-    credential VARCHAR(100),            
-    req_elec VARCHAR(50),               
-    delivery_method VARCHAR(100),       
-    ac_name VARCHAR(255),               
-    school VARCHAR(255),                
-    exam_otr VARCHAR(50),              
-    semester VARCHAR(10),
-    fall VARCHAR(1) CHECK (fall IN ('Y', 'N')),
-    winter VARCHAR(1) CHECK (winter IN ('Y', 'N')),
-    spring_summer VARCHAR(1) CHECK (spring_summer IN ('Y', 'N')),
-    "order" INT,                     
-    duration_days INT,                  
-    notes TEXT,
-    uploaded_by VARCHAR(255),           
-    uploaded_at VARCHAR(50)
+    course_id character varying(50) primary key,
+    course_code character varying(50) not null,
+    course_name character varying(255) not null,
+    program_major character varying(255) null,
+    "group" character varying(50) null,
+    credits numeric(4, 2) null,
+    contact_hours integer null,
+    modality character varying(50) null,
+    program_type character varying(100) null,
+    credential character varying(100) null,
+    req_elec character varying(50) null,
+    delivery_method character varying(100) null,
+    ac_name character varying(255) null,
+    school character varying(255) null,
+    exam_otr character varying(50) null,
+    semester character varying(10) null,
+    fall character varying(1) null,
+    winter character varying(1) null,
+    spring_summer character varying(1) null,
+    "order" real null,
+    duration_days real null,
+    notes text null,
+    uploaded_by character varying(255) null,
+    uploaded_at character varying(50) null
 );
 
 -- Enable Row-Level Security
@@ -52,3 +52,5 @@ CREATE POLICY "Service role can delete courses"
 ON public.courses
 FOR DELETE
 USING (auth.role() = 'service_role');
+
+
