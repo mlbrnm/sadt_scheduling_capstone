@@ -1,6 +1,6 @@
 from flask import  jsonify, request
 from werkzeug.utils import secure_filename
-from database import upload_table
+from database import upload_table, fetch_table_data
 import os
 
 # create a folder to temporarily store the file that will be uploaded
@@ -45,3 +45,13 @@ def register_admin_routes(app):
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+
+    
+    # create route to GET data from database
+    @app.route("/admin/data/<table_name>", methods=["GET"])
+    def get_table_data(table_name):
+        try:
+            data = fetch_table_data(table_name)
+            return jsonify({"data": data}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500

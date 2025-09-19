@@ -204,3 +204,15 @@ def upload_table(file_path, table_name, uploaded_by):
     
     column_standardization = TABLE_COLUMN_MAPPINGS[table_name]
     upload_file(file_path, table_name, column_standardization, uploaded_by)
+
+# function to get the table data from the database
+def fetch_table_data (table_name):
+    if table_name not in TABLE_COLUMN_MAPPINGS:
+        raise ValueError(f"Unsupported table: {table_name}")
+    
+    try:
+        response = supabase_client.table(table_name).select("*").execute()
+
+        return response.data
+    except Exception as e:
+        raise RuntimeError(f"Error fetching data from {table_name}: {e}")

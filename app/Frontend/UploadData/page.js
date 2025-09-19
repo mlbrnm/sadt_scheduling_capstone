@@ -32,6 +32,26 @@ export default function UploadData() {
     return validTypes.includes(file.type) || file.name.match(/\.(xlsx|csv)$/i);
   };
 
+  // create function to populate previewData with data from database
+  const fetchTableData = async (table) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch(`http://localhost:5000/admin/data/${table}`);
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.error || "Failed to fetch data");
+
+      setPreviewData(result.data || []);
+    } catch (err) {
+      setError(err.message);
+      setPreviewData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDataTypeSelect = (type) => {
     setSelectedDataType(type);
     setPreviewData([]);
@@ -97,6 +117,8 @@ export default function UploadData() {
       });
       setPreviewData(result.data || []);
       setSuccessMessage(`File "${file.name}" uploaded successfully!`);
+
+      await fetchTableData(table);
     } catch (err) {
       setError(err.message);
       setUploadDetails({ fileName: "", uploadTime: "" });
