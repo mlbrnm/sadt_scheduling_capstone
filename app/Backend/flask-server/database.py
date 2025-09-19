@@ -190,20 +190,41 @@ def upload_file(file_path, table_name, column_standardization, uploaded_by):
     # converts the data in the dataframe to a list of dictionaries (best structure for supabase)
     # orient = "records" best data orientation (row oriented) for supabase insert
 
-
     supabase_client.table(table_name).insert(data_asDictionaries).execute()
     # uploads the data to supabase
     # execute() is the function that actually sends this data through
 
 
-
+def clear_table_data(table_name):
+    primary_key = TABLE_PRIMARY_KEYS.get(table_name)
+    # ensure table holds a primary key
+    if not primary_key:
+        raise ValueError(f"No primary key defined for table: {table_name}")
+    
+    # the supabase api needs a filter to perform delete() so this will filter in a way that gets all rows anyway
+    # will filter for rows with empty primary key value since all table values will have a primary key value
+    supabase_client.table(table_name).delete().neq(primary_key, "").execute()
+    print(f"Successfully deleted old data from table: {table_name}")
 
 def upload_table(file_path, table_name, uploaded_by):
     if table_name not in TABLE_COLUMN_MAPPINGS:
         raise ValueError(f"Unsupported table: {table_name}")
     
+    # check if database table is empty
+    primary_key = TABLE_PRIMARY_KEYS.get(table_name)
+    if not primary_key:
+        raise ValueError(f"No primary key defined for table: {table_name}")
+    
+    response = supabase_client.table(table_name).select(primary_key).limit(1).execute() #limit(1) just checks first row
+    
+    # clear the old institutional data in database table if not empty
+    if response.data:
+        clear_table_data(table_name)
+    
     column_standardization = TABLE_COLUMN_MAPPINGS[table_name]
     upload_file(file_path, table_name, column_standardization, uploaded_by)
+
+    print(f"Data successfully uploaded to table: {table_name}")
 
 # function to get the table data from the database
 def fetch_table_data (table_name):
