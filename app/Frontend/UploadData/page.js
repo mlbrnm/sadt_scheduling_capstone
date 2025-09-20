@@ -140,35 +140,68 @@ export default function UploadData() {
       // const response = await fetch(`/api/versions?type=${selectedDataType}`);
       // const data = await response.json();
       // return data;
+      const response = await fetch(
+        `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}s`,
+        {
+          method: "GET",
+          headers: {
+            "X-User-Email": "testemail@sait.ca", //must change to get whoever is signed in
+          },
+        }
+      );
 
-      // Fake timeout
-      await new Promise((resolve) => setTimeout(resolve, 500)); //!!!REMOVE!!!!
-      // Mock data - !!!REMOVE AFTER!!!
-      return [
-        {
-          id: "1",
-          fileName: `${selectedDataType.toLowerCase()}_20230815.xlsx`,
-          uploadTime: "August 6, 2025, 10:30 AM",
-          uploadedBy: "Vanessa Diaz",
-          dataType: selectedDataType,
-          size: "245 KB",
-        },
-        {
-          id: "2",
-          fileName: `${selectedDataType.toLowerCase()}_20230801.xlsx`,
-          uploadTime: "August 1, 2025, 2:15 PM",
-          uploadedBy: "Vanessa Diaz",
-          dataType: selectedDataType,
-          size: "238 KB",
-        },
-      ];
+      if (!response.ok) {
+        throw new Error(`HTTP error. Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      return (data.uploads || []).map((file, index) => ({
+        id: file.id || index.toString(),
+        fileName: file.original_name,
+        uploadTime: new Date(file.uploaded_at).toLocaleString(),
+        uploadedBy: file.uploaded_by,
+        dataType: selectedDataType,
+        storagePath: file.storage_path,
+        size: file.size || "-", // backend doesn’t send size - placeholder
+        version: file.version,
+      }));
     } catch (error) {
-      setError("Failed to load previous versions.");
+      console.error(error);
+      setError("Failed to load previous versions");
       return [];
     } finally {
       setIsLoading(false);
     }
   };
+
+  //   // Fake timeout
+  //   await new Promise((resolve) => setTimeout(resolve, 500)); //!!!REMOVE!!!!
+  //   // Mock data - !!!REMOVE AFTER!!!
+  //   return [
+  //     {
+  //       id: "1",
+  //       fileName: `${selectedDataType.toLowerCase()}_20230815.xlsx`,
+  //       uploadTime: "August 6, 2025, 10:30 AM",
+  //       uploadedBy: "Vanessa Diaz",
+  //       dataType: selectedDataType,
+  //       size: "245 KB",
+  //     },
+  //     {
+  //       id: "2",
+  //       fileName: `${selectedDataType.toLowerCase()}_20230801.xlsx`,
+  //       uploadTime: "August 1, 2025, 2:15 PM",
+  //       uploadedBy: "Vanessa Diaz",
+  //       dataType: selectedDataType,
+  //       size: "238 KB",
+  //     },
+  //   ];
+  // } catch (error) {
+  //   setError("Failed to load previous versions.");
+  //   return [];
+  // } finally {
+  //   setIsLoading(false);
+  // }
 
   const handleRestoreButtonClick = async () => {
     const versions = await fetchPreviousVersions();
@@ -181,74 +214,36 @@ export default function UploadData() {
       setIsLoading(true);
       setError(null);
       setSuccessMessage("");
-      // TODO: Implement version selection logic with actual API call
-      // const response = await fetch(`/api/versions/${version.id}`);
-      // const data = await response.json();
 
-      // Fake timeout
-      await new Promise((resolve) => setTimeout(resolve, 800)); //!!!REMOVE!!!!
-      // Mock data - !!!REMOVE AFTER!!!
-      const mockData = {
-        Program: [
-          {
-            Group: "Cyber Security",
-            Acronym: "CSA",
-            Program: "Cyber Security Analyst (CSA)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Post-diploma Certificate",
-            Courses: "10",
-            Intakes: "Fall",
-            Duration: "18 months",
-            StartingDate: "Jan-24",
+      const response = await fetch(
+        `http://localhost:5000/admin/uploads/restore/${version.dataType.toLowerCase()}s/${
+          version.storagePath
+        }`,
+        {
+          method: "POST",
+          headers: {
+            "X-User-Email": "test@edu.sait.ca",
           },
-          {
-            Group: "Cyber Security",
-            Acronym: "CS",
-            Program: "Cyber Security for Control Systems (CS)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Post-diploma Certificate",
-            Courses: "10",
-            Intakes: "Fall-Spring",
-            Duration: "21 weeks",
-            StartingDate: "Jan-24",
-          },
-          {
-            Group: "Cyber Security",
-            Acronym: "ISA",
-            Program: "Information Security Analyst (ISA)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Post-diploma Certificate",
-            Courses: "9",
-            Intakes: "Fall-Spring",
-            Duration: "21 weeks",
-            StartingDate: "Jan-24",
-          },
-          {
-            Group: "Cyber Security",
-            Acronym: "ISS",
-            Program: "Information Systems Security (ISS)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Diploma",
-            Courses: "20",
-            Intakes: "Fall-Winter-Spring",
-            Duration: "2 years",
-            StartingDate: "Jan-24",
-          },
-        ],
-      };
-      setPreviewData(mockData[version.dataType] || []); // !!!CHANGE WITH REAL DATA!!!
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to restore version");
+      }
+
+      const result = await response.json();
+
+      setPreviewData(result.data || []);
       setUploadDetails({
         fileName: `RESTORED_${version.fileName}`,
-        uploadTime: "August 6, 2025, 10:30 AM", // !!!CHANGE WITH REAL DATA!!!
+        uploadTime: new Date().toLocaleString(),
       });
       setShowVersionsModal(false);
       setSuccessMessage(`Successfully restored from ${version.fileName}`);
     } catch (error) {
-      setError("Failed to restore version.");
+      console.error(error);
+      setError("Failed to restore version: " + error.message);
     } finally {
       setIsLoading(false);
     }

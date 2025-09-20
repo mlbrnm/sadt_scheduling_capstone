@@ -74,7 +74,7 @@ def register_admin_routes(app):
             return jsonify({"error": str(e)}), 500
     
     # list the past uploads (table specific)
-    @app.route("/admin/uploads/<table_name>", methods = ["GET"])
+    @app.route("/admin/uploads/list/<table_name>", methods = ["GET"])
     def list_uploads(table_name):
         try:
             response = supabase_client.table("uploaded_files") \
@@ -108,6 +108,9 @@ def register_admin_routes(app):
 
             restore_file_from_url(file_url, table_name, uploaded_by)
 
-            return jsonify({"status": f"{table_name} restored successfully from {storage_path}"}), 200
+            data = fetch_table_data(table_name)
+
+            return jsonify({"status": f"{table_name} restored successfully from {storage_path}", 
+                            "data": data }),200
         except Exception as e:
             return jsonify ({"error": str(e)}), 500
