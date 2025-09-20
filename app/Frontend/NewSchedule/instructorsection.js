@@ -171,7 +171,7 @@ export default function InstructorSection({
             </div>
 
             {/* Instructor List */}
-            <div className="max-h-60 overflow-y-auto">
+            <div className="overflow-y-auto">
               <table className="min-w-full border border-gray-300">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr className="bg-gray-200">

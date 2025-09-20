@@ -72,11 +72,11 @@ export default function CourseSection({
       </div>
 
       {/* Added Courses */}
-      <div className="bg-gray-50">
+      <div className="bg-gray-50 w-fit">
         {/* Display added courses */}
         <div>
+          {/* Course list */}
           <div>
-            {/* Course list */}
             <ul className="flex">
               {addedCourses.map((course) => (
                 <li
