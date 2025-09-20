@@ -26,6 +26,11 @@ import uuid
 
 import pandas as pd
 
+import requests
+
+from io import BytesIO
+
+
 load_dotenv() 
 # this function will load the variables from the .env file
 
@@ -301,7 +306,7 @@ def backup_table(table_name):
     except Exception as e:
         print("Backup failed: ", e)
 
-def save_uploaded_file(file, user_email, supabase, bucket_name="uploads"):
+def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
 
     # Generate unique file name (timestamp + uuid + original name)
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
@@ -315,21 +320,28 @@ def save_uploaded_file(file, user_email, supabase, bucket_name="uploads"):
     file.stream.seek(0)
 
     # get most recent version for this file name (AI Generated)
-    existing = supabase.table("uploaded_files").select("version").eq("original_name", file.filename).execute()
+    existing = supabase.table("uploaded_files") \
+        .select("version") \
+        .eq("original_name", file.filename) \
+        .eq("table_name", table_name) \
+        .execute()
     next_version = (max([r["version"] for r in existing.data], default = 0) + 1)
 
     # insert the metadata into upload_files table
     supabase.table("uploaded_files").insert({
         "original_name": file.filename,
+        "table_name": table_name,
         "storage_path": storage_path,
         "version": next_version,
-        "uploaded_by": user_email
+        "uploaded_by": user_email,
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
     }).execute()
 
     return {
         "version": next_version,
         "storage_path": storage_path,
-        "original_name": file.filename
+        "original_name": file.filename,
+        "table_name": table_name
     }
 
 
@@ -378,3 +390,14 @@ def fetch_table_data (table_name):
         return response.data
     except Exception as e:
         raise RuntimeError(f"Error fetching data from {table_name}: {e}")
+    
+def restore_file_from_url(file_url, table_name, uploaded_by):
+    # download the data in the file
+    response = requests.get(file_url)
+    response.raise_for_status()
+
+    # convert the data to a file_like object for upload_file()
+    file_like = BytesIO(response.content)
+    file_like.filename = file_url.split("/")[-1] # gives the filename an attribute
+
+    upload_table(file_like, table_name, uploaded_by)

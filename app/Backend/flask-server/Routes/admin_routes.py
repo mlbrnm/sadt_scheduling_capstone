@@ -1,7 +1,8 @@
 from flask import  jsonify, request
 from werkzeug.utils import secure_filename
-from database import upload_table, fetch_table_data, save_uploaded_file, supabase_client
+from database import upload_table, fetch_table_data, save_uploaded_file, supabase_client, restore_file_from_url
 import os
+import io
 
 #CHANGING STRUCTURE TO NOT HAVE TEMP FOLDER
 # create a folder to temporarily store the file that will be uploaded
@@ -38,7 +39,12 @@ def register_admin_routes(app):
 
         try:
             # upload to Supabase storage
-            storage_result = save_uploaded_file(file, uploaded_by, supabase_client, bucket_name="uploads")
+            storage_result = save_uploaded_file(
+                file, 
+                uploaded_by, 
+                supabase_client, 
+                table_name = table_name,
+                bucket_name="uploads")
 
             # upload to database
             upload_table(file, table_name, uploaded_by)
@@ -56,6 +62,7 @@ def register_admin_routes(app):
         #     if os.path.exists(temp_path):
         #         os.remove(temp_path)
 
+
     
     # create route to GET data from database
     @app.route("/admin/data/<table_name>", methods=["GET"])
@@ -65,3 +72,42 @@ def register_admin_routes(app):
             return jsonify({"data": data}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+    
+    # list the past uploads (table specific)
+    @app.route("/admin/uploads/<table_name>", methods = ["GET"])
+    def list_uploads(table_name):
+        try:
+            response = supabase_client.table("uploaded_files") \
+                .select("*") \
+                .eq("table_name", table_name) \
+                .order("uploaded_at", desc = True) \
+                .execute()
+            
+            files = response.data
+            return jsonify({"uploads": files}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        
+    # download an old file
+    @app.route("/admin/uploads/download/<storage_path>", methods = ["GET"])
+    def download_past_upload(storage_path):
+        try:
+            url = supabase_client.storage.from_("uploads").get_public_url(storage_path)
+            return jsonify({"download_url": url}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        
+    # restore a past file
+    @app.route("/admin/uploads/restore/<table_name>/<storage_path>", methods = ["POST"])
+    def restore_upload(table_name, storage_path):
+        try:
+
+            uploaded_by = request.headers.get("X-User-Email", "unknown")
+
+            file_url = f"https://meyjrnnoyfxxvsqzvhlu.supabase.co/storage/v1/object/public/uploads/{storage_path}"
+
+            restore_file_from_url(file_url, table_name, uploaded_by)
+
+            return jsonify({"status": f"{table_name} restored successfully from {storage_path}"}), 200
+        except Exception as e:
+            return jsonify ({"error": str(e)}), 500
