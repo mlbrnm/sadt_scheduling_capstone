@@ -1,18 +1,18 @@
 -- Create programs table
 CREATE TABLE IF NOT EXISTS programs (
-    program_id SERIAL PRIMARY KEY,
-    "group" VARCHAR(255),
-    acronym VARCHAR(255),
-    program VARCHAR(255),
-    academic_chair VARCHAR(255),
-    associate_dean VARCHAR(255),
-    credential VARCHAR(255),
-    courses VARCHAR(255),
-    intakes VARCHAR(255),
-    duration VARCHAR(255),
-    starting_date VARCHAR(255),
-    uploaded_at VARCHAR(50),
-    uploaded_by VARCHAR(255)
+    program_id text primary key,
+    "group" character varying(255) null,
+    acronym character varying(255) null,
+    program character varying(255) null,
+    academic_chair character varying(255) null,
+    associate_dean character varying(255) null,
+    credential character varying(255) null,
+    courses character varying(255) null,
+    intakes character varying(255) null,
+    duration character varying(255) null,
+    starting_date character varying(255) null,
+    uploaded_at character varying(50) null,
+    uploaded_by character varying(255) null
 );
 
 

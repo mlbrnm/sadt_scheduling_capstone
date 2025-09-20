@@ -1,19 +1,20 @@
 -- Create instructors table
 CREATE TABLE IF NOT EXISTS public.instructors (
-    instructor_id        INT PRIMARY KEY,
-    instructor_lastname  VARCHAR(255),
-    instructor_name      VARCHAR(255),
-    contract_type        VARCHAR(255),
-    instructor_status    VARCHAR(1) CHECK (instructor_status IN ('A', 'I', 'L')),
-    start_date           VARCHAR(100),
-    end_date             VARCHAR(100),
-    time_off             VARCHAR(255),
-    id_manager           INT,
-    name_manager         VARCHAR(255),
-    comments             TEXT,
-    id_position          INT,
-    uploaded_by          VARCHAR(255),
-    uploaded_at          VARCHAR(255));
+    instructor_id real primary key,
+    instructor_lastname character varying(255) null,
+    instructor_name character varying(255) null,
+    contract_type character varying(255) null,
+    instructor_status character varying(1) null,
+    start_date character varying(100) null,
+    end_date character varying(100) null,
+    time_off character varying(255) null,
+    id_manager real null,
+    name_manager character varying(255) null,
+    comments text null,
+    id_position real null,
+    uploaded_by character varying(255) null,
+    uploaded_at character varying(255) null
+);
 
 -- Enable Row-Level Security
 ALTER TABLE public.instructors ENABLE ROW LEVEL SECURITY;
