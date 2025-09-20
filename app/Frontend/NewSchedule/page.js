@@ -115,7 +115,10 @@ export default function NewSchedule() {
 
           {/* Bottom-Right: Assignment Grid */}
           <div className="col-start-2 row-start-2">
-            <AssignmentGrid instructors={instructorData} courses={courseData} />
+            <AssignmentGrid
+              addedInstructors={newScheduleDraft.addedInstructors}
+              addedCourses={newScheduleDraft.addedCourses}
+            />
           </div>
         </div>
       </div>
