@@ -6,6 +6,8 @@ from supabase import create_client, Client
 from dotenv import load_dotenv 
 # dotenv is python library to help load enviroment variabes
 
+from datetime import timezone
+
 import os 
 # this is a module that connects python to the operating system
     # it can use environment variables
@@ -196,14 +198,14 @@ TABLE_PRIMARY_KEYS = {
 def formatted_data(df, table_name):
 
     # variable to store the primary key to check against later 
-    primary_key =   TABLE_PRIMARY_KEYS.get(table_name)
+    primary_key =  TABLE_PRIMARY_KEYS.get(table_name)
 
     # Filter unexpected columns
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
     # Timestamp and datetime values are converted to ISO format
-    df = df.map(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime)) else x)
+    df = df.applymap(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime)) else x)
     # map() applies the lambda function to all the elements of the dataframe 
     # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
     # if it isnt either, it is not changed
@@ -227,16 +229,27 @@ def formatted_data(df, table_name):
 
 
 # function to upload the file while using more data formatting 
-def upload_file(file_path, table_name, column_standardization, uploaded_by):
-    file_extension = os.path.splitext(file_path)[1].lower()
+def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
+
+    # get the file extension
+    if hasattr(file_or_path, "filename"): # this is a FileStorage object
+        filename = file_or_path.filename
+        file_extension = filename.split(".")[-1].lower()
+    elif isinstance(file_or_path, str): # this is a path string
+        filename = os.path.basename(file_or_path)
+        file_extension = os.path.spitext(filename)[1].lower().replace(".", "")
+    else:
+        raise ValueError("Unsupported file type. Must be a path or FileStorage object.")
+    # NEED TO ADJUST COMMENTS FOR NEW METHOD
     # os.path.splittext gets the file path and separates the path from the extension
     # [1] is the index that points to the file extension rather than the path ([0])
     # lower() adjusts extension to lower case 
     
-    if file_extension == ".csv":
-        df = pd.read_csv(file_path)
-    elif file_extension in [".xls", ".xlsx"]: 
-        df = pd.read_excel(file_path)
+    # now we have to read it into the data frame
+    if file_extension == "csv":
+        df = pd.read_csv(file_or_path)
+    elif file_extension in ["xls", "xlsx"]: 
+        df = pd.read_excel(file_or_path)
     else:
         raise ValueError ("Unsupported file type. Please upload a CSV or XLSX file.")
     # df is a Pandas DataFrame object containing all data from the file
@@ -288,6 +301,38 @@ def backup_table(table_name):
     except Exception as e:
         print("Backup failed: ", e)
 
+def save_uploaded_file(file, user_email, supabase, bucket_name="uploads"):
+
+    # Generate unique file name (timestamp + uuid + original name)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    unique_id = str(uuid.uuid4())
+    storage_path = f"{timestamp}_{unique_id}_{file.filename}"
+
+    # upload the file to supabase bucket
+    supabase.storage.from_(bucket_name).upload(storage_path, file.read())
+
+    # rewind the pointer so that the file can be read again (like for database table upload)
+    file.stream.seek(0)
+
+    # get most recent version for this file name (AI Generated)
+    existing = supabase.table("uploaded_files").select("version").eq("original_name", file.filename).execute()
+    next_version = (max([r["version"] for r in existing.data], default = 0) + 1)
+
+    # insert the metadata into upload_files table
+    supabase.table("uploaded_files").insert({
+        "original_name": file.filename,
+        "storage_path": storage_path,
+        "version": next_version,
+        "uploaded_by": user_email
+    }).execute()
+
+    return {
+        "version": next_version,
+        "storage_path": storage_path,
+        "original_name": file.filename
+    }
+
+
 def clear_table_data(table_name):
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
     # ensure table holds a primary key
@@ -299,11 +344,11 @@ def clear_table_data(table_name):
     supabase_client.table(table_name).delete().not_.is_(primary_key, None).execute()
     print(f"Successfully deleted old data from table: {table_name}")
 
-def upload_table(file_path, table_name, uploaded_by):
+def upload_table(file, table_name, uploaded_by):
     if table_name not in TABLE_COLUMN_MAPPINGS:
         raise ValueError(f"Unsupported table: {table_name}")
     
-    backup_table(table_name)
+    # backup_table(table_name)
     
     # check if database table is empty
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
@@ -315,9 +360,10 @@ def upload_table(file_path, table_name, uploaded_by):
     # clear the old institutional data in database table if not empty
     if response.data:
         clear_table_data(table_name)
+    
         
     column_standardization = TABLE_COLUMN_MAPPINGS[table_name]
-    upload_file(file_path, table_name, column_standardization, uploaded_by)
+    upload_file(file, table_name, column_standardization, uploaded_by)
 
     print(f"Data successfully uploaded to table: {table_name}")
 
