@@ -38,6 +38,30 @@ export default function AssignmentGrid({ addedInstructors, addedCourses }) {
     return assignments[key]?.sections.includes(section);
   };
 
+  // Clean up assignments if instructors or courses are removed
+  useEffect(() => {
+    setAssignments((prev) => {
+      const validInstructorIds = addedInstructors.map((i) => i.Instructor_ID);
+      const validCourseIds = addedCourses.map((c) => c.Course_ID);
+
+      // Create a new assignments object with only valid keys
+      const updatedAssignments = {};
+
+      // Loop through keys in previous state and updateAssignments to include only the ones still in the addedInstructors and addedCourses
+      for (const key in prev) {
+        const [instructorId, courseId] = key.split("-");
+
+        if (
+          validInstructorIds.includes(parseInt(instructorId)) &&
+          validCourseIds.includes(courseId)
+        ) {
+          updatedAssignments[key] = prev[key];
+        }
+      }
+      return updatedAssignments;
+    });
+  }, [addedInstructors, addedCourses]);
+
   return (
     <div>
       {addedInstructors.length === 0 || addedCourses.length === 0 ? (
