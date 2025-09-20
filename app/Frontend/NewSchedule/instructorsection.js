@@ -68,7 +68,7 @@ export default function InstructorSection({
   return (
     <div>
       {/* Added Instructors */}
-      <div className="p-1 bg-gray-50">
+      <div className="bg-gray-50">
         {/* Display added instructors */}
         <div>
           {addedInstructors.length === 0 ? (
@@ -79,7 +79,7 @@ export default function InstructorSection({
                     <th
                       key={header}
                       scope="col"
-                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      className="px-2 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
                     >
                       {header}
                     </th>
@@ -95,7 +95,7 @@ export default function InstructorSection({
                     <th
                       key={header}
                       scope="col"
-                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      className="px-2 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
                     >
                       {header}
                     </th>
