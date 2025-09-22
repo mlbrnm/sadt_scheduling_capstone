@@ -1,14 +1,12 @@
 "use client";
 
-export default function ScheduleControls({ metaData, setNewScheduleDraft }) {
-  const handleSave = () => {
-    // Save button handler
-  };
-
-  const handleClear = () => {
-    // Clear button handler
-  };
-
+export default function ScheduleControls({
+  metaData,
+  setNewScheduleDraft,
+  onSave,
+  onClear,
+}) {
+  // Handler to toggle semester
   const handleSemesterToggle = (semester) => {
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
@@ -63,14 +61,14 @@ export default function ScheduleControls({ metaData, setNewScheduleDraft }) {
         {/* Right Side: Save and Clear Buttons */}
         <div className="space-x-3">
           <button
-            className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            onClick={handleSave}
+            className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
+            onClick={onSave}
           >
             Save
           </button>
           <button
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
-            onClick={handleClear}
+            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer"
+            onClick={onClear}
           >
             Clear
           </button>

@@ -135,6 +135,17 @@ export default function NewSchedule() {
     });
   }, [newScheduleDraft.addedInstructors, newScheduleDraft.addedCourses]);
 
+  // Handlers for Save and Clear buttons
+  const handleSave = () => {};
+  const handleClear = () => {
+    setNewScheduleDraft((d) => ({
+      ...d,
+      addedInstructors: [],
+      addedCourses: [],
+    }));
+    setAssignments({});
+  };
+
   return (
     <div className="p-4">
       {/* Heading */}
@@ -144,6 +155,8 @@ export default function NewSchedule() {
         <ScheduleControls
           metaData={newScheduleDraft.metaData}
           setNewScheduleDraft={setNewScheduleDraft}
+          onSave={handleSave}
+          onClear={handleClear}
         />
       </div>
 
