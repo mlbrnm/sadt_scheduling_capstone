@@ -83,7 +83,7 @@ export default function CourseSection({
                   key={course.Course_ID}
                   onClick={() => handleRemoveCourse(course)}
                   className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36 text-center"
-                  title="Click to remove course"
+                  title={`Click to remove ${course.Course_Code} - ${course.Course_Name}`}
                 >
                   <span className="font-semibold">{course.Course_Code}</span>
                   <span>{course.Course_Name}</span>
