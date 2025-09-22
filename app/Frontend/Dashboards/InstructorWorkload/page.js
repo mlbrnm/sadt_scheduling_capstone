@@ -9,7 +9,7 @@ export default function InstructorWorkload() {
   const [hoursFilter, setHoursFilter] = useState("All");
   const [instructorWorkloadData, setInstructorWorkloadData] =
     useState(mockdata);
-  const [selectedSemester, setSelectedSemester] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("Fall 2025");
 
   const tableHeaders = [
     "ID",
@@ -228,7 +228,7 @@ export default function InstructorWorkload() {
                     <td className="px-6 py-4 text-sm">
                       {`${instructor.Semester_Hours} h`}
                     </td>
-                    <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                    <td className="px-6 py-1 text-sm font-semibold rounded-full">
                       <span className={getUtilizationColor(instructor)}>
                         {`${instructor.Total_Hours}/${
                           instructor.Contract_Type === "CS" ? "800" : "615"
