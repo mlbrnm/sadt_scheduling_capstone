@@ -39,6 +39,7 @@ export default function AssignmentGrid({ addedInstructors, addedCourses }) {
   };
 
   // Clean up assignments if instructors or courses are removed
+  // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
   useEffect(() => {
     setAssignments((prev) => {
       const validInstructorIds = addedInstructors.map((i) => i.Instructor_ID);
@@ -47,7 +48,7 @@ export default function AssignmentGrid({ addedInstructors, addedCourses }) {
       // Create a new assignments object with only valid keys
       const updatedAssignments = {};
 
-      // Loop through keys in previous state and updateAssignments to include only the ones still in the addedInstructors and addedCourses
+      // Loop through keys in previous state and update assignments to include only the ones still in the addedInstructors and addedCourses
       for (const key in prev) {
         const [instructorId, courseId] = key.split("-");
 
@@ -102,7 +103,6 @@ export default function AssignmentGrid({ addedInstructors, addedCourses }) {
                       course.Course_ID,
                       section
                     );
-
                     return (
                       <div
                         key={section}
@@ -117,8 +117,12 @@ export default function AssignmentGrid({ addedInstructors, addedCourses }) {
                           )
                         }
                         title={`Click to ${
-                          assigned ? "remove" : "assign"
-                        } section ${section}`}
+                          assigned ? "Remove" : "Assign"
+                        } Section ${section} to ${
+                          instructor.Instructor_Name +
+                          " " +
+                          instructor.Instructor_LastName
+                        } for ${course.Course_Code}`}
                       >
                         {assigned ? `${course.Online + course.Class}h` : ""}
                       </div>
