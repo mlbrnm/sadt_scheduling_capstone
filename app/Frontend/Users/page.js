@@ -2,11 +2,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../supabaseClient";
+import AddUserModal from "../_Components/AddUserModal";
 
 export default function Users() {
   const [usersData, setUsersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   const router = useRouter();
 
   // Pull in user data from Supabase
@@ -15,8 +18,8 @@ export default function Users() {
       setLoading(true);
       setError(null);
 
-      // Get all users data from the users table
-      const { data, error } = await supabase.from("users").select(`
+      // Get users data from the users table, filtering by deleted status
+      let query = supabase.from("users").select(`
           id,
           email,
           first_name,
@@ -24,9 +27,19 @@ export default function Users() {
           role,
           image,
           has_logged_in,
+          is_deleted,
           created_at,
           updated_at
         `);
+
+      // Filter based on showDeleted state
+      if (showDeleted) {
+        query = query.eq("is_deleted", true);
+      } else {
+        query = query.eq("is_deleted", false);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -51,10 +64,23 @@ export default function Users() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [showDeleted]);
 
   const handleEditUser = (userId) => {
     router.push(`/Frontend/Users/Edit?id=${userId}`);
+  };
+
+  const handleAddUser = () => {
+    setIsAddUserModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsAddUserModalOpen(false);
+  };
+
+  const handleUserCreated = () => {
+    // Refresh the users list after a new user is created
+    fetchUsers();
   };
 
   // Get role badge styling
@@ -74,8 +100,23 @@ export default function Users() {
         <h1 className="text-xl font-bold text-center mb-4">
           Manage User Accounts
         </h1>
-        <div className="flex justify-end -mt-8">
-          <button className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer">
+        <div className="flex justify-between items-center -mt-8">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setShowDeleted(!showDeleted)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                showDeleted
+                  ? "bg-gray-600 hover:bg-gray-700 text-white"
+                  : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+              }`}
+            >
+              {showDeleted ? "Show Active Users" : "Show Deleted Users"}
+            </button>
+          </div>
+          <button
+            onClick={handleAddUser}
+            className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+          >
             Add User
           </button>
         </div>
@@ -99,7 +140,11 @@ export default function Users() {
           {usersData.map((user) => (
             <div
               key={user.id}
-              className="bg-white rounded-lg p-6 flex items-center hover:bg-gray-50 transition-colors shadow-sm border border-gray-200"
+              className={`rounded-lg p-6 flex items-center transition-colors shadow-sm border ${
+                user.is_deleted
+                  ? "bg-gray-100 border-gray-300 opacity-75"
+                  : "bg-white border-gray-200 hover:bg-gray-50"
+              }`}
             >
               {/* Left Section - User Info */}
               <div className="flex items-center space-x-4 flex-shrink-0 w-96">
@@ -108,18 +153,35 @@ export default function Users() {
                   <img
                     src={user.image}
                     alt={`${user.first_name} ${user.last_name}`}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${
+                      user.is_deleted ? "grayscale" : ""
+                    }`}
                   />
                 </div>
 
                 {/* User name and email */}
                 <div className="flex flex-col">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium text-gray-900">
+                    <span
+                      className={`font-medium ${
+                        user.is_deleted ? "text-gray-500" : "text-gray-900"
+                      }`}
+                    >
                       {user.first_name} {user.last_name}
                     </span>
+                    {user.is_deleted && (
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">
+                        DELETED
+                      </span>
+                    )}
                   </div>
-                  <span className="text-gray-600 text-sm">{user.email}</span>
+                  <span
+                    className={`text-sm ${
+                      user.is_deleted ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    {user.email}
+                  </span>
                 </div>
               </div>
 
@@ -130,16 +192,13 @@ export default function Users() {
                 </span>
               </div>
 
-              {/* Right Section - Edit/Delete */}
-              <div className="flex items-center justify-end space-x-3 flex-grow">
+              {/* Right Section - Edit */}
+              <div className="flex items-center justify-end flex-grow">
                 <button
                   onClick={() => handleEditUser(user.id)}
                   className="text-gray-600 hover:text-blue-600 text-sm font-medium transition-colors cursor-pointer"
                 >
                   Edit Account/Permissions...
-                </button>
-                <button className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
-                  <img src="/trash.svg" alt="Delete User" className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -153,6 +212,13 @@ export default function Users() {
           )}
         </div>
       )}
+
+      {/* Add User Modal */}
+      <AddUserModal
+        isOpen={isAddUserModalOpen}
+        onClose={handleCloseModal}
+        onUserCreated={handleUserCreated}
+      />
     </div>
   );
 }
