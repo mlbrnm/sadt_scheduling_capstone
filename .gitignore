@@ -137,3 +137,6 @@ dist
 
 #my old server file
 .oldServer.py
+
+app/Backend/Routes/__pycache__
+app/Backend/__pycache__
