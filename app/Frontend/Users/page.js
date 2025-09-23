@@ -2,11 +2,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../supabaseClient";
+import AddUserModal from "../_Components/AddUserModal";
 
 export default function Users() {
   const [usersData, setUsersData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const router = useRouter();
 
   // Pull in user data from Supabase
@@ -57,6 +59,19 @@ export default function Users() {
     router.push(`/Frontend/Users/Edit?id=${userId}`);
   };
 
+  const handleAddUser = () => {
+    setIsAddUserModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsAddUserModalOpen(false);
+  };
+
+  const handleUserCreated = () => {
+    // Refresh the users list after a new user is created
+    fetchUsers();
+  };
+
   // Get role badge styling
   const getRoleBadgeStyle = (role) => {
     if (role === "Admin") {
@@ -75,7 +90,10 @@ export default function Users() {
           Manage User Accounts
         </h1>
         <div className="flex justify-end -mt-8">
-          <button className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer">
+          <button
+            onClick={handleAddUser}
+            className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+          >
             Add User
           </button>
         </div>
@@ -153,6 +171,13 @@ export default function Users() {
           )}
         </div>
       )}
+
+      {/* Add User Modal */}
+      <AddUserModal
+        isOpen={isAddUserModalOpen}
+        onClose={handleCloseModal}
+        onUserCreated={handleUserCreated}
+      />
     </div>
   );
 }
