@@ -281,6 +281,7 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     # uploads the data to supabase
     # execute() is the function that actually sends this data through
 
+#made this function but realized creating a backup table was not needed but kept the logic just in case
 def backup_table(table_name):
     backup_table_name = f"{table_name}_backup"
     version_id = str(uuid.uuid4())
