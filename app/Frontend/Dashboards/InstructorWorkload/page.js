@@ -9,7 +9,7 @@ export default function InstructorWorkload() {
   const [hoursFilter, setHoursFilter] = useState("All");
   const [instructorWorkloadData, setInstructorWorkloadData] =
     useState(mockdata);
-  const [selectedSemester, setSelectedSemester] = useState("");
+  const [selectedSemester, setSelectedSemester] = useState("Fall 2025");
 
   const tableHeaders = [
     "ID",
@@ -50,6 +50,16 @@ export default function InstructorWorkload() {
 
   // Summary details
   const totalInstructors = instructorWorkloadData.length;
+  const underUtilized = instructorWorkloadData.filter(
+    (instructor) =>
+      instructor.Total_Hours < (instructor.Contract_Type === "CS" ? 480 : 369)
+  ).length;
+  const overUtilized = instructorWorkloadData.filter(
+    (instructor) =>
+      instructor.Total_Hours >=
+        (instructor.Contract_Type === "CS" ? 480 : 369) &&
+      instructor.Total_Hours < (instructor.Contract_Type === "CS" ? 800 : 615)
+  ).length;
   const overMaxHours = instructorWorkloadData.filter(
     (instructor) =>
       instructor.Total_Hours >= (instructor.Contract_Type === "CS" ? 800 : 615)
@@ -60,10 +70,6 @@ export default function InstructorWorkload() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl text-center font-bold mb-6">
-        Instructor Workload
-      </h1>
-
       {/* Filter + Main Content Container */}
       <div className="flex flex-row">
         {/* Filter Container */}
@@ -192,6 +198,8 @@ export default function InstructorWorkload() {
           {/* Summary */}
           <div className="flex gap-6 mb-2 text-sm font-bold text-gray-700">
             <span>Total Instructors: {totalInstructors}</span>
+            <span>Under Utilized: {underUtilized}</span>
+            <span>Over Utilized: {overUtilized}</span>
             <span>Over Max Hours: {overMaxHours}</span>
             <span>On Break: {onBreak}</span>
           </div>
@@ -228,7 +236,7 @@ export default function InstructorWorkload() {
                     <td className="px-6 py-4 text-sm">
                       {`${instructor.Semester_Hours} h`}
                     </td>
-                    <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                    <td className="px-6 py-1 text-sm font-semibold rounded-full">
                       <span className={getUtilizationColor(instructor)}>
                         {`${instructor.Total_Hours}/${
                           instructor.Contract_Type === "CS" ? "800" : "615"

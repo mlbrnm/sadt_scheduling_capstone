@@ -18,6 +18,7 @@ export default function NewSchedule() {
   });
   const [instructorData, setInstructorData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [courseData, setCourseData] = useState([]); // Currently holds Mock data for courses - REPLACE WITH API CALL
+  const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -59,32 +60,138 @@ export default function NewSchedule() {
     }));
   };
 
+  // Handler function to add a course to the newScheduleDraft state
+  const handleAddCourse = (course) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedCourses: [...prevDraft.addedCourses, course],
+    }));
+  };
+
+  // Handler function to remove a course from the newScheduleDraft state
+  const handleRemoveCourse = (course) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedCourses: prevDraft.addedCourses.filter(
+        (c) => c.Course_ID !== course.Course_ID
+      ),
+    }));
+  };
+
+  // Toggle section assignment in Assignment Grid component
+  const toggleSection = (instructorId, course, section) => {
+    const key = `${instructorId}-${course.Course_ID}`;
+    const hoursPerSection = (course.Class || 0) + (course.Online || 0);
+
+    // Update assignments state
+    setAssignments((prev) => {
+      const current = prev[key] || { sections: [], totalHours: 0 };
+
+      let updatedSections;
+      if (current.sections.includes(section)) {
+        // remove if already assigned
+        updatedSections = current.sections.filter((s) => s !== section);
+      } else {
+        // add new section
+        updatedSections = [...current.sections, section];
+      }
+
+      return {
+        ...prev,
+        [key]: {
+          sections: updatedSections,
+          totalHours: updatedSections.length * hoursPerSection,
+        },
+      };
+    });
+  };
+
+  // Clean up assignments if instructors or courses are removed
+  // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
+  useEffect(() => {
+    setAssignments((prev) => {
+      const validInstructorIds = newScheduleDraft.addedInstructors.map(
+        (i) => i.Instructor_ID
+      );
+      const validCourseIds = newScheduleDraft.addedCourses.map(
+        (c) => c.Course_ID
+      );
+
+      // Create a new assignments object with only valid keys
+      const updatedAssignments = {};
+
+      // Loop through keys in previous state and update assignments to include only the ones still in the addedInstructors and addedCourses
+      for (const key in prev) {
+        const [instructorId, courseId] = key.split("-");
+
+        if (
+          validInstructorIds.includes(parseInt(instructorId)) &&
+          validCourseIds.includes(courseId)
+        ) {
+          updatedAssignments[key] = prev[key];
+        }
+      }
+      return updatedAssignments;
+    });
+  }, [newScheduleDraft.addedInstructors, newScheduleDraft.addedCourses]);
+
+  // Handlers for Save and Clear buttons
+  const handleSave = () => {};
+  const handleClear = () => {
+    setNewScheduleDraft((d) => ({
+      ...d,
+      addedInstructors: [],
+      addedCourses: [],
+    }));
+    setAssignments({});
+  };
+
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">New Schedule</h1>
-      <div className="flex flex-col h-screen">
-        {/* Top Controls Year, Semester Toggles, Save/Clear Buttons */}
+      {/* Heading */}
+      <h1 className="text-xl text-center font-bold mb-2">New Schedule</h1>
+      <div className="flex justify-around">
+        {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
           metaData={newScheduleDraft.metaData}
           setNewScheduleDraft={setNewScheduleDraft}
+          onSave={handleSave}
+          onClear={handleClear}
         />
+      </div>
 
-        {/* Main Area */}
-        <div className="flex flex-1">
-          {/* Left Component: Instructor Section */}
-          <InstructorSection
-            instructors={instructorData}
-            onAddInstructor={handleAddInstructor}
-            onRemoveInstructor={handleRemoveInstructor}
-            addedInstructors={newScheduleDraft.addedInstructors}
-          />
+      <div className="flex flex-col">
+        {/* Main Area - Grid Layout */}
+        {/* USED AI Q: How to use Grid layout to align the components? (https://chat.deepseek.com/a/chat/s/c88d63ad-6497-4312-a8cf-c4500768ce60) */}
+        <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
+          {/* Top-Right: Course Section */}
+          <div className="col-start-2 row-start-1">
+            <CourseSection
+              courses={courseData}
+              onAddCourse={handleAddCourse}
+              onRemoveCourse={handleRemoveCourse}
+              addedCourses={newScheduleDraft.addedCourses}
+            />
+          </div>
 
-          {/* Top + Center Components */}
-          <div className="flex flex-1 flex-col">
-            {/* Top Component: Course Section */}
-            <CourseSection courses={courseData} />
-            {/* Center Component: Section Assignment Grid */}
-            <AssignmentGrid instructors={instructorData} courses={courseData} />
+          {/* Bottom-Left: Instructor Section */}
+          <div className="col-start-1 row-start-2">
+            <InstructorSection
+              instructors={instructorData}
+              onAddInstructor={handleAddInstructor}
+              onRemoveInstructor={handleRemoveInstructor}
+              addedInstructors={newScheduleDraft.addedInstructors}
+            />
+          </div>
+
+          {/* Bottom-Right: Assignment Grid */}
+          <div className="col-start-2 row-start-2">
+            <AssignmentGrid
+              addedInstructors={newScheduleDraft.addedInstructors}
+              addedCourses={newScheduleDraft.addedCourses}
+              assignments={assignments}
+              onToggleSection={toggleSection}
+            />
           </div>
         </div>
       </div>
