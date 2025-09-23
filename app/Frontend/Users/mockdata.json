@@ -1,0 +1,33 @@
+[
+  {
+    "id": "1",
+    "first_name": "Ali",
+    "last_name": "Moussa",
+    "email": "ali.moussa@edu.sait.ca",
+    "role": "AC",
+    "image": "/ali.jpg"
+  },
+  {
+    "id": "2",
+    "first_name": "Vannesa",
+    "last_name": "Diaz",
+    "email": "vanessa.diaz@edu.sait.ca",
+    "role": "Admin"
+  },
+  {
+    "id": "3",
+    "first_name": "Roderick",
+    "last_name": "Macintosh",
+    "email": "roderick.macintosh@edu.sait.ca",
+    "role": "AC",
+    "image": "/rod.jpg"
+  },
+  {
+    "id": "4",
+    "first_name": "Omar",
+    "last_name": "Wahdan",
+    "email": "omar.wahdan@edu.sait.ca",
+    "role": "AC",
+    "image": "/omar.jpg"
+  }
+]

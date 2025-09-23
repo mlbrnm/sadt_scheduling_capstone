@@ -2,6 +2,12 @@
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     has_logged_in BOOLEAN DEFAULT FALSE,
+    email TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    role TEXT,
+    image TEXT,
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -9,10 +15,10 @@ CREATE TABLE IF NOT EXISTS public.users (
 -- Create RLS policies for the users table
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Policy to allow authenticated users to read their own data
-CREATE POLICY "Users can view their own data" ON public.users
+-- Policy to allow authenticated users to view all users data
+CREATE POLICY "Authenticated users can view all users" ON public.users
     FOR SELECT
-    USING (auth.uid() = id);
+    USING (auth.role() = 'authenticated');
 
 -- Policy to allow authenticated users to update their own data
 CREATE POLICY "Users can update their own data" ON public.users

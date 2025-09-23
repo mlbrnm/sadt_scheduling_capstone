@@ -8,21 +8,22 @@ export default function Header() {
     <header className="background-headerfooter flex items-center text-white h-16">
       {/* Left: SAIT Logo */}
       <div className="flex items-center h-full px-6 relative">
-        {/* !!!STILL HAVE TO ADD THE LOGO!!! */}
-        <Image
-          src="/sadt_icon_color.png"
-          width={32}
-          height={32}
-          alt="SAIT Logo"
-          className="h-8"
-        />
+        <Link href="/Frontend/Home">
+          <Image
+            src="/sadt_icon_color.png"
+            width={32}
+            height={32}
+            alt="SAIT Logo"
+            className="h-8"
+          />
+        </Link>
         <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
       </div>
-
       {/* Middle: Navigation Links */}
       {/* !!!WE SHOULD PROBABLY MAP THIS!!!*/}
       <nav className="flex flex-1 justify-between items-stretch h-full">
         <div className="flex-1 h-full relative">
+          {/* Need to add the dropdowns here for the different types of dashboards, cuz right now it's only linking to instructor workload!!*/}
           <Link
             href={"/Frontend/Dashboards/InstructorWorkload"}
             className="
@@ -33,8 +34,7 @@ export default function Header() {
             Dashboards
           </Link>
           <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
+        </div>  
         <div className="flex-1 h-full relative">
           <Link
             href={"/Frontend/UploadData"}
@@ -43,6 +43,7 @@ export default function Header() {
             text-white hover:bg-[#00A3E0] transition-colors font-medium
           "
           >
+            
             Upload Data
           </Link>
           <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
@@ -50,7 +51,7 @@ export default function Header() {
 
         <div className="flex-1 h-full relative">
           <Link
-            href={"#"}
+            href={"/Frontend/Reports"}
             className="
             absolute inset-0 flex justify-center items-center
             text-white hover:bg-[#00A3E0] transition-colors font-medium
@@ -63,7 +64,7 @@ export default function Header() {
 
         <div className="flex-1 h-full relative">
           <Link
-            href={"#"}
+            href={"/Frontend/Forecasting"}
             className="
             absolute inset-0 flex justify-center items-center
             text-white hover:bg-[#00A3E0] transition-colors font-medium
@@ -76,7 +77,7 @@ export default function Header() {
 
         <div className="flex-1 h-full relative">
           <Link
-            href={"#"}
+            href={"/Frontend/Users"}
             className="
             absolute inset-0 flex justify-center items-center
             text-white hover:bg-[#00A3E0] transition-colors font-medium
@@ -87,7 +88,6 @@ export default function Header() {
           <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
         </div>
       </nav>
-
       {/* Right: User Profile & Notifications/Alerts */}
       {/* !!!THIS DOESN'T DO ANYTHING FOR NOW!!! */}
       <div className="flex items-center h-full px-6 space-x-2 relative">

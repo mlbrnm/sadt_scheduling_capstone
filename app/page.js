@@ -71,6 +71,28 @@ export default function Login() {
     }
   };
 
+  // Function to sync user email to the public.users table
+  const syncUserEmail = async (userId, userEmail) => {
+    try {
+      const { error } = await supabase.from("users").upsert(
+        {
+          id: userId,
+          email: userEmail,
+          has_logged_in: true,
+        },
+        {
+          onConflict: "id",
+        }
+      );
+
+      if (error) {
+        console.error("Error syncing user email:", error);
+      }
+    } catch (error) {
+      console.error("Error in syncUserEmail:", error);
+    }
+  };
+
   // the final sign-in with email and password.
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -86,6 +108,9 @@ export default function Login() {
       if (error) {
         setMessage("Invalid login credentials. Please try again.");
       } else if (data.user) {
+        // Sync user email to the public.users table
+        await syncUserEmail(data.user.id, data.user.email);
+
         router.push("/Frontend/Home");
       }
     } catch (error) {

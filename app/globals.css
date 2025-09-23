@@ -25,3 +25,20 @@
 .sadt_blue_light {
   color: #005eb8;
 }
+
+/* Loading Spinner */
+.spinner{
+  border: 4px solid #e0e0e0;
+  border-left-color: #ae132a;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0%{ transform: rotate(0deg); }
+  100%{ transform: rotate(360deg); }
+}
+
