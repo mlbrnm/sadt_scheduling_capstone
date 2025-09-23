@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     last_name TEXT,
     role TEXT,
     image TEXT,
+    is_deleted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

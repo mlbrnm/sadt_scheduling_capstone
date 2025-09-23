@@ -18,9 +18,11 @@ export default function EditUser() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
   const [saveMessage, setSaveMessage] = useState(null);
   const [resetMessage, setResetMessage] = useState(null);
+  const [deleteMessage, setDeleteMessage] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [assignedPrograms] = useState(["Information Systems Security"]);
   const [unassignedPrograms] = useState([
@@ -54,6 +56,7 @@ export default function EditUser() {
           role,
           image,
           has_logged_in,
+          is_deleted,
           created_at,
           updated_at
         `
@@ -206,6 +209,58 @@ export default function EditUser() {
     }
   };
 
+  // Handle delete/restore functionality
+  const handleDeleteRestore = async () => {
+    const isDeleted = user.is_deleted;
+    const action = isDeleted ? "restore" : "delete";
+    const confirmMessage = isDeleted
+      ? `Are you sure you want to restore ${user.first_name} ${user.last_name}? This will make their account active again.`
+      : `Are you sure you want to delete ${user.first_name} ${user.last_name}? This will deactivate their account but preserve their data.`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      setError(null);
+      setDeleteMessage(null);
+
+      // Update the is_deleted flag
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          is_deleted: !isDeleted,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+
+      if (updateError) {
+        throw new Error(`Failed to ${action} user: ${updateError.message}`);
+      }
+
+      // Update the user state
+      setUser((prev) => ({
+        ...prev,
+        is_deleted: !isDeleted,
+      }));
+
+      const successMessage = isDeleted
+        ? `${user.first_name} ${user.last_name} has been restored successfully!`
+        : `${user.first_name} ${user.last_name} has been deleted successfully!`;
+
+      setDeleteMessage(successMessage);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setDeleteMessage(null), 3000);
+    } catch (error) {
+      console.error(`Error ${action}ing user:`, error);
+      setError(`Failed to ${action} user: ` + error.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleBack = () => {
     router.push("/Frontend/Users");
   };
@@ -259,6 +314,13 @@ export default function EditUser() {
         </div>
       )}
 
+      {/* Delete/Restore Message */}
+      {deleteMessage && (
+        <div className="mb-6 rounded-md p-4 bg-green-50 text-green-700">
+          {deleteMessage}
+        </div>
+      )}
+
       {/* Loading State */}
       {loading && (
         <div className="text-center py-8 text-gray-500">Loading user...</div>
@@ -281,17 +343,34 @@ export default function EditUser() {
                 <img
                   src={user.image}
                   alt={`${user.first_name} ${user.last_name}`}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover ${
+                    user.is_deleted ? "grayscale opacity-60" : ""
+                  }`}
                 />
               </div>
 
               {/* User Name */}
-              <h2 className="text-xl font-bold text-gray-900">
-                {user.first_name} {user.last_name}
-              </h2>
+              <div className="text-center">
+                <h2
+                  className={`text-xl font-bold ${
+                    user.is_deleted ? "text-gray-500" : "text-gray-900"
+                  }`}
+                >
+                  {user.first_name} {user.last_name}
+                </h2>
+                {user.is_deleted && (
+                  <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium mt-2 inline-block">
+                    DELETED USER
+                  </span>
+                )}
+              </div>
 
               {/* Last Online */}
-              <p className="text-gray-600 text-sm">
+              <p
+                className={`text-sm ${
+                  user.is_deleted ? "text-gray-400" : "text-gray-600"
+                }`}
+              >
                 Last Online: 2025-09-13 10:21pm
               </p>
 
@@ -301,7 +380,13 @@ export default function EditUser() {
               </div>
 
               {/* Change Role Link */}
-              <button className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors cursor-pointer">
+              <button
+                className={`text-sm font-medium transition-colors cursor-pointer ${
+                  user.is_deleted
+                    ? "text-gray-400 hover:text-gray-500"
+                    : "text-blue-600 hover:text-blue-800"
+                }`}
+              >
                 Change Role
               </button>
             </div>
@@ -483,8 +568,28 @@ export default function EditUser() {
             </div>
           </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end mt-8">
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center mt-8">
+            {/* Delete/Restore Button */}
+            <button
+              onClick={handleDeleteRestore}
+              disabled={deleting}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
+                user.is_deleted
+                  ? "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"
+              } ${deleting ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {deleting
+                ? user.is_deleted
+                  ? "Restoring..."
+                  : "Deleting..."
+                : user.is_deleted
+                ? "Restore User"
+                : "Delete User"}
+            </button>
+
+            {/* Save Button */}
             <button
               onClick={handleSave}
               disabled={saving || !hasUnsavedChanges}
