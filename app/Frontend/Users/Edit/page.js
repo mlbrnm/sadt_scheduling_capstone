@@ -479,93 +479,95 @@ export default function EditUser() {
               </div>
             </div>
 
-            {/* Right Section - Programs */}
-            <div className="flex-1 space-y-6">
-              {/* Assigned Programs */}
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">
-                  Assigned Programs
-                </h3>
-                <div className="space-y-3">
-                  {assignedPrograms.map((program, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
-                    >
-                      <span className="text-gray-900">{program}</span>
-                      <div className="flex items-center space-x-2">
-                        {/* I used AI to generate the SVGs. Prompt:
-                        <insert code here>
-                        Add an SVG checkmark and SVG remove icon (X) to these divs.  
-                        I did the same for the + icon a little further down. */}
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                          <svg
-                            className="w-4 h-4 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+            {/* Right Section - Programs - Only show for AC role */}
+            {formData.role === "AC" && (
+              <div className="flex-1 space-y-6">
+                {/* Assigned Programs */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    Assigned Programs
+                  </h3>
+                  <div className="space-y-3">
+                    {assignedPrograms.map((program, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
+                      >
+                        <span className="text-gray-900">{program}</span>
+                        <div className="flex items-center space-x-2">
+                          {/* I used AI to generate the SVGs. Prompt:
+                          <insert code here>
+                          Add an SVG checkmark and SVG remove icon (X) to these divs.  
+                          I did the same for the + icon a little further down. */}
+                          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <svg
+                              className="w-4 h-4 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </div>
+                          <button className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
+                            <svg
+                              className="w-4 h-4 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Unassigned Programs */}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    Unassigned Programs
+                  </h3>
+                  <div className="space-y-3">
+                    {unassignedPrograms.map((program, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
+                      >
+                        <span className="text-gray-900">{program}</span>
                         <button className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
                           <svg
                             className="w-4 h-4 text-white"
                             fill="none"
                             viewBox="0 0 24 24"
-                            stroke="currentColor"
                             strokeWidth="3"
+                            stroke="currentColor"
                           >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              d="M6 18L18 6M6 6l12 12"
+                              d="M12 6v12m6-6H6"
                             />
                           </svg>
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              {/* Unassigned Programs */}
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">
-                  Unassigned Programs
-                </h3>
-                <div className="space-y-3">
-                  {unassignedPrograms.map((program, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
-                    >
-                      <span className="text-gray-900">{program}</span>
-                      <button className="w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors">
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth="3"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 6v12m6-6H6"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Action Buttons */}
