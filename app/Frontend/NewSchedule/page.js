@@ -12,6 +12,7 @@ export default function NewSchedule() {
     metaData: {
       year: 2025,
       activeSemesters: { winter: true, springSummer: true, fall: true },
+      workingSemester: "winter",
     },
     addedInstructors: [],
     addedCourses: [],
@@ -79,28 +80,46 @@ export default function NewSchedule() {
   };
 
   // Toggle section assignment in Assignment Grid component
-  const toggleSection = (instructorId, course, section) => {
+  const toggleSection = (instructorId, course, section, semester) => {
     const key = `${instructorId}-${course.Course_ID}`;
     const hoursPerSection = (course.Class || 0) + (course.Online || 0);
 
     // Update assignments state
     setAssignments((prev) => {
-      const current = prev[key] || { sections: [], totalHours: 0 };
+      const current = prev[key] || {
+        sectionsBySemester: { winter: [], springSummer: [], fall: [] },
+        totalsBySemester: { winter: 0, springSummer: 0, fall: 0 },
+        totalHours: 0,
+      };
 
-      let updatedSections;
-      if (current.sections.includes(section)) {
+      // Shallow copy of current sections
+      const next = {
+        winter: [...current.sectionsBySemester.winter],
+        springSummer: [...current.sectionsBySemester.springSummer],
+        fall: [...current.sectionsBySemester.fall],
+      };
+
+      if (next[semester].includes(section)) {
         // remove if already assigned
-        updatedSections = current.sections.filter((s) => s !== section);
+        next[semester] = next[semester].filter((s) => s !== section);
       } else {
         // add new section
-        updatedSections = [...current.sections, section];
+        next[semester].push(section);
       }
+
+      // Recompute totals
+      const totals = {
+        winter: next.winter.length * hoursPerSection,
+        springSummer: next.springSummer.length * hoursPerSection,
+        fall: next.fall.length * hoursPerSection,
+      };
 
       return {
         ...prev,
         [key]: {
-          sections: updatedSections,
-          totalHours: updatedSections.length * hoursPerSection,
+          sectionsBySemester: next,
+          totalsBySemester: totals,
+          totalHours: totals.winter + totals.springSummer + totals.fall,
         },
       };
     });
@@ -191,6 +210,7 @@ export default function NewSchedule() {
               addedCourses={newScheduleDraft.addedCourses}
               assignments={assignments}
               onToggleSection={toggleSection}
+              workingSemester={newScheduleDraft.metaData.workingSemester}
             />
           </div>
         </div>
