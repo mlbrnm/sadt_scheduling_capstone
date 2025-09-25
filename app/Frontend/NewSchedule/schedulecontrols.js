@@ -57,6 +57,31 @@ export default function ScheduleControls({
             <label className="ml-2">Fall</label>
           </div>
         </div>
+        {/* Working Semester Selection */}
+        <div className="flex ml-4 items-center space-x-4">
+          <span>Working Semester:</span>
+          {["winter", "springSummer", "fall"].map((sem) => (
+            <button
+              key={sem}
+              onClick={() =>
+                setNewScheduleDraft((prevDraft) => ({
+                  ...prevDraft,
+                  metaData: { ...prevDraft.metaData, workingSemester: sem },
+                }))
+              }
+              className={`px-3 py-1 rounded-md text-sm ${
+                metaData.workingSemester === sem
+                  ? "bg-blue-600 text-white"
+                  : "bg-white-200"
+              }`}
+              title={`Set working semester to ${sem}`}
+            >
+              {sem === "springSummer"
+                ? "Sp/Su"
+                : sem[0].toUpperCase() + sem.slice(1)}
+            </button>
+          ))}
+        </div>
 
         {/* Right Side: Save and Clear Buttons */}
         <div className="space-x-3">
