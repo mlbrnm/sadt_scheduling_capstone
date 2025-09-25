@@ -7,6 +7,7 @@ export default function InstructorSection({
   onAddInstructor,
   onRemoveInstructor,
   addedInstructors,
+  assignments,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -65,6 +66,24 @@ export default function InstructorSection({
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
+  // Helper Function to Sum assigned hours for an instructor in a given semester
+  const sumHours = (instructorId, semester) => {
+    let sum = 0;
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const [iid] = key.split("-");
+      if (parseInt(iid, 10) === instructorId) {
+        sum += value?.totalsBySemester?.[semester] || 0;
+      }
+    }
+    return sum;
+  };
+
+  // Helper Function to Sum total assigned hours for an instructor across all semesters and add to current total hours
+  const sumTotal = (instructorId) => {
+    let sum = 0;
+    // STILL HAVE TO FINISH!!!
+  };
+
   return (
     <div>
       {/* Added Instructors */}
@@ -113,12 +132,18 @@ export default function InstructorSection({
                     <td className="px-3 py-2 text-sm">
                       {instructor.Contract_Type}
                     </td>
-                    {/* Placeholder for Winter Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
-                    {/* Placeholder for Spring/Summer Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
-                    {/* Placeholder for Fall Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
+                    {/* Winter Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "winter")}
+                    </td>
+                    {/* Spring/Summer Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "springSummer")}
+                    </td>
+                    {/* Fall Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "fall")}
+                    </td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor(
                         instructor

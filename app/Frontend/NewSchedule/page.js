@@ -6,7 +6,24 @@ import ScheduleControls from "./schedulecontrols";
 import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
 import AssignmentGrid from "./assignmentgrid";
-
+/* 
+assignments structure:
+{
+  "instructorId-courseId": {
+    sectionsBySemester: {
+      winter: [],
+      springSummer: [],
+      fall: []
+    },
+    totalsBySemester: {
+      winter: 0,
+      springSummer: 0,
+      fall: 0
+    },
+    totalHours: 0
+  }
+}
+*/
 export default function NewSchedule() {
   const [newScheduleDraft, setNewScheduleDraft] = useState({
     metaData: {
@@ -200,6 +217,7 @@ export default function NewSchedule() {
               onAddInstructor={handleAddInstructor}
               onRemoveInstructor={handleRemoveInstructor}
               addedInstructors={newScheduleDraft.addedInstructors}
+              assignments={assignments}
             />
           </div>
 
