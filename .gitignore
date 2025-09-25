@@ -140,3 +140,7 @@ dist
 
 app/Backend/Routes/__pycache__
 app/Backend/__pycache__
+app/Backend/flask-server/__pycache__/
+app/Backend/flask-server/routes/__pycache__/
+
+.DS_Store
