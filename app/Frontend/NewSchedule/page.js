@@ -117,10 +117,10 @@ export default function NewSchedule() {
       };
 
       if (next[semester].includes(section)) {
-        // remove if already assigned
+        // remove section if already assigned
         next[semester] = next[semester].filter((s) => s !== section);
       } else {
-        // add new section
+        // add new section if not already assigned
         next[semester].push(section);
       }
 
