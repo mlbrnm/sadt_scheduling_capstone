@@ -579,7 +579,7 @@ export default function EditUser() {
               className={`px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
                 user.is_deleted
                   ? "bg-green-600 hover:bg-green-700 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
+                  : "button-primary hover:bg-red-700 text-white"
               } ${deleting ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {deleting
