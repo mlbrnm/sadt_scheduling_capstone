@@ -160,8 +160,14 @@ export default function NewSchedule() {
       const validInstructorIds = newScheduleDraft.addedInstructors.map(
         (i) => i.Instructor_ID
       );
-      const validCourseIds = newScheduleDraft.addedCourses.map(
-        (c) => c.Course_ID
+      const validCourseIds = Array.from(
+        new Set(
+          [
+            ...newScheduleDraft.addedCoursesBySemester.winter,
+            ...newScheduleDraft.addedCoursesBySemester.springSummer,
+            ...newScheduleDraft.addedCoursesBySemester.fall,
+          ].map((c) => c.Course_ID)
+        )
       );
 
       // Create a new assignments object with only valid keys
@@ -172,7 +178,7 @@ export default function NewSchedule() {
         const [instructorId, courseId] = key.split("-");
 
         if (
-          validInstructorIds.includes(parseInt(instructorId)) &&
+          validInstructorIds.includes(parseInt(instructorId, 10)) &&
           validCourseIds.includes(courseId)
         ) {
           updatedAssignments[key] = prev[key];
@@ -180,7 +186,10 @@ export default function NewSchedule() {
       }
       return updatedAssignments;
     });
-  }, [newScheduleDraft.addedInstructors, newScheduleDraft.addedCourses]);
+  }, [
+    newScheduleDraft.addedInstructors,
+    newScheduleDraft.addedCoursesBySemester,
+  ]);
 
   // Handlers for Save and Clear buttons
   const handleSave = () => {};
@@ -188,7 +197,7 @@ export default function NewSchedule() {
     setNewScheduleDraft((d) => ({
       ...d,
       addedInstructors: [],
-      addedCourses: [],
+      addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
     }));
     setAssignments({});
   };
