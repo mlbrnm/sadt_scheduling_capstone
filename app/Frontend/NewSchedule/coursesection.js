@@ -2,6 +2,7 @@
 import { useState } from "react";
 
 export default function CourseSection({
+  semester,
   courses,
   onAddCourse,
   onRemoveCourse,
@@ -22,7 +23,7 @@ export default function CourseSection({
 
   // Handler function to add the selected course
   const handleAddCourse = (course) => {
-    onAddCourse(course);
+    onAddCourse(course, semester);
     setIsModalOpen(false);
   };
 
@@ -33,7 +34,7 @@ export default function CourseSection({
       `Are you sure you want to remove ${course.Course_Name}?`
     );
     if (confirmRemove) {
-      onRemoveCourse(course);
+      onRemoveCourse(course, semester);
     }
   };
 
@@ -65,9 +66,16 @@ export default function CourseSection({
         <button
           className="cursor-pointer text-sm font-semibold"
           onClick={() => setIsModalOpen(true)}
-          title="Add Course"
+          title={`Add Course to ${
+            semester === "springSummer"
+              ? "Spring/Summer"
+              : semester.charAt(0).toUpperCase() + semester.slice(1)
+          }`}
         >
-          + Add Course
+          + Add Course{" "}
+          {semester === "springSummer"
+            ? "Spring/Summer"
+            : semester.charAt(0).toUpperCase() + semester.slice(1)}
         </button>
       </div>
 
