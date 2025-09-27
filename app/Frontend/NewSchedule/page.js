@@ -29,7 +29,6 @@ export default function NewSchedule() {
     metaData: {
       year: 2025,
       activeSemesters: { winter: true, springSummer: true, fall: true },
-      workingSemester: "winter",
     },
     addedInstructors: [],
     addedCourses: [],
@@ -228,7 +227,7 @@ export default function NewSchedule() {
               addedCourses={newScheduleDraft.addedCourses}
               assignments={assignments}
               onToggleSection={toggleSection}
-              workingSemester={newScheduleDraft.metaData.workingSemester}
+              activeSemesters={newScheduleDraft.metaData.activeSemesters}
             />
           </div>
         </div>
