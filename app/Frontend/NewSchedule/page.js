@@ -31,7 +31,7 @@ export default function NewSchedule() {
       activeSemesters: { winter: true, springSummer: true, fall: true },
     },
     addedInstructors: [],
-    addedCourses: [],
+    addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
   });
   const [instructorData, setInstructorData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [courseData, setCourseData] = useState([]); // Currently holds Mock data for courses - REPLACE WITH API CALL
@@ -77,21 +77,33 @@ export default function NewSchedule() {
     }));
   };
 
-  // Handler function to add a course to the newScheduleDraft state
-  const handleAddCourse = (course) => {
-    setNewScheduleDraft((prevDraft) => ({
-      ...prevDraft,
-      addedCourses: [...prevDraft.addedCourses, course],
-    }));
+  // Handler function to add a course to a specific semester in the newScheduleDraft state
+  const handleAddCourseToSemester = (semester, course) => {
+    setNewScheduleDraft((prevDraft) => {
+      const current = prevDraft.addedCoursesBySemester[semester] || [];
+      // Prevent adding duplicates
+      if (current.some((c) => c.Course_ID === course.Course_ID))
+        return prevDraft;
+      return {
+        ...prevDraft,
+        addedCoursesBySemester: {
+          ...prevDraft.addedCoursesBySemester,
+          [semester]: [...current, course],
+        },
+      };
+    });
   };
 
-  // Handler function to remove a course from the newScheduleDraft state
-  const handleRemoveCourse = (course) => {
+  // Handler function to remove a course from all semesters in the newScheduleDraft state
+  const handleRemoveCourseFromSemester = (semester, course) => {
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
-      addedCourses: prevDraft.addedCourses.filter(
-        (c) => c.Course_ID !== course.Course_ID
-      ),
+      addedCoursesBySemester: {
+        ...prevDraft.addedCoursesBySemester,
+        [semester]: prevDraft.addedCoursesBySemester[semester].filter(
+          (c) => c.Course_ID !== course.Course_ID
+        ),
+      },
     }));
   };
 
