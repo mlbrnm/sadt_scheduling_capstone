@@ -1,7 +1,7 @@
 "use client";
 
-const SEM_ORDER = ["winter", "springSummer", "fall"];
-const SEM_LABELS = {
+const semester_list = ["winter", "springSummer", "fall"];
+const semester_titles = {
   winter: "Winter",
   springSummer: "Spring/Summer",
   fall: "Fall",
@@ -9,7 +9,7 @@ const SEM_LABELS = {
 
 export default function AssignmentGrid({
   addedInstructors,
-  addedCourses,
+  addedCoursesBySemester,
   assignments,
   onToggleSection,
   activeSemesters,
@@ -24,7 +24,9 @@ export default function AssignmentGrid({
     return list.includes(section);
   };
 
-  const visibleSemesters = SEM_ORDER.filter((sem) => activeSemesters?.[sem]);
+  const visibleSemesters = semester_list.filter(
+    (sem) => activeSemesters?.[sem]
+  );
 
   if (visibleSemesters.length === 0) {
     return (
@@ -34,7 +36,11 @@ export default function AssignmentGrid({
     );
   }
 
-  if (addedInstructors.length === 0 || addedCourses.length === 0) {
+  const noCoursesAdded = Object.values(addedCoursesBySemester).every(
+    (courses) => courses.length === 0
+  );
+
+  if (addedInstructors.length === 0 || noCoursesAdded) {
     return (
       <p className="text-gray-500 text-center p-4">
         {addedInstructors.length === 0 ? "Add instructors" : "Add courses"} to
@@ -49,7 +55,7 @@ export default function AssignmentGrid({
         <div key={semester}>
           {/* Header Row: Section Letters */}
           <div className="flex">
-            {addedCourses.map((course) => (
+            {(addedCoursesBySemester[semester] || []).map((course) => (
               <div key={course.Course_ID} className="w-36 h-8 grid grid-cols-6">
                 {Array.from({ length: maxSections }, (_, i) => (
                   <div
@@ -58,7 +64,7 @@ export default function AssignmentGrid({
                     title={`${
                       course.Course_Code
                     } * Section ${String.fromCharCode(65 + i)} (${
-                      SEM_LABELS[semester]
+                      semester_titles[semester]
                     })`}
                   >
                     {String.fromCharCode(65 + i)}
@@ -71,7 +77,7 @@ export default function AssignmentGrid({
           {/* Instructor Rows */}
           {addedInstructors.map((instructor) => (
             <div key={instructor.Instructor_ID} className="flex items-center">
-              {addedCourses.map((course) => (
+              {(addedCoursesBySemester[semester] || []).map((course) => (
                 <div
                   key={course.Course_ID}
                   className="w-36 h-9 grid grid-cols-6"
@@ -102,7 +108,9 @@ export default function AssignmentGrid({
                         }
                         title={`Click to ${
                           assigned ? "Remove" : "Assign"
-                        } Section ${section} (${SEM_LABELS[semester]}) from ${
+                        } Section ${section} (${
+                          semester_titles[semester]
+                        }) from ${
                           instructor.Instructor_Name +
                           " " +
                           instructor.Instructor_LastName

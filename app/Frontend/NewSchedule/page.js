@@ -24,6 +24,9 @@ assignments structure:
   }
 }
 */
+
+const semester_list = ["winter", "springSummer", "fall"];
+
 export default function NewSchedule() {
   const [newScheduleDraft, setNewScheduleDraft] = useState({
     metaData: {
@@ -202,10 +205,13 @@ export default function NewSchedule() {
     setAssignments({});
   };
 
+  const visibleSemesters = semester_list.filter(
+    (sem) => newScheduleDraft.metaData.activeSemesters?.[sem]
+  );
+
   return (
     <div className="p-4">
       {/* Heading */}
-      <h1 className="text-xl text-center font-bold mb-2">New Schedule</h1>
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
@@ -222,12 +228,30 @@ export default function NewSchedule() {
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
           {/* Top-Right: Course Section */}
           <div className="col-start-2 row-start-1">
-            <CourseSection
-              courses={courseData}
-              onAddCourse={handleAddCourse}
-              onRemoveCourse={handleRemoveCourse}
-              addedCourses={newScheduleDraft.addedCourses}
-            />
+            <div className="flex flex-wrap items-start">
+              {visibleSemesters.map((semester) => (
+                <div key={semester}>
+                  <div className="text-sm font-semibold">
+                    {semester === "springSummer"
+                      ? "Spring/Summer"
+                      : semester.charAt(0).toUpperCase() + semester.slice(1)}
+                  </div>
+                  <CourseSection
+                    semester={semester}
+                    courses={courseData}
+                    onAddCourse={(course, sem) =>
+                      handleAddCourseToSemester(sem, course)
+                    }
+                    onRemoveCourse={(course, sem) =>
+                      handleRemoveCourseFromSemester(sem, course)
+                    }
+                    addedCourses={
+                      newScheduleDraft.addedCoursesBySemester[semester]
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Bottom-Left: Instructor Section */}
@@ -245,7 +269,7 @@ export default function NewSchedule() {
           <div className="col-start-2 row-start-2">
             <AssignmentGrid
               addedInstructors={newScheduleDraft.addedInstructors}
-              addedCourses={newScheduleDraft.addedCourses}
+              addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
               assignments={assignments}
               onToggleSection={toggleSection}
               activeSemesters={newScheduleDraft.metaData.activeSemesters}

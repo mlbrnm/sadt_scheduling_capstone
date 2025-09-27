@@ -74,7 +74,7 @@ export default function CourseSection({
         >
           + Add Course{" "}
           {semester === "springSummer"
-            ? "Spring/Summer"
+            ? "SP/SU"
             : semester.charAt(0).toUpperCase() + semester.slice(1)}
         </button>
       </div>
@@ -90,7 +90,7 @@ export default function CourseSection({
                 <li
                   key={course.Course_ID}
                   onClick={() => handleRemoveCourse(course)}
-                  className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36 text-center"
+                  className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 text-center"
                   title={`Click to remove ${course.Course_Code} - ${course.Course_Name}`}
                 >
                   <span className="font-semibold">{course.Course_Code}</span>
