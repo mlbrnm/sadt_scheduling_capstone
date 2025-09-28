@@ -88,7 +88,7 @@ export default function NewSchedule() {
     });
   };
 
-  // Handler function to remove a course from all semesters in the newScheduleDraft state
+  // Handler function to remove a course from semester in the newScheduleDraft state
   const handleRemoveCourseFromSemester = (semester, course) => {
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
@@ -116,7 +116,7 @@ export default function NewSchedule() {
         : [...current.sections, section];
 
       if (sections.length === 0) {
-        // nothing  left for this (instructor, course, semester) combo - remove the key
+        // nothing left for this (instructor, course, semester) combo - remove the key
         const { [key]: _, ...rest } = prev;
         return rest;
       }
