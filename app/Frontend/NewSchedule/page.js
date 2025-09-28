@@ -104,11 +104,9 @@ export default function NewSchedule() {
   // Toggle section assignment in Assignment Grid component
   const toggleSection = (instructorId, course, section, semester) => {
     const key = `${instructorId}-${course.Course_ID}-${semester}`;
-    const hoursPerSection = (course.Class || 0) + (course.Online || 0);
 
-    // Update assignments state
     setAssignments((prev) => {
-      const current = prev[key] || { sections: [], hours: 0 };
+      const current = prev[key] || { sections: [] };
       const exists = current.sections.includes(section);
 
       const sections = exists
@@ -120,14 +118,7 @@ export default function NewSchedule() {
         const { [key]: _, ...rest } = prev;
         return rest;
       }
-
-      return {
-        ...prev,
-        [key]: {
-          sections,
-          hours: sections.length * hoursPerSection,
-        },
-      };
+      return { ...prev, [key]: { sections } };
     });
   };
 
@@ -248,6 +239,7 @@ export default function NewSchedule() {
               onRemoveInstructor={handleRemoveInstructor}
               addedInstructors={newScheduleDraft.addedInstructors}
               assignments={assignments}
+              addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
             />
           </div>
 

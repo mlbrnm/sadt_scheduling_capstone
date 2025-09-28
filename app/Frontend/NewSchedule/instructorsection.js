@@ -2,32 +2,33 @@
 import { useState } from "react";
 import { getUtilizationColor } from "../_Utils/utilizationColorsUtil";
 
+const instructorCardHeaders = [
+  "Contract",
+  "Win",
+  "Sp/Su",
+  "Fall",
+  "Total",
+  "Instructor",
+];
+const instructorListHeaders = [
+  "ID",
+  "Name",
+  "Contract",
+  "Semester Hours",
+  "Total Hours",
+  "Status",
+];
+
 export default function InstructorSection({
   instructors,
   onAddInstructor,
   onRemoveInstructor,
   addedInstructors,
   assignments,
+  addedCoursesBySemester,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
-  const instructorCardHeaders = [
-    "Contract",
-    "Win",
-    "Sp/Su",
-    "Fall",
-    "Total",
-    "Instructor",
-  ];
-  const instructorListHeaders = [
-    "ID",
-    "Name",
-    "Contract",
-    "Semester Hours",
-    "Total Hours",
-    "Status",
-  ];
 
   // Handler function to add the selected instructor
   const handleAddInstructor = (instructor) => {
@@ -66,14 +67,24 @@ export default function InstructorSection({
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
+  // Helper function to get hours per section for a (semester, courseId)
+  const hoursPerSection = (semester, courseId) => {
+    const courses = addedCoursesBySemester?.[semester] || [];
+    const course = courses.find(
+      (c) => String(c.Course_ID) === String(courseId)
+    );
+    return (course?.Online || 0) + (course?.Class || 0);
+  };
+
   // Helper Function to Sum total assigned hours for an instructor in a specific semester
   const sumHours = (instructorId, semester) => {
     let sum = 0;
     const iId = String(instructorId);
     for (const [key, value] of Object.entries(assignments || {})) {
-      const [iid, _cid, sem] = key.split("-");
+      const [iid, cid, sem] = key.split("-");
       if (iid === iId && sem === semester) {
-        sum += value?.hours || 0;
+        const h = hoursPerSection(sem, cid);
+        sum += (value.sections.length || 0) * h;
       }
     }
     return sum;
