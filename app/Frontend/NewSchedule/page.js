@@ -9,18 +9,9 @@ import AssignmentGrid from "./assignmentgrid";
 /* 
 assignments structure:
 {
-  "instructorId-courseId": {
-    sectionsBySemester: {
-      winter: [],
-      springSummer: [],
-      fall: []
-    },
-    totalsBySemester: {
-      winter: 0,
-      springSummer: 0,
-      fall: 0
-    },
-    totalHours: 0
+  "instructorId-courseId-semester": {
+    sections: [],
+    hours: 0 // Total hours = sections.length * (course.Class + course.Online)
   }
 }
 */
@@ -108,130 +99,74 @@ export default function NewSchedule() {
         ),
       },
     }));
-    // USED AI Q: Currently, when I add the same course to two+ semesters and I remove from one or more semesters, it is still saving the data. (CLEAR COURSE SECTIONS FOR THAT SEMESTER ONLY)
-    // Clear this course's sections for just this semester
-    setAssignments((prevAssignments) => {
-      const updated = { ...prevAssignments };
-      const courseId = String(course.Course_ID);
-
-      // Loop through keys and clear sections for the specified course and semester
-      for (const key of Object.keys(updated)) {
-        const [iId, cId] = key.split("-");
-        if (cId === courseId) {
-          const current = updated[key];
-          const sectionsBySemester = {
-            winter: [...(current.sectionsBySemester?.winter || [])],
-            springSummer: [...(current.sectionsBySemester?.springSummer || [])],
-            fall: [...(current.sectionsBySemester?.fall || [])],
-          };
-
-          // Remove sections for the specified semester
-          sectionsBySemester[semester] = [];
-
-          // Recalculate totals
-          const hoursPerSection = (course.Class || 0) + (course.Online || 0);
-          const totalsBySemester = {
-            winter: sectionsBySemester.winter.length * hoursPerSection,
-            springSummer:
-              sectionsBySemester.springSummer.length * hoursPerSection,
-            fall: sectionsBySemester.fall.length * hoursPerSection,
-          };
-          const totalHours =
-            totalsBySemester.winter +
-            totalsBySemester.springSummer +
-            totalsBySemester.fall;
-
-          // If nothing left across semesters, remove the key, else update it
-          if (
-            sectionsBySemester.winter.length === 0 &&
-            sectionsBySemester.springSummer.length === 0 &&
-            sectionsBySemester.fall.length === 0
-          ) {
-            delete updated[key];
-          } else {
-            updated[key] = { sectionsBySemester, totalsBySemester, totalHours };
-          }
-        }
-      }
-      return updated;
-    });
   };
 
   // Toggle section assignment in Assignment Grid component
   const toggleSection = (instructorId, course, section, semester) => {
-    const key = `${instructorId}-${course.Course_ID}`;
+    const key = `${instructorId}-${course.Course_ID}-${semester}`;
     const hoursPerSection = (course.Class || 0) + (course.Online || 0);
 
     // Update assignments state
     setAssignments((prev) => {
-      const current = prev[key] || {
-        sectionsBySemester: { winter: [], springSummer: [], fall: [] },
-        totalsBySemester: { winter: 0, springSummer: 0, fall: 0 },
-        totalHours: 0,
-      };
+      const current = prev[key] || { sections: [], hours: 0 };
+      const exists = current.sections.includes(section);
 
-      // Shallow copy of current sections
-      const next = {
-        winter: [...current.sectionsBySemester.winter],
-        springSummer: [...current.sectionsBySemester.springSummer],
-        fall: [...current.sectionsBySemester.fall],
-      };
+      const sections = exists
+        ? current.sections.filter((s) => s !== section)
+        : [...current.sections, section];
 
-      if (next[semester].includes(section)) {
-        // remove section if already assigned
-        next[semester] = next[semester].filter((s) => s !== section);
-      } else {
-        // add new section if not already assigned
-        next[semester].push(section);
+      if (sections.length === 0) {
+        // nothing  left for this (instructor, course, semester) combo - remove the key
+        const { [key]: _, ...rest } = prev;
+        return rest;
       }
-
-      // Recompute totals
-      const totals = {
-        winter: next.winter.length * hoursPerSection,
-        springSummer: next.springSummer.length * hoursPerSection,
-        fall: next.fall.length * hoursPerSection,
-      };
 
       return {
         ...prev,
         [key]: {
-          sectionsBySemester: next,
-          totalsBySemester: totals,
-          totalHours: totals.winter + totals.springSummer + totals.fall,
+          sections,
+          hours: sections.length * hoursPerSection,
         },
       };
     });
   };
 
-  // Clean up assignments if instructors or courses are removed
+  // Clean up assignments if instructors or courses are removed, otherwise assignments retain stale data
   // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
   useEffect(() => {
     setAssignments((prev) => {
-      const validInstructorIds = newScheduleDraft.addedInstructors.map(
-        (i) => i.Instructor_ID
+      const validInstructorIds = new Set(
+        newScheduleDraft.addedInstructors.map((i) => String(i.Instructor_ID))
       );
-      const validCourseIds = Array.from(
-        new Set(
-          [
-            ...newScheduleDraft.addedCoursesBySemester.winter,
-            ...newScheduleDraft.addedCoursesBySemester.springSummer,
-            ...newScheduleDraft.addedCoursesBySemester.fall,
-          ].map((c) => c.Course_ID)
-        )
-      );
+      const validCourseIdsBySemester = {
+        winter: new Set(
+          newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+        springSummer: new Set(
+          newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+        fall: new Set(
+          newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+      };
 
       // Create a new assignments object with only valid keys
       const updatedAssignments = {};
 
-      // Loop through keys in previous state and update assignments to include only the ones still in the addedInstructors and addedCourses
-      for (const key in prev) {
-        const [instructorId, courseId] = key.split("-");
-
+      // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
+      for (const [key, value] of Object.entries(prev)) {
+        const [iId, cId, sem] = key.split("-");
         if (
-          validInstructorIds.includes(parseInt(instructorId, 10)) &&
-          validCourseIds.includes(courseId)
+          validInstructorIds.has(iId) &&
+          validCourseIdsBySemester[sem]?.has(cId)
         ) {
-          updatedAssignments[key] = prev[key];
+          updatedAssignments[key] = value;
         }
       }
       return updatedAssignments;
@@ -242,7 +177,11 @@ export default function NewSchedule() {
   ]);
 
   // Handlers for Save and Clear buttons
-  const handleSave = () => {};
+  const handleSave = () => {
+    // STILL NEED TO FINISH!!!
+    console.log("Saving schedule draft:", newScheduleDraft);
+    console.log("With assignments:", assignments);
+  };
   const handleClear = () => {
     setNewScheduleDraft((d) => ({
       ...d,

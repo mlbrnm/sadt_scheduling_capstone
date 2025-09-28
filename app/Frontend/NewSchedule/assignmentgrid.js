@@ -17,11 +17,9 @@ export default function AssignmentGrid({
   const maxSections = 6; // A–F
 
   const isSectionAssigned = (instructorId, courseId, section, semester) => {
-    const key = `${instructorId}-${courseId}`;
+    const key = `${instructorId}-${courseId}-${semester}`;
     const entry = assignments[key];
-    if (!entry) return false;
-    const list = entry.sectionsBySemester?.[semester] || [];
-    return list.includes(section);
+    return entry ? entry.sections.includes(section) : false;
   };
 
   const visibleSemesters = semester_list.filter(

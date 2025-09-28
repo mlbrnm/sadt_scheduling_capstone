@@ -66,13 +66,14 @@ export default function InstructorSection({
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
-  // Helper Function to Sum assigned hours for an instructor in a given semester
+  // Helper Function to Sum total assigned hours for an instructor in a specific semester
   const sumHours = (instructorId, semester) => {
     let sum = 0;
+    const iId = String(instructorId);
     for (const [key, value] of Object.entries(assignments || {})) {
-      const [iid] = key.split("-");
-      if (parseInt(iid, 10) === instructorId) {
-        sum += value?.totalsBySemester?.[semester] || 0;
+      const [iid, _cid, sem] = key.split("-");
+      if (iid === iId && sem === semester) {
+        sum += value?.hours || 0;
       }
     }
     return sum;
