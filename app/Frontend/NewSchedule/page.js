@@ -6,13 +6,18 @@ import ScheduleControls from "./schedulecontrols";
 import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
 import AssignmentGrid from "./assignmentgrid";
+
 /* 
-assignments structure:
+assignments structure 
 {
   "instructorId-courseId-semester": {
-    sections: [],
-    hours: 0 // Total hours = sections.length * (course.Class + course.Online)
-  }
+    sections: ["A", "B", "C"] 
+  },
+}
+Example:
+{
+  "16491-CPRG211SD-winter": { sections: ["A", "B"] },
+  "16491-CPRG211SD-fall":   { sections: ["A"] },
 }
 */
 
