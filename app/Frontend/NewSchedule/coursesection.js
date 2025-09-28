@@ -1,6 +1,16 @@
 "use client";
 import { useState } from "react";
 
+const courseListHeaders = [
+  "Course ID",
+  "Course Name",
+  "Program",
+  "Contact Hours",
+  "Delivery",
+  "Online",
+  "Class",
+];
+
 export default function CourseSection({
   semester,
   courses,
@@ -11,14 +21,10 @@ export default function CourseSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const courseListHeaders = [
-    "Course ID",
-    "Course Name",
-    "Program",
-    "Contact Hours",
-    "Delivery",
-    "Online",
-    "Class",
+  // Add sentinel course to end of addedCourses for "+ Add Course" button
+  const coursesWithAdd = [
+    ...addedCourses,
+    { __isAdd: true, Course_ID: `__add-${semester}` },
   ];
 
   // Handler function to add the selected course
@@ -61,24 +67,6 @@ export default function CourseSection({
 
   return (
     <div>
-      {/* Add Course Button */}
-      <div>
-        <button
-          className="cursor-pointer text-sm font-semibold"
-          onClick={() => setIsModalOpen(true)}
-          title={`Add Course to ${
-            semester === "springSummer"
-              ? "Spring/Summer"
-              : semester.charAt(0).toUpperCase() + semester.slice(1)
-          }`}
-        >
-          + Add Course{" "}
-          {semester === "springSummer"
-            ? "SP/SU"
-            : semester.charAt(0).toUpperCase() + semester.slice(1)}
-        </button>
-      </div>
-
       {/* Added Courses */}
       <div className="bg-gray-50 w-fit">
         {/* Display added courses */}
@@ -86,18 +74,45 @@ export default function CourseSection({
           {/* Course list */}
           <div>
             <ul className="flex">
-              {addedCourses.map((course) => (
+              {coursesWithAdd.map((course) => (
                 <li
                   key={course.Course_ID}
-                  onClick={() => handleRemoveCourse(course)}
-                  className="p-2 text-sm cursor-pointer hover:bg-red-100 flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 text-center"
-                  title={`Click to remove ${course.Course_Code} - ${course.Course_Name}`}
+                  onClick={() => {
+                    if (course.__isAdd) {
+                      setIsModalOpen(true);
+                      return;
+                    }
+                    handleRemoveCourse(course);
+                  }}
+                  className={`p-2 text-sm cursor-pointer hover:bg-green-100 flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 text-center
+                    ${course.__isAdd ? "border-dashed" : "hover:bg-red-100"}`}
+                  title={
+                    course.__isAdd
+                      ? "Add Course"
+                      : `Click to remove ${course.Course_Code} - ${course.Course_Name}`
+                  }
                 >
-                  <span className="font-semibold">{course.Course_Code}</span>
-                  <span>{course.Course_Name}</span>
-                  <span>{course.Delivery}</span>
-                  <span>{`Online ${course.Online}h`}</span>
-                  <span>{`Class ${course.Class}h`}</span>
+                  {course.__isAdd ? (
+                    <>
+                      <span className="text-xl font-bold">+</span>
+                      <span className="text-xs font-semibold">Add Course</span>
+                      <span className="text-xs">
+                        {semester === "springSummer"
+                          ? "Spring/Summer"
+                          : semester[0].toUpperCase() + semester.slice(1)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold">
+                        {course.Course_Code}
+                      </span>
+                      <span>{course.Course_Name}</span>
+                      <span>{course.Delivery}</span>
+                      <span>{`Online ${course.Online}h`}</span>
+                      <span>{`Class ${course.Class}h`}</span>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
