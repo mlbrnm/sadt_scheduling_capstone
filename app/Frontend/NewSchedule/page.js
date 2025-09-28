@@ -108,6 +108,53 @@ export default function NewSchedule() {
         ),
       },
     }));
+    // USED AI Q: Currently, when I add the same course to two+ semesters and I remove from one or more semesters, it is still saving the data. (CLEAR COURSE SECTIONS FOR THAT SEMESTER ONLY)
+    // Clear this course's sections for just this semester
+    setAssignments((prevAssignments) => {
+      const updated = { ...prevAssignments };
+      const courseId = String(course.Course_ID);
+
+      // Loop through keys and clear sections for the specified course and semester
+      for (const key of Object.keys(updated)) {
+        const [iId, cId] = key.split("-");
+        if (cId === courseId) {
+          const current = updated[key];
+          const sectionsBySemester = {
+            winter: [...(current.sectionsBySemester?.winter || [])],
+            springSummer: [...(current.sectionsBySemester?.springSummer || [])],
+            fall: [...(current.sectionsBySemester?.fall || [])],
+          };
+
+          // Remove sections for the specified semester
+          sectionsBySemester[semester] = [];
+
+          // Recalculate totals
+          const hoursPerSection = (course.Class || 0) + (course.Online || 0);
+          const totalsBySemester = {
+            winter: sectionsBySemester.winter.length * hoursPerSection,
+            springSummer:
+              sectionsBySemester.springSummer.length * hoursPerSection,
+            fall: sectionsBySemester.fall.length * hoursPerSection,
+          };
+          const totalHours =
+            totalsBySemester.winter +
+            totalsBySemester.springSummer +
+            totalsBySemester.fall;
+
+          // If nothing left across semesters, remove the key, else update it
+          if (
+            sectionsBySemester.winter.length === 0 &&
+            sectionsBySemester.springSummer.length === 0 &&
+            sectionsBySemester.fall.length === 0
+          ) {
+            delete updated[key];
+          } else {
+            updated[key] = { sectionsBySemester, totalsBySemester, totalHours };
+          }
+        }
+      }
+      return updated;
+    });
   };
 
   // Toggle section assignment in Assignment Grid component
