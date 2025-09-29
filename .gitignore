@@ -138,5 +138,12 @@ dist
 #my old server file
 .oldServer.py
 
+# ignore pycache files
 .app/Backend/Routes/__pycache__
 .app/Backend/__pycache__
+app/Backend/Routes/__pycache__
+app/Backend/__pycache__
+app/Backend/flask-server/__pycache__/
+app/Backend/flask-server/routes/__pycache__/
+
+.DS_Store
