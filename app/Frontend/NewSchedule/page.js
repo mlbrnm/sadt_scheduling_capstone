@@ -7,6 +7,22 @@ import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
 import AssignmentGrid from "./assignmentgrid";
 
+/* 
+assignments structure 
+{
+  "instructorId-courseId-semester": {
+    sections: ["A", "B", "C"] 
+  },
+}
+Example:
+{
+  "16491-CPRG211SD-winter": { sections: ["A", "B"] },
+  "16491-CPRG211SD-fall":   { sections: ["A"] },
+}
+*/
+
+const semester_list = ["winter", "springSummer", "fall"];
+
 export default function NewSchedule() {
   const [newScheduleDraft, setNewScheduleDraft] = useState({
     metaData: {
@@ -14,7 +30,7 @@ export default function NewSchedule() {
       activeSemesters: { winter: true, springSummer: true, fall: true },
     },
     addedInstructors: [],
-    addedCourses: [],
+    addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
   });
   const [instructorData, setInstructorData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [courseData, setCourseData] = useState([]); // Currently holds Mock data for courses - REPLACE WITH API CALL
@@ -60,96 +76,124 @@ export default function NewSchedule() {
     }));
   };
 
-  // Handler function to add a course to the newScheduleDraft state
-  const handleAddCourse = (course) => {
-    setNewScheduleDraft((prevDraft) => ({
-      ...prevDraft,
-      addedCourses: [...prevDraft.addedCourses, course],
-    }));
-  };
-
-  // Handler function to remove a course from the newScheduleDraft state
-  const handleRemoveCourse = (course) => {
-    setNewScheduleDraft((prevDraft) => ({
-      ...prevDraft,
-      addedCourses: prevDraft.addedCourses.filter(
-        (c) => c.Course_ID !== course.Course_ID
-      ),
-    }));
-  };
-
-  // Toggle section assignment in Assignment Grid component
-  const toggleSection = (instructorId, course, section) => {
-    const key = `${instructorId}-${course.Course_ID}`;
-    const hoursPerSection = (course.Class || 0) + (course.Online || 0);
-
-    // Update assignments state
-    setAssignments((prev) => {
-      const current = prev[key] || { sections: [], totalHours: 0 };
-
-      let updatedSections;
-      if (current.sections.includes(section)) {
-        // remove if already assigned
-        updatedSections = current.sections.filter((s) => s !== section);
-      } else {
-        // add new section
-        updatedSections = [...current.sections, section];
-      }
-
+  // Handler function to add a course to a specific semester in the newScheduleDraft state
+  const handleAddCourseToSemester = (semester, course) => {
+    setNewScheduleDraft((prevDraft) => {
+      const current = prevDraft.addedCoursesBySemester[semester] || [];
+      // Prevent adding duplicates
+      if (current.some((c) => c.Course_ID === course.Course_ID))
+        return prevDraft;
       return {
-        ...prev,
-        [key]: {
-          sections: updatedSections,
-          totalHours: updatedSections.length * hoursPerSection,
+        ...prevDraft,
+        addedCoursesBySemester: {
+          ...prevDraft.addedCoursesBySemester,
+          [semester]: [...current, course],
         },
       };
     });
   };
 
-  // Clean up assignments if instructors or courses are removed
+  // Handler function to remove a course from semester in the newScheduleDraft state
+  const handleRemoveCourseFromSemester = (semester, course) => {
+    setNewScheduleDraft((prevDraft) => ({
+      ...prevDraft,
+      addedCoursesBySemester: {
+        ...prevDraft.addedCoursesBySemester,
+        [semester]: prevDraft.addedCoursesBySemester[semester].filter(
+          (c) => c.Course_ID !== course.Course_ID
+        ),
+      },
+    }));
+  };
+
+  // Toggle section assignment in Assignment Grid component
+  const toggleSection = (instructorId, course, section, semester) => {
+    const key = `${instructorId}-${course.Course_ID}-${semester}`;
+
+    setAssignments((prev) => {
+      const current = prev[key] || { sections: [] };
+      const exists = current.sections.includes(section);
+
+      const sections = exists
+        ? current.sections.filter((s) => s !== section)
+        : [...current.sections, section];
+
+      if (sections.length === 0) {
+        // nothing left for this (instructor, course, semester) combo - remove the key
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [key]: { sections } };
+    });
+  };
+
+  // Clean up assignments if instructors or courses are removed, otherwise assignments retain stale data
   // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
   useEffect(() => {
     setAssignments((prev) => {
-      const validInstructorIds = newScheduleDraft.addedInstructors.map(
-        (i) => i.Instructor_ID
+      const validInstructorIds = new Set(
+        newScheduleDraft.addedInstructors.map((i) => String(i.Instructor_ID))
       );
-      const validCourseIds = newScheduleDraft.addedCourses.map(
-        (c) => c.Course_ID
-      );
+      const validCourseIdsBySemester = {
+        winter: new Set(
+          newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+        springSummer: new Set(
+          newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+        fall: new Set(
+          newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+      };
 
       // Create a new assignments object with only valid keys
       const updatedAssignments = {};
 
-      // Loop through keys in previous state and update assignments to include only the ones still in the addedInstructors and addedCourses
-      for (const key in prev) {
-        const [instructorId, courseId] = key.split("-");
-
+      // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
+      for (const [key, value] of Object.entries(prev)) {
+        const [iId, cId, sem] = key.split("-");
         if (
-          validInstructorIds.includes(parseInt(instructorId)) &&
-          validCourseIds.includes(courseId)
+          validInstructorIds.has(iId) &&
+          validCourseIdsBySemester[sem]?.has(cId)
         ) {
-          updatedAssignments[key] = prev[key];
+          updatedAssignments[key] = value;
         }
       }
       return updatedAssignments;
     });
-  }, [newScheduleDraft.addedInstructors, newScheduleDraft.addedCourses]);
+  }, [
+    newScheduleDraft.addedInstructors,
+    newScheduleDraft.addedCoursesBySemester,
+  ]);
 
   // Handlers for Save and Clear buttons
-  const handleSave = () => {};
+  const handleSave = () => {
+    // STILL NEED TO FINISH!!!
+    console.log("Saving schedule draft:", newScheduleDraft);
+    console.log("With assignments:", assignments);
+  };
   const handleClear = () => {
     setNewScheduleDraft((d) => ({
       ...d,
       addedInstructors: [],
-      addedCourses: [],
+      addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
     }));
     setAssignments({});
   };
 
+  const visibleSemesters = semester_list.filter(
+    (sem) => newScheduleDraft.metaData.activeSemesters?.[sem]
+  );
+
   return (
     <div className="p-4">
       {/* Heading */}
-      <h1 className="text-xl text-center font-bold mb-2">New Schedule</h1>
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
@@ -166,12 +210,30 @@ export default function NewSchedule() {
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
           {/* Top-Right: Course Section */}
           <div className="col-start-2 row-start-1">
-            <CourseSection
-              courses={courseData}
-              onAddCourse={handleAddCourse}
-              onRemoveCourse={handleRemoveCourse}
-              addedCourses={newScheduleDraft.addedCourses}
-            />
+            <div className="flex flex-wrap items-start">
+              {visibleSemesters.map((semester) => (
+                <div key={semester}>
+                  <div className="text-sm font-semibold">
+                    {semester === "springSummer"
+                      ? "Spring/Summer"
+                      : semester.charAt(0).toUpperCase() + semester.slice(1)}
+                  </div>
+                  <CourseSection
+                    semester={semester}
+                    courses={courseData}
+                    onAddCourse={(course, sem) =>
+                      handleAddCourseToSemester(sem, course)
+                    }
+                    onRemoveCourse={(course, sem) =>
+                      handleRemoveCourseFromSemester(sem, course)
+                    }
+                    addedCourses={
+                      newScheduleDraft.addedCoursesBySemester[semester]
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Bottom-Left: Instructor Section */}
@@ -181,6 +243,8 @@ export default function NewSchedule() {
               onAddInstructor={handleAddInstructor}
               onRemoveInstructor={handleRemoveInstructor}
               addedInstructors={newScheduleDraft.addedInstructors}
+              assignments={assignments}
+              addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
             />
           </div>
 
@@ -188,9 +252,10 @@ export default function NewSchedule() {
           <div className="col-start-2 row-start-2">
             <AssignmentGrid
               addedInstructors={newScheduleDraft.addedInstructors}
-              addedCourses={newScheduleDraft.addedCourses}
+              addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
               assignments={assignments}
               onToggleSection={toggleSection}
+              activeSemesters={newScheduleDraft.metaData.activeSemesters}
             />
           </div>
         </div>

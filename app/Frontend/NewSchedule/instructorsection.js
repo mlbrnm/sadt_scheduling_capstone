@@ -2,31 +2,33 @@
 import { useState } from "react";
 import { getUtilizationColor } from "../_Utils/utilizationColorsUtil";
 
+const instructorCardHeaders = [
+  "Contract",
+  "Win",
+  "Sp/Su",
+  "Fall",
+  "Total",
+  "Instructor",
+];
+const instructorListHeaders = [
+  "ID",
+  "Name",
+  "Contract",
+  "Semester Hours",
+  "Total Hours",
+  "Status",
+];
+
 export default function InstructorSection({
   instructors,
   onAddInstructor,
   onRemoveInstructor,
   addedInstructors,
+  assignments,
+  addedCoursesBySemester,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
-  const instructorCardHeaders = [
-    "Contract",
-    "Win",
-    "Sp/Su",
-    "Fall",
-    "Total",
-    "Instructor",
-  ];
-  const instructorListHeaders = [
-    "ID",
-    "Name",
-    "Contract",
-    "Semester Hours",
-    "Total Hours",
-    "Status",
-  ];
 
   // Handler function to add the selected instructor
   const handleAddInstructor = (instructor) => {
@@ -64,6 +66,35 @@ export default function InstructorSection({
 
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
+
+  // Helper function to get hours per section for a (semester, courseId)
+  const hoursPerSection = (semester, courseId) => {
+    const courses = addedCoursesBySemester?.[semester] || [];
+    const course = courses.find(
+      (c) => String(c.Course_ID) === String(courseId)
+    );
+    return (course?.Online || 0) + (course?.Class || 0);
+  };
+
+  // Helper Function to Sum total assigned hours for an instructor in a specific semester
+  const sumHours = (instructorId, semester) => {
+    let sum = 0;
+    const iId = String(instructorId);
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const [iid, cid, sem] = key.split("-");
+      if (iid === iId && sem === semester) {
+        const h = hoursPerSection(sem, cid);
+        sum += (value.sections.length || 0) * h;
+      }
+    }
+    return sum;
+  };
+
+  // Helper Function to Sum total assigned hours for an instructor across all semesters and add to current total hours
+  const sumTotal = (instructorId) => {
+    let sum = 0;
+    // STILL HAVE TO FINISH!!!
+  };
 
   return (
     <div>
@@ -113,12 +144,18 @@ export default function InstructorSection({
                     <td className="px-3 py-2 text-sm">
                       {instructor.Contract_Type}
                     </td>
-                    {/* Placeholder for Winter Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
-                    {/* Placeholder for Spring/Summer Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
-                    {/* Placeholder for Fall Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
+                    {/* Winter Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "winter")}
+                    </td>
+                    {/* Spring/Summer Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "springSummer")}
+                    </td>
+                    {/* Fall Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "fall")}
+                    </td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor(
                         instructor
