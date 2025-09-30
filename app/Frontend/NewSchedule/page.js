@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import mockInstructors from "./mockinstructors.json"; // MOCK DATA - REMOVE LATER
 import mockCourses from "./mockcourses.json"; // MOCK DATA - REMOVE LATER
 import ScheduleControls from "./schedulecontrols";
@@ -187,9 +187,20 @@ export default function NewSchedule() {
     setAssignments({});
   };
 
+  // Determine which semesters are active for rendering CourseSection and AssignmentGrid
   const visibleSemesters = semester_list.filter(
     (sem) => newScheduleDraft.metaData.activeSemesters?.[sem]
   );
+
+  // Sync horizontal scrolling between top (CourseSection) and bottom (AssignmentGrid)
+  // USED AI Q: How to sync horizontal scrolling between two divs in React?
+  const topScrollerRef = useRef(null);
+  const bottomScrollerRef = useRef(null);
+  const handleBottomScroll = (e) => {
+    if (topScrollerRef.current) {
+      topScrollerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
 
   return (
     <div className="p-4">
@@ -210,7 +221,7 @@ export default function NewSchedule() {
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
           {/* Top-Right: Course Section */}
           <div className="col-start-2 row-start-1 min-w-0">
-            <div className="overflow-x-auto w-full">
+            <div ref={topScrollerRef} className="overflow-x-hidden w-full">
               <div className="inline-flex">
                 {visibleSemesters.map((semester) => (
                   <div key={semester} className="min-w-0 shrink-0">
@@ -252,7 +263,11 @@ export default function NewSchedule() {
 
           {/* Bottom-Right: Assignment Grid */}
           <div className="col-start-2 row-start-2 min-w-0">
-            <div className="overflow-x-auto w-full">
+            <div
+              ref={bottomScrollerRef}
+              onScroll={handleBottomScroll}
+              className="overflow-x-auto w-full"
+            >
               <AssignmentGrid
                 addedInstructors={newScheduleDraft.addedInstructors}
                 addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
