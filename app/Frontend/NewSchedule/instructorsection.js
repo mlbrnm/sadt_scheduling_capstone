@@ -92,8 +92,19 @@ export default function InstructorSection({
 
   // Helper Function to Sum total assigned hours for an instructor across all semesters and add to current total hours
   const sumTotal = (instructorId) => {
-    let sum = 0;
-    // STILL HAVE TO FINISH!!!
+    // base hours for this instructor
+    const base =
+      addedInstructors.find(
+        (i) => String(i.Instructor_ID) === String(instructorId)
+      )?.Total_Hours || 0;
+
+    // add up assigned hours from all semesters
+    let assigned = 0;
+    for (const sem of ["winter", "springSummer", "fall"]) {
+      assigned += sumHours(instructorId, sem);
+    }
+    // 15 for number of weeks in a semester
+    return base + assigned * 15;
   };
 
   return (
@@ -157,11 +168,12 @@ export default function InstructorSection({
                       {sumHours(instructor.Instructor_ID, "fall")}
                     </td>
                     <td
-                      className={`px-3 py-2 text-sm ${getUtilizationColor(
-                        instructor
-                      )}`}
+                      className={`px-3 py-2 text-sm ${getUtilizationColor({
+                        ...instructor,
+                        Total_Hours: sumTotal(instructor.Instructor_ID),
+                      })}`}
                     >
-                      {`${instructor.Total_Hours} h`}
+                      {`${sumTotal(instructor.Instructor_ID)} h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
                       {instructor.Instructor_Name +
