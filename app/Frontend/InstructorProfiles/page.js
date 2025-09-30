@@ -7,6 +7,22 @@ export default function InstructorProfiles() {
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedData, setFetchedData] = useState([]);
 
+  //Create the custom table columns
+  //   Missing Headers:
+  //   Email
+  //   Qualification
+  //   Loading Hours
+  //   Level
+  //   Skill
+  const displayColumns = [
+    { header: "First Name", key: "instructor_name" },
+    { header: "Last Name", key: "instructor_lastname" },
+    { header: "ID", key: "instructor_id" },
+    { header: "Start Date", key: "start_date" },
+    { header: "End Date", key: "end_date" },
+    { header: "Contract Type", key: "contract_type" },
+  ];
+
   // create function to populate the table list with instructor data from database
   const fetchInstructorData = async (table) => {
     try {
@@ -31,10 +47,10 @@ export default function InstructorProfiles() {
     fetchInstructorData();
   }, []);
   return (
-    <div>
-      <h1>this is instructor profile page</h1>
+    <div className="p-8">
+      <h1 className="text-2xl">Instructor List</h1>
 
-      <div>
+      <div className="px-30 py-6 ">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
@@ -42,7 +58,7 @@ export default function InstructorProfiles() {
         ) : fetchedData.length > 0 ? (
           <div className="bg-white rounded-lg overflow-auto max-h-80">
             <table className="w-full bg-white">
-              <thead className="bg-gray-50 sticky top-0">
+              {/* <thead className="bg-gray-50 sticky top-0">
                 <tr className="bg-gray-100">
                   {Object.keys(fetchedData[0]).map((key) => (
                     <th
@@ -53,16 +69,25 @@ export default function InstructorProfiles() {
                     </th>
                   ))}
                 </tr>
+              </thead> */}
+              <thead className="bg-gray-50 sticky top-0">
+                <tr className="bg-gray-100">
+                  {displayColumns.map((col) => (
+                    <th
+                      key={col.key}
+                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                    >
+                      {col.header}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
                 {fetchedData.map((row, rowIndex) => (
                   <tr key={rowIndex}>
-                    {Object.values(row).map((cell, cellIndex) => (
-                      <td
-                        key={cellIndex}
-                        className="py-2 px-4 border-b text-sm"
-                      >
-                        {cell}
+                    {displayColumns.map((col) => (
+                      <td key={col.key} className="py-2 px-4 border-b text-sm">
+                        {row[col.key] || "-"}
                       </td>
                     ))}
                   </tr>
