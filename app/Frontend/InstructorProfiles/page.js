@@ -18,8 +18,8 @@ export default function InstructorProfiles() {
     { header: "First Name", key: "instructor_name" },
     { header: "Last Name", key: "instructor_lastname" },
     { header: "ID", key: "instructor_id" },
-    { header: "Start Date", key: "start_date" },
-    { header: "End Date", key: "end_date" },
+    { header: "Start Date", key: "salaried_begin_date" },
+    { header: "End Date", key: "contract_end" },
     { header: "Contract Type", key: "contract_type" },
   ];
 
@@ -47,16 +47,16 @@ export default function InstructorProfiles() {
     fetchInstructorData();
   }, []);
   return (
-    <div className="p-8">
+    <div className="p-6">
       <h1 className="text-2xl">Instructor List</h1>
 
-      <div className="px-30 py-6 ">
+      <div className="px-30 pt-6 ">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
           </div>
         ) : fetchedData.length > 0 ? (
-          <div className="bg-white rounded-lg overflow-auto max-h-80">
+          <div className="bg-white rounded-lg overflow-auto max-h-180">
             <table className="w-full bg-white">
               {/* <thead className="bg-gray-50 sticky top-0">
                 <tr className="bg-gray-100">
