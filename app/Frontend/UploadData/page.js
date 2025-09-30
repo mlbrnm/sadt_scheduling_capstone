@@ -96,7 +96,7 @@ export default function UploadData() {
       //formData.append("table", table); //send table dynamically
 
       const response = await fetch(
-        `http://localhost:5000/admin/upload/${table}`, //uses table value to access courrect backend route
+        `http://localhost:5000/admin/upload/${table}`, //uses table value to access correct backend route
         {
           method: "POST",
           headers: {
