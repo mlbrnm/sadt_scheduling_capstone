@@ -95,15 +95,20 @@ export default function Reports() {
   // GENERATE PROGRAM REPORT
   const generateProgramReport = () => {
     // initiate report generation
-    setIsLoading(true);
+    // setIsLoading(true);
     // check if there's data to generate the report
     if (!dataForReport || dataForReport.length === 0) {
       setError("No data available for report generation.");
-      setIsLoading(false);
+      // setIsLoading(false);
       return;
     }
     // map the data + add additional details
     const programInfo = dataForReport[0];
+    if (!programInfo || !programInfo.programData) {
+      setError("No changes to data since previous report. Unable to generate new report.");
+      setIsLoading(false);
+      return;
+    }
     const reportData = programInfo.programData.map((enrolInfo) => ({
       Program: programInfo.program,
       "Program Type": programInfo.programType,
@@ -132,12 +137,12 @@ export default function Reports() {
     )}.csv`;
     // newest first
     setReportHistory((prevHistory) => [
-      { fileName, generationTime: new Date().toLocaleString(), csvContent }, ...prevHistory
+      { fileName, csvContent,generationTime: new Date().toLocaleString(), reportType: "Program", selectedItem: selectedProgram }, ...prevHistory
     ]);
     setSuccessMessage("Report generated successfully!");
     setTimeout(() => setSuccessMessage(""), 5000); // Clear success message after 5 seconds
     // complete report generation
-    setIsLoading(false);
+    // setIsLoading(false);
     setError(null);
   };
 
@@ -220,8 +225,14 @@ export default function Reports() {
   setTimeout(() => {
     console.log("🔥 TIMEOUT STARTED");
     
-    if (!dataForReport?.teachingHistory) {
+    if (!dataForReport) {
       setError("Invalid instructor data.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!dataForReport?.teachingHistory) {
+      setError("No changes to data since previous report. Unable to generate new report.");
       setIsLoading(false);
       return;
     }
@@ -240,13 +251,13 @@ export default function Reports() {
 
     // send report to be stored in history for future download if needed
     const csvContent = convertToCSV(reportData);
-    const fileName = `Program_Report_${programInfo.program.replace(
+    const fileName = `Instructor_Report_${selectedInstructor.replace(
       /\s+/g,
       "_"
     )}.csv`;
     // newest first
     setReportHistory((prevHistory) => [
-      { fileName, generationTime: new Date().toLocaleString(), csvContent }, ...prevHistory
+      { fileName, csvContent, generationTime: new Date().toLocaleString(), reportType: "Instructor", selectedItem: selectedInstructor }, ...prevHistory
     ]);
     
     console.log("🔥 FINISHED - Setting isLoading to FALSE");
@@ -262,6 +273,12 @@ export default function Reports() {
     // check if there's data to generate the report
     if (!dataForReport || dataForReport.length === 0) {
       setError("No data available for report generation.");
+      setIsLoading(false);
+      return;
+    }
+    // check for previously generated report with same data
+    if (dataForReport[0] && dataForReport[0]["Report Type"]) {
+      setError("No changes to data since previous report. Unable to generate new report.");
       setIsLoading(false);
       return;
     }
@@ -281,13 +298,10 @@ export default function Reports() {
     });
     // send report to be stored in history for future download if needed
     const csvContent = convertToCSV(reportData);
-    const fileName = `Program_Report_${programInfo.program.replace(
-      /\s+/g,
-      "_"
-    )}.csv`;
+    const fileName = `Instructor_Utilization_Report_${new Date().toLocaleDateString().replace(/\//g, "-")}.csv`;
     // newest first
     setReportHistory((prevHistory) => [
-      { fileName, generationTime: new Date().toLocaleString(), csvContent }, ...prevHistory
+      { fileName, csvContent, generationTime: new Date().toLocaleString(), reportType: "Instructor Utilization", selectedItem: "All" }, ...prevHistory
     ]);
     setError(null); //no errors because it should've worked if you get to this point
     // complete report generation
@@ -413,6 +427,25 @@ export default function Reports() {
               </option>
             ))}
           </select>
+          {reportHistory.filter(r => r.reportType === "Program" && r.selectedItem === selectedProgram).length > 0 && 
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold mb-2">Previous Program Reports</h3>
+            <ul className="border rounded-lg bg-gray-50">
+              {reportHistory.filter(r => r.reportType === "Program" && r.selectedItem === selectedProgram).map((report, index) => (
+                <li key={index} className="flex justify-between items-center p-2 hover:bg-gray-100">
+                  <div>
+                  {report.fileName} - {report.generationTime}
+                  </div>
+                  <button
+                    onClick={() => downloadCSV(report.csvContent, report.fileName)}
+                    className="ml-4 px-3 py-1 rounded-lg text-black cursor-pointer button-secondary hover:text-underline"
+                  >
+                    Click to Download
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>}
         </div>
       )}
       {/* Instructor Selection Dropdown */}
@@ -438,6 +471,29 @@ export default function Reports() {
               </option>
             ))}
           </select>
+      {reportHistory.filter(r => r.reportType === "Instructor" && r.selectedItem === selectedInstructor).length > 0 && (
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold mb-2">Previous Instructor Reports</h3>
+        <ul className="border rounded-lg bg-gray-50">
+          {reportHistory
+            .filter(r => r.reportType === "Instructor" && r.selectedItem === selectedInstructor)
+            .map((report, index) => (
+              <li key={index} className="flex justify-between items-center p-3 border-b last:border-b-0">
+                <div>
+                  <span className="font-medium text-gray-800">{report.selectedItem}</span>
+                  <span className="text-sm text-gray-500 ml-2">({report.generationTime})</span>
+                </div>
+                <button
+                  onClick={() => downloadCSV(report.csvContent, report.fileName)}
+                  className="px-3 py-1 rounded text-sm text-black cursor-pointer button-secondary hover:button-underline"
+                >
+                  Click to Download
+                </button>
+              </li>
+            ))}
+        </ul>
+      </div>
+    )}
         </div>
       )}
       {/* Generate Report Button */}
@@ -452,7 +508,7 @@ export default function Reports() {
               isLoading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {isLoading ? <>Processing...</> : "Generate Report"}
+            {isLoading ? <>Processing...</> : "Generate New Report"}
           </button>
         </div>
       )}
@@ -466,10 +522,34 @@ export default function Reports() {
               onClick={downloadCSV}
               className="px-6 py-3 rounded-lg text-gray-500 cursor-pointer button-secondary hover:button-hover hover:text-underline"
             >
-              Download Report
+              Download Newly Generated Report
             </button>
           </div>
         )}
+      {/* Showing Previous Instructor Utilization Reports */}
+      {selectedReportType === "Instructor Utilization" && reportHistory.filter(r => r.reportType === "Instructor Utilization").length > 0 && (
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold mb-2">Previous Instructor Utilization Reports</h3>
+        <ul className="border rounded-lg bg-gray-50">
+          {reportHistory
+            .filter(r => r.reportType === "Instructor Utilization")
+            .map((report, index) => (
+              <li key={index} className="flex justify-between items-center p-3 border-b last:border-b-0">
+                <div>
+                  <span className="font-medium text-gray-800">{report.selectedItem}</span>
+                  <span className="text-sm text-gray-500 ml-2">({report.generationTime})</span>
+                </div>
+                <button
+                  onClick={() => downloadCSV(report.csvContent, report.fileName)}
+                  className="px-3 py-1 rounded text-sm text-black cursor-pointer button-secondary hover:button-underline"
+                >
+                  Click to Download
+                </button>
+              </li>
+            ))}
+        </ul>
+      </div>
+    )}
     </div>
   );
 }
