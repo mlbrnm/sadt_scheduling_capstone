@@ -23,6 +23,7 @@ export default function Reports() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [reportHistory, setReportHistory] = useState([]);
 
   //PICK WHICH TYPE OF REPORT YOU WANT
   const handleReportTypeSelect = (type) => {
@@ -60,8 +61,6 @@ export default function Reports() {
       setDataForReport(null);
       setError("No data found for this program.");
     }
-    // const genDate = new Date().toLocaleString();
-    // setGenerationDetails({ fileName: `${genDate} - ${program}`, generationTime: genDate }); ---WAIT to do this!!
     setSuccessMessage("");
   };
 
@@ -79,8 +78,6 @@ export default function Reports() {
       setDataForReport(null);
       setError("No data found for this instructor.");
     }
-    // const genDate = new Date().toLocaleString();
-    // setGenerationDetails({ fileName: `${genDate} - ${instructor}`, generationTime: genDate }); ---WAIT to do this!!
     setSuccessMessage("");
   };
 
@@ -127,6 +124,18 @@ export default function Reports() {
       )}.csv`,
       generationTime: new Date().toLocaleString(),
     });
+    // send report to be stored in history for future download if needed
+    const csvContent = convertToCSV(reportData);
+    const fileName = `Program_Report_${programInfo.program.replace(
+      /\s+/g,
+      "_"
+    )}.csv`;
+    // newest first
+    setReportHistory((prevHistory) => [
+      { fileName, generationTime: new Date().toLocaleString(), csvContent }, ...prevHistory
+    ]);
+    setSuccessMessage("Report generated successfully!");
+    setTimeout(() => setSuccessMessage(""), 5000); // Clear success message after 5 seconds
     // complete report generation
     setIsLoading(false);
     setError(null);
@@ -217,7 +226,7 @@ export default function Reports() {
       return;
     }
 
-    // Your report generation logic here...
+    // report generation logic here...
     const reportData = [{
       Section: "TEST",
       Name: dataForReport.name || "Test Name",
@@ -228,6 +237,17 @@ export default function Reports() {
       fileName: `Test_Report.csv`,
       generationTime: new Date().toLocaleString(),
     });
+
+    // send report to be stored in history for future download if needed
+    const csvContent = convertToCSV(reportData);
+    const fileName = `Program_Report_${programInfo.program.replace(
+      /\s+/g,
+      "_"
+    )}.csv`;
+    // newest first
+    setReportHistory((prevHistory) => [
+      { fileName, generationTime: new Date().toLocaleString(), csvContent }, ...prevHistory
+    ]);
     
     console.log("🔥 FINISHED - Setting isLoading to FALSE");
     setIsLoading(false);
@@ -259,6 +279,16 @@ export default function Reports() {
         .replace(/\//g, "-")}.csv`,
       generationTime: new Date().toLocaleString(),
     });
+    // send report to be stored in history for future download if needed
+    const csvContent = convertToCSV(reportData);
+    const fileName = `Program_Report_${programInfo.program.replace(
+      /\s+/g,
+      "_"
+    )}.csv`;
+    // newest first
+    setReportHistory((prevHistory) => [
+      { fileName, generationTime: new Date().toLocaleString(), csvContent }, ...prevHistory
+    ]);
     setError(null); //no errors because it should've worked if you get to this point
     // complete report generation
     setIsLoading(false);
@@ -288,13 +318,16 @@ export default function Reports() {
   };
 
   // FUNCTION TO ALLOW FOR DOWNLOAD OF CSV FILE
-  const downloadCSV = () => {
-    const csvData = convertToCSV(dataForReport);
-    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+  // if no params are passed, it will use the current report data
+  const downloadCSV = (csvContent = null, fileName = null) => {
+    const downloadableContent = csvContent || convertToCSV(dataForReport);
+    const fileNameToUse = fileName || generationDetails.fileName;
+
+    const blob = new Blob([downloadableContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", generationDetails.fileName);
+    link.setAttribute("download", fileNameToUse);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
