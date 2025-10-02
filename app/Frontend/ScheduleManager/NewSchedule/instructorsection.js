@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { getUtilizationColor } from "../_Utils/utilizationColorsUtil";
+import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 const instructorCardHeaders = [
   "Contract",
