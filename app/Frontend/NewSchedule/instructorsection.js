@@ -269,14 +269,16 @@ export default function InstructorSection({
                         <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span className={getUtilizationColor(instructor)}>
                             {`${instructor.Total_Hours}/${
-                              instructor.Contract_Type === "CS" ? "800" : "615"
+                              instructor.Contract_Type === "Casual"
+                                ? "800"
+                                : "615"
                             } h`}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span
                             className={`${
-                              instructor.Instructor_Status === "Available"
+                              instructor.Instructor_Status === "Active"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             } rounded-sm p-2`}
