@@ -1,5 +1,3 @@
-"use client";
-
 const semester_list = ["winter", "springSummer", "fall"];
 const semester_titles = {
   winter: "Winter",

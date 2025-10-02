@@ -21,12 +21,6 @@ export default function CourseSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Add sentinel course to end of addedCourses for "+ Add Course" button
-  const coursesWithAdd = [
-    ...addedCourses,
-    { __isAdd: true, Course_ID: `__add-${semester}` },
-  ];
-
   // Handler function to add the selected course
   const handleAddCourse = (course) => {
     onAddCourse(course, semester);
@@ -65,59 +59,60 @@ export default function CourseSection({
     return (matchesName || matchesCode) && !isAlreadyAdded;
   });
 
+  // Add sentinel course to end of addedCourses for "+ Add Course" button
+  // USED AI Q: How can I add a button at the end of a list that opens a modal to add more items to the list? (SENTINEL ADD COURSE CARD)
+  const coursesWithAdd = [
+    ...addedCourses,
+    { __isAdd: true, Course_ID: `__add-${semester}` },
+  ];
+
   return (
     <div>
       {/* Added Courses */}
-      <div className="bg-gray-50 w-fit">
+      <div className="bg-gray-50 w-full">
         {/* Display added courses */}
-        <div>
-          {/* Course list */}
-          <div>
-            <ul className="flex">
-              {coursesWithAdd.map((course) => (
-                <li
-                  key={course.Course_ID}
-                  onClick={() => {
-                    if (course.__isAdd) {
-                      setIsModalOpen(true);
-                      return;
-                    }
-                    handleRemoveCourse(course);
-                  }}
-                  className={`p-2 text-sm cursor-pointer hover:bg-green-100 flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 text-center
+        {/* Course list */}
+        <ul className="flex flex-nowrap">
+          {coursesWithAdd.map((course) => (
+            <li
+              key={course.Course_ID}
+              onClick={() => {
+                if (course.__isAdd) {
+                  setIsModalOpen(true);
+                  return;
+                }
+                handleRemoveCourse(course);
+              }}
+              className={`p-2 text-sm cursor-pointer hover:bg-green-100 flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 shrink-0 text-center
                     ${course.__isAdd ? "border-dashed" : "hover:bg-red-100"}`}
-                  title={
-                    course.__isAdd
-                      ? "Add Course"
-                      : `Click to remove ${course.Course_Code} - ${course.Course_Name}`
-                  }
-                >
-                  {course.__isAdd ? (
-                    <>
-                      <span className="text-xl font-bold">+</span>
-                      <span className="text-xs font-semibold">Add Course</span>
-                      <span className="text-xs">
-                        {semester === "springSummer"
-                          ? "Spring/Summer"
-                          : semester[0].toUpperCase() + semester.slice(1)}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold">
-                        {course.Course_Code}
-                      </span>
-                      <span>{course.Course_Name}</span>
-                      <span>{course.Delivery}</span>
-                      <span>{`Online ${course.Online}h`}</span>
-                      <span>{`Class ${course.Class}h`}</span>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+              title={
+                course.__isAdd
+                  ? "Add Course"
+                  : `Click to remove ${course.Course_Code} - ${course.Course_Name}`
+              }
+            >
+              {course.__isAdd ? (
+                <>
+                  <span className="text-xl font-bold">+</span>
+                  <span className="text-xs font-semibold">Add Course</span>
+                  <span className="text-xs">
+                    {semester === "springSummer"
+                      ? "Spring/Summer"
+                      : semester[0].toUpperCase() + semester.slice(1)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">{course.Course_Code}</span>
+                  <span>{course.Course_Name}</span>
+                  <span>{course.Delivery}</span>
+                  <span>{`Online ${course.Online}h`}</span>
+                  <span>{`Class ${course.Class}h`}</span>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Modal for adding courses */}

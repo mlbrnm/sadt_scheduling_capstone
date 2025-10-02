@@ -1,5 +1,3 @@
-"use client";
-
 export default function ScheduleControls({
   metaData,
   setNewScheduleDraft,
