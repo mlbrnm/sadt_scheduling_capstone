@@ -21,12 +21,6 @@ export default function CourseSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Add sentinel course to end of addedCourses for "+ Add Course" button
-  const coursesWithAdd = [
-    ...addedCourses,
-    { __isAdd: true, Course_ID: `__add-${semester}` },
-  ];
-
   // Handler function to add the selected course
   const handleAddCourse = (course) => {
     onAddCourse(course, semester);
@@ -64,6 +58,13 @@ export default function CourseSection({
 
     return (matchesName || matchesCode) && !isAlreadyAdded;
   });
+
+  // Add sentinel course to end of addedCourses for "+ Add Course" button
+  // USED AI Q: How can I add a button at the end of a list that opens a modal to add more items to the list? (SENTINEL ADD COURSE CARD)
+  const coursesWithAdd = [
+    ...addedCourses,
+    { __isAdd: true, Course_ID: `__add-${semester}` },
+  ];
 
   return (
     <div>
