@@ -196,9 +196,9 @@ export default function NewSchedule() {
   // USED AI Q: How to sync horizontal scrolling between two divs in React?
   const topScrollerRef = useRef(null);
   const bottomScrollerRef = useRef(null);
-  const handleBottomScroll = (e) => {
-    if (topScrollerRef.current) {
-      topScrollerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+  const handleTopScroll = (e) => {
+    if (bottomScrollerRef.current) {
+      bottomScrollerRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
   };
 
@@ -221,7 +221,11 @@ export default function NewSchedule() {
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
           {/* Top-Right: Course Section */}
           <div className="col-start-2 row-start-1 min-w-0">
-            <div ref={topScrollerRef} className="overflow-x-hidden w-full">
+            <div
+              ref={topScrollerRef}
+              onScroll={handleTopScroll}
+              className="overflow-x-auto w-full"
+            >
               <div className="inline-flex">
                 {visibleSemesters.map((semester) => (
                   <div key={semester} className="min-w-0 shrink-0">
@@ -263,11 +267,7 @@ export default function NewSchedule() {
 
           {/* Bottom-Right: Assignment Grid */}
           <div className="col-start-2 row-start-2 min-w-0">
-            <div
-              ref={bottomScrollerRef}
-              onScroll={handleBottomScroll}
-              className="overflow-x-auto w-full"
-            >
+            <div ref={bottomScrollerRef} className="overflow-x-hidden w-full">
               <AssignmentGrid
                 addedInstructors={newScheduleDraft.addedInstructors}
                 addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
