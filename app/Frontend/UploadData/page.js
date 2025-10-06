@@ -15,13 +15,7 @@ export default function UploadData() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const dataTypes = [
-    "Program",
-    "Course",
-    "Instructor",
-    "Instructor Courses",
-    "Instructor Skills",
-  ];
+  const dataTypes = ["Programs", "Courses", "Instructors"];
 
   const validateFile = (file) => {
     const validTypes = [
@@ -62,11 +56,9 @@ export default function UploadData() {
 
   //map to track which table to upload to
   const tableMap = {
-    Program: "programs",
-    Course: "courses",
-    Instructor: "instructors",
-    "Instructor Courses": "instructor_course_history",
-    "Instructor Skills": "instructor_skills",
+    Programs: "programs",
+    Courses: "courses",
+    Instructors: "instructors",
   };
 
   const handleFileUpload = async (event) => {
@@ -141,7 +133,7 @@ export default function UploadData() {
       // const data = await response.json();
       // return data;
       const response = await fetch(
-        `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}s`,
+        `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}`,
         {
           method: "GET",
           headers: {

@@ -7,20 +7,15 @@ export default function InstructorProfiles() {
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedData, setFetchedData] = useState([]);
 
-  //Create the custom table columns
-  //   Missing Headers:
-  //   Email
-  //   Qualification
-  //   Loading Hours
-  //   Level
-  //   Skill
   const displayColumns = [
     { header: "First Name", key: "instructor_name" },
     { header: "Last Name", key: "instructor_lastname" },
     { header: "ID", key: "instructor_id" },
+    { header: "Contract Type", key: "contract_type" },
+    { header: "Instructor Status", key: "instructor_status" },
     { header: "Start Date", key: "salaried_begin_date" },
     { header: "End Date", key: "contract_end" },
-    { header: "Contract Type", key: "contract_type" },
+    { header: "Reporting AC", key: "reporting_ac" },
   ];
 
   // create function to populate the table list with instructor data from database
@@ -46,6 +41,7 @@ export default function InstructorProfiles() {
   useEffect(() => {
     fetchInstructorData();
   }, []);
+
   return (
     <div className="p-6">
       <h1 className="text-2xl">Instructor List</h1>
@@ -58,18 +54,6 @@ export default function InstructorProfiles() {
         ) : fetchedData.length > 0 ? (
           <div className="bg-white rounded-lg overflow-auto max-h-180">
             <table className="w-full bg-white">
-              {/* <thead className="bg-gray-50 sticky top-0">
-                <tr className="bg-gray-100">
-                  {Object.keys(fetchedData[0]).map((key) => (
-                    <th
-                      key={key}
-                      className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                    >
-                      {key}
-                    </th>
-                  ))}
-                </tr>
-              </thead> */}
               <thead className="bg-gray-50 sticky top-0">
                 <tr className="bg-gray-100">
                   {displayColumns.map((col) => (

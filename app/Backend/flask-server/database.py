@@ -92,7 +92,7 @@ TABLE_COLUMN_MAPPINGS = {
         "Instructor_Status": "instructor_status",
         "Salaried Begin Date": "salaried_begin_date",
         "Contract End": "contract_end",
-        "Reporting AC": "reporting_ac",
+        "Reporting_AC": "reporting_ac",
         "CCH Target AY2025": "cch_target_ay2025",
         "Primary Program": "primary_program",
         "Position #": "position_number",
