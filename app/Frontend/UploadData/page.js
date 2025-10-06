@@ -128,10 +128,6 @@ export default function UploadData() {
     try {
       setIsLoading(true);
       setError(null);
-      // TODO: Implement fetching previous versions from the backend with actual API call
-      // const response = await fetch(`/api/versions?type=${selectedDataType}`);
-      // const data = await response.json();
-      // return data;
       const response = await fetch(
         `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}`,
         {
@@ -208,7 +204,7 @@ export default function UploadData() {
       setSuccessMessage("");
 
       const response = await fetch(
-        `http://localhost:5000/admin/uploads/restore/${version.dataType.toLowerCase()}s/${
+        `http://localhost:5000/admin/uploads/restore/${version.dataType.toLowerCase()}/${
           version.storagePath
         }`,
         {
