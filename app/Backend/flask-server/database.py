@@ -127,6 +127,13 @@ TABLE_VALID_COLUMNS = {
     "programs": set(TABLE_COLUMN_MAPPINGS["programs"].values()),
 }
 
+# certain data not needed to be displayed back to user 
+HIDDEN_COLUMNS = {
+    "programs": ["program_id"],
+    "courses": [], #just in case we need to add a hidden column to courses 
+    "instructors": [] #just in case we need to add a hidden column to instructors 
+}
+
 # dictionary of primary keys in the database so that my logic can check if row data for a primary key exists (used to skip empty rows)
 TABLE_PRIMARY_KEYS = {
     "courses" : "course_id",
@@ -145,7 +152,7 @@ def formatted_data(df, table_name):
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
     # Timestamp and datetime values are converted to ISO format
-    df = df.applymap(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime)) else x)
+    df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
     # map() applies the lambda function to all the elements of the dataframe 
     # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
     # if it isnt either, it is not changed
@@ -154,6 +161,17 @@ def formatted_data(df, table_name):
     df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
     df = df.where(pd.notnull(df), None)
     # this acts as a type of safety net using True/False condition (if False then replaced with None)
+
+    if table_name == "instructors" and 'years_as_temp' in df.columns:
+        # Convert to numeric, coercing invalid entries to NaN
+        df['years_as_temp'] = pd.to_numeric(df['years_as_temp'], errors='coerce')
+        
+        # Round to 2 decimal places
+        df['years_as_temp'] = df['years_as_temp'].round(2)
+        
+        # Replace NaN and infinities with None (JSON-safe)
+        df['years_as_temp'] = df['years_as_temp'].replace([np.nan, np.inf, -np.inf], None)
+
 
     # Drop rows where the primary key is missing
     if primary_key and primary_key in df.columns:
@@ -165,7 +183,10 @@ def formatted_data(df, table_name):
     if primary_key and primary_key not in df.columns:
         df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))] # _ is a throwaway variable (we don't need it's value)
         # primary key created for each row of dataframe and converted to string 
+
     return df
+
+
 
 
 # function to upload the file while using more data formatting 
@@ -194,9 +215,24 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
         raise ValueError ("Unsupported file type. Please upload a CSV or XLSX file.")
     # df is a Pandas DataFrame object containing all data from the file
 
+    # print("Original columns:", df.columns.tolist())
+    # print("Column mapping:", column_standardization)
+    # df = df.rename(columns=column_standardization)
+    # print("Renamed columns:", df.columns.tolist())
+
+    # valid_columns = TABLE_VALID_COLUMNS.get(table_name, set())
+    # print("Valid columns:", valid_columns)
+    # df = df[[col for col in df.columns if col in valid_columns]]
+    # print("Filtered columns:", df.columns.tolist())
+    # print("Number of rows:", len(df))
+
+
     df.columns = df.columns.str.strip() # this gets rid of white space before or after the column name
     df.columns = df.columns.str.replace('\xa0', ' ') # replaces the non-breaking space (\xa0) with regular space (non-breaking space doesnt work for data upload)
+    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)  # collapse multiple spaces
+    df.columns = df.columns.str.strip() # strip again just in case
 
+    column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
     df = df.rename(columns = column_standardization)
     # renames the columns in the dataframe to fit the standards of the database 
 
@@ -204,7 +240,7 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     df = formatted_data(df, table_name)
     # the data in the dataframe is formatted according to the formatted_data function
 
-    df['uploaded_at'] = datetime.now().isoformat() # converted to ISO format (standard string format) to be accepted into JSON 
+    df['uploaded_at'] = datetime.now().strftime("%Y-%m-%d @%H:%M") # converted to ISO format (standard string format) to be accepted into JSON 
     df['uploaded_by'] = uploaded_by
     # these metadata columns will be used across all uploaded tables
     
@@ -215,6 +251,11 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     supabase_client.table(table_name).insert(data_asDictionaries).execute()
     # uploads the data to supabase
     # execute() is the function that actually sends this data through
+
+    column_order = list(df.columns)
+    return column_order
+
+
 
 # Don't think we will need this functionality anymore
 def backup_table(table_name):
@@ -263,6 +304,9 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         .execute()
     next_version = (max([r["version"] for r in existing.data], default = 0) + 1)
 
+    column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
+    column_order = upload_file(file, table_name, column_standardization, user_email)
+
     # insert the metadata into upload_files table
     supabase.table("uploaded_files").insert({
         "original_name": file.filename,
@@ -270,14 +314,16 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         "storage_path": storage_path,
         "version": next_version,
         "uploaded_by": user_email,
-        "uploaded_at": datetime.now(timezone.utc).isoformat()
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "column_order": column_order
     }).execute()
 
     return {
         "version": next_version,
         "storage_path": storage_path,
         "original_name": file.filename,
-        "table_name": table_name
+        "table_name": table_name,
+        "column_order": column_order
     }
 
 
@@ -315,6 +361,7 @@ def upload_table(file, table_name, uploaded_by):
 
     print(f"Data successfully uploaded to table: {table_name}")
 
+
 # function to get the table data from the database
 def fetch_table_data (table_name):
     if table_name not in TABLE_COLUMN_MAPPINGS:
@@ -322,8 +369,28 @@ def fetch_table_data (table_name):
     
     try:
         response = supabase_client.table(table_name).select("*").execute()
+        data = response.data or []
 
-        return response.data
+        hidden_cols = HIDDEN_COLUMNS.get(table_name, [])
+        if hidden_cols:
+            for row in data:
+                for col in hidden_cols:
+                    row.pop(col, None)
+
+            meta_response = supabase_client.table("uploaded_files") \
+                        .select("column_order") \
+                        .eq("table_name", table_name) \
+                        .order("uploaded_at", desc=True) \
+                        .limit(1) \
+                        .execute()
+                    
+            column_order = []
+            if meta_response.data and len(meta_response.data) > 0:
+                column_order = meta_response.data[0].get("column_order", list(data[0].keys()) if data else [])
+            elif data:
+                column_order = list(data[0].keys())
+
+            return {"data": data, "column_order": column_order}
     except Exception as e:
         raise RuntimeError(f"Error fetching data from {table_name}: {e}")
     

@@ -81,9 +81,12 @@ def register_admin_routes(app):
 
             # upload to database
             upload_table(file, table_name, uploaded_by)
+            data = fetch_table_data(table_name)
+
 
             return jsonify({
                 "status": f"{table_name.capitalize()} uploaded successfully",
+                "data": data,
                 "file_storage": storage_result
             }), 200
 

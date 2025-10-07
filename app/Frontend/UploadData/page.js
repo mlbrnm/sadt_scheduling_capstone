@@ -139,13 +139,19 @@ export default function UploadData() {
   };
 
   //headers will either be one from the headersMap or if not there, just what is found in the returned data
-  const formatPreviewData = (data) => {
-    const headers = data.length
+  const formatPreviewData = (data, columnOrder = []) => {
+    const headers = columnOrder.length
+      ? columnOrder.map((key) => ({
+          key,
+          label: headersMap[key] || key,
+        }))
+      : data.length
       ? Object.keys(data[0]).map((key) => ({
           key,
           label: headersMap[key] || key,
         }))
       : [];
+
     return { headers, rows: data };
   };
 
@@ -170,7 +176,12 @@ export default function UploadData() {
       //     }))
       //   : [];
 
-      setPreviewData(formatPreviewData(result.data || []));
+      setPreviewData(
+        formatPreviewData(
+          result.data.data || [],
+          result.data.column_order || []
+        )
+      );
     } catch (err) {
       setError(err.message);
       setPreviewData(formatPreviewData(result.data || []));
@@ -232,7 +243,6 @@ export default function UploadData() {
       const formData = new FormData();
       formData.append("file", file);
       //formData.append("table", table); //send table dynamically
-
       const response = await fetch(
         `http://localhost:5000/admin/upload/${table}`, //uses table value to access correct backend route
         {
@@ -255,14 +265,20 @@ export default function UploadData() {
         uploadTime: new Date().toLocaleString(),
       });
       //setPreviewData(result.data || []);
-      setPreviewData(formatPreviewData(result.data || []));
+      //setPreviewData(formatPreviewData(result.data || []));
+      setPreviewData(
+        formatPreviewData(
+          result.data.data || [],
+          result.data.column_order || []
+        )
+      );
       setSuccessMessage(`File "${file.name}" uploaded successfully!`);
 
       await fetchTableData(table);
     } catch (err) {
       setError(err.message);
       setUploadDetails({ fileName: "", uploadTime: "" });
-      setPreviewData(formatPreviewData(result.data || []));
+      setPreviewData({ headers: [], rows: [] });
     } finally {
       setIsLoading(false);
     }
@@ -373,7 +389,12 @@ export default function UploadData() {
 
       const result = await response.json();
 
-      setPreviewData(formatPreviewData(result.data || []));
+      setPreviewData(
+        formatPreviewData(
+          result.data.data || [],
+          result.data.column_order || []
+        )
+      );
       setUploadDetails({
         fileName: `RESTORED_${version.fileName}`,
         uploadTime: new Date().toLocaleString(),
