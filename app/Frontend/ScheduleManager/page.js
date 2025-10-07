@@ -75,41 +75,43 @@ export default function ScheduleManager() {
           </div>
       </div>
       {/* Table Container */}
-        <div className="overflow-x-auto overflow-y-auto bg-gray-100 m-0 rounded-lg shadow-md">
-          <table className="table-auto min-w-full">
-            <thead className="bg-gray-300">
-              <tr className="grid grid-cols-7 sticky top-0 gap-8 py-3 text-left font-sm pl-6">
-                <th>Date Submitted</th>
-                <th>Title</th>
-                <th>Program Type</th>
-                <th>Status</th>
-                {/* Placeholder for now for design of AC sched manager */}
-                <th>Tags</th>
-                <th>Timeslots</th>
-              </tr>
-            </thead>
-            <tbody>
-              {submittedSchedulesData.map((schedule, index) => (
-                <tr key={index} className="grid grid-cols-7 gap-8 py-3 border-b pl-6">
-                  <td className="mt-1">{schedule.dateSubmitted}</td>
-                  <td className="mt-1">{schedule.title}</td>
-                  <td className="p-4-md mt-1.5 text-justify-center">
-                    <span className={getProgramTypeColour(schedule.programType)}>{schedule.programType}</span>
-                  </td>
-                  <td className="mt-1.5">
-                    <span className={getStatusColour(schedule.status)}>{schedule.status}</span>
-                  </td>
-                  <td className="text-xs mt-1">{schedule.tags}</td>
-                  <td className="mt-1">
-                    <span className={getTimeslotsColour(schedule.timeslots)}>{schedule.timeslots}</span>
-                  </td>
-                  <td className="flex justify-left mx-12">
-                    <button className="button-primary text-white px-4 py-1.5 rounded hover:button-hover active:button-clicked">View</button>
-                  </td>
+        <div className="bg-gray-100 m-0 rounded-lg shadow-md">
+          <div className="h-[calc(100vh-269px)] overflow-y-auto overflow-x-hidden">
+            <table className="table-auto min-w-full">
+              <thead className="bg-gray-300 sticky top-0">
+                <tr className="grid grid-cols-7 gap-8 py-3 text-left font-sm pl-6">
+                  <th>Date Submitted</th>
+                  <th>Title</th>
+                  <th>Program Type</th>
+                  <th>Status</th>
+                  {/* Placeholder for now for design of AC sched manager */}
+                  <th>Tags</th>
+                  <th>Timeslots</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {submittedSchedulesData.map((schedule, index) => (
+                  <tr key={index} className="grid grid-cols-7 gap-8 py-3 border-b pl-6">
+                    <td className="mt-1">{schedule.dateSubmitted}</td>
+                    <td className="mt-1">{schedule.title}</td>
+                    <td className="p-4-md mt-1.5 text-justify-center">
+                      <span className={getProgramTypeColour(schedule.programType)}>{schedule.programType}</span>
+                    </td>
+                    <td className="mt-1.5">
+                      <span className={getStatusColour(schedule.status)}>{schedule.status}</span>
+                    </td>
+                    <td className="text-xs mt-1">{schedule.tags}</td>
+                    <td className="mt-1">
+                      <span className={getTimeslotsColour(schedule.timeslots)}>{schedule.timeslots}</span>
+                    </td>
+                    <td className="flex justify-left mx-12">
+                      <button className="button-primary text-white px-4 py-1.5 rounded hover:button-hover active:button-clicked">View</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
     </div>
     );
