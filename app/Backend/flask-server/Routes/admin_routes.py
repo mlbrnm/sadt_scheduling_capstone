@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 from database import upload_table, fetch_table_data, save_uploaded_file, supabase_client, restore_file_from_url
 import os
 import io
+from supabase_client import supabase
 
 #CHANGING STRUCTURE TO NOT HAVE TEMP FOLDER
 # create a folder to temporarily store the file that will be uploaded
@@ -14,12 +15,41 @@ import io
 # mkdir() will only create directory 1 level deep (technically works now, but won't work later if I want to add more folders to save the upload file into)
 # exist_ok= checks what to do if the folder already exists, True means it is ok if it exists (it will skip creation), False means it is not ok if folder already exists (it will raise an error)
 
+
+# function to check user authorization and get authorized user's email
+# def authorize_user(supabase):
+#     authorization_header = request.headers.get("Authorization")
+#     if not authorization_header or not authorization_header.startswith("Bearer "):
+#         raise ValueError("Invalid authorization header.")
+
+#     token = authorization_header.split(" ")[1]
+#     user_response = supabase.auth.get_user(token)
+
+#     if user_response.user is None:
+#         raise ValueError("Invalid or expired token.")
+    
+#     return user_response.user.email
+
+
 # function to register all the admin routes to the Flask app (which it takes as the parameter)
 def register_admin_routes(app):
 
     @app.route("/admin/upload/<table_name>", methods=["POST"])
     def upload_table_route(table_name):
         print("Upload request received for table:", table_name)
+
+        # authorization_header = request.headers.get("Authorization")
+        # if not authorization_header or not authorization_header.startswith("Bearer "):
+        #     return jsonify({"error": "Invalid authorization header."}), 401
+        
+        # token = authorization_header.split(" ")[1]
+        # user_response = supabase.auth.get_user(token)
+
+        # if user_response.user is None:
+        #     return jsonify({"error": "Invalid or expired token"}), 401
+        
+        # user_email = user_response.user.email
+        # print("Verified user:", user_email)
 
         # check if a file is included in the request
         if "file" not in request.files:
@@ -35,14 +65,17 @@ def register_admin_routes(app):
         # temp_path = os.path.join(UPLOAD_FOLDER, filename)
         # file.save(temp_path)
 
-        uploaded_by = request.headers.get("X-User-Email", "unknown")
+        # uploaded_by = user_email
 
         try:
+            uploaded_by = request.headers.get("X-User-Email")
+            if not uploaded_by:
+                return jsonify({"error": "Missing user email"}), 400
             # upload to Supabase storage
             storage_result = save_uploaded_file(
                 file, 
                 uploaded_by, 
-                supabase_client, 
+                supabase, 
                 table_name = table_name,
                 bucket_name="uploads")
 
@@ -101,9 +134,11 @@ def register_admin_routes(app):
     @app.route("/admin/uploads/restore/<table_name>/<storage_path>", methods = ["POST"])
     def restore_upload(table_name, storage_path):
         try:
+            
 
-            uploaded_by = request.headers.get("X-User-Email", "unknown")
-
+            uploaded_by = request.headers.get("X-User-Email")
+            if not uploaded_by:
+                        return jsonify({"error": "Missing user email"}), 400
             file_url = f"https://meyjrnnoyfxxvsqzvhlu.supabase.co/storage/v1/object/public/uploads/{storage_path}"
 
             restore_file_from_url(file_url, table_name, uploaded_by)

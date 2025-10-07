@@ -144,3 +144,5 @@ app/Backend/flask-server/__pycache__/
 app/Backend/flask-server/routes/__pycache__/
 
 .DS_Store
+
+app\Backend\flask-server\supabase_client.py

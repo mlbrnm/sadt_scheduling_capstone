@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
+//import { createClient } from "@supabase/supabase-js";
 
 export default function UploadData() {
+  const [session, setSession] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [selectedDataType, setSelectedDataType] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
@@ -15,6 +18,50 @@ export default function UploadData() {
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // const authorize_user = async () => {
+  //   const {
+  //     data: { session },
+  //   } = await supabase.auth.getSession();
+
+  //   if (!session) {
+  //     throw new Error("Unauthorized user - access denied.");
+  //   }
+
+  //   return session.access_token;
+  // };
+
+  //persist the user's session so we can track user info
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        setError("Error fetching session");
+        console.error(error);
+        return;
+      }
+
+      if (session) {
+        setSession(session);
+        console.log("user session:", session);
+      }
+    };
+
+    getSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const userEmail = session?.user?.email;
 
   const dataTypes = ["Programs", "Courses", "Instructors"];
 
@@ -148,6 +195,17 @@ export default function UploadData() {
   };
 
   const handleFileUpload = async (event) => {
+    // const {
+    //   data: { session },
+    // } = await supabase.auth.getSession();
+
+    // if (!session) {
+    //   setError("Unauthorized user - no access.");
+    //   return;
+    // }
+
+    // const token = session.access_token;
+
     const file = event.target.files[0];
     if (!file) return;
 
@@ -169,6 +227,8 @@ export default function UploadData() {
 
       if (!validateFile(file)) throw new Error("Invalid file type.");
 
+      //const token = authorize_user();
+
       const formData = new FormData();
       formData.append("file", file);
       //formData.append("table", table); //send table dynamically
@@ -178,7 +238,8 @@ export default function UploadData() {
         {
           method: "POST",
           headers: {
-            "X-User-Email": "testemail@sait.ca", //must change to get whoever is signed in
+            "X-User-Email": userEmail || "",
+            //Authorization: `Bearer ${token}`,
           },
           body: formData,
         }
@@ -215,12 +276,14 @@ export default function UploadData() {
     try {
       setIsLoading(true);
       setError(null);
+      //const token = authorize_user();
       const response = await fetch(
         `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}`,
         {
           method: "GET",
           headers: {
-            "X-User-Email": "testemail@sait.ca", //must change to get whoever is signed in
+            "X-User-Email": userEmail || "",
+            //Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -297,7 +360,8 @@ export default function UploadData() {
         {
           method: "POST",
           headers: {
-            "X-User-Email": "test@edu.sait.ca",
+            "X-User-Email": userEmail || "",
+            //Authorization: `Bearer ${token}`,
           },
         }
       );
