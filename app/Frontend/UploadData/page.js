@@ -506,14 +506,14 @@ export default function UploadData() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
             </div>
           ) : previewData.rows && previewData.rows.length > 0 ? (
-            <div className="bg-white rounded-lg overflow-auto max-h-120">
-              <table className="w-full bg-white">
+            <div className="bg-white rounded-lg overflow-x-auto overflow-y-auto max-h-120">
+              <table className="table-auto w-full bg-white">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr className="bg-gray-100">
                     {previewData.headers?.map((header) => (
                       <th
                         key={header.key}
-                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                        className="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
                       >
                         {header.label}
                       </th>
@@ -524,7 +524,10 @@ export default function UploadData() {
                   {previewData.rows?.map((row, index) => (
                     <tr key={index}>
                       {previewData.headers.map((header) => (
-                        <td key={header.key} className="px-6 py-3">
+                        <td
+                          key={header.key}
+                          className="whitespace-nowrap px-6 py-3"
+                        >
                           {row[header.key]}
                         </td>
                       ))}
