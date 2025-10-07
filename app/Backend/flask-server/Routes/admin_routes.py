@@ -1,3 +1,6 @@
+# Parts of this code related to general-purpose Flask route structure, error handling, and basic file 
+# upload/download patterns were assisted or inspired by AI. All Supabase-specific logic, database schema, 
+# table mappings, and application-specific workflow were written independently.
 from flask import  jsonify, request
 from werkzeug.utils import secure_filename
 from database import upload_table, fetch_table_data, save_uploaded_file, supabase_client, restore_file_from_url

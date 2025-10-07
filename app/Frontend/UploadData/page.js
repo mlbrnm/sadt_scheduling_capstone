@@ -1,3 +1,7 @@
+// Some logic for file validation, dynamic table formatting, session handling,
+// async uploads, and fetching previous versions was assisted by AI.
+// UI layout, styling, logic, and state management were implemented independently.
+
 "use client";
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
@@ -32,6 +36,7 @@ export default function UploadData() {
   // };
 
   //persist the user's session so we can track user info
+  //Created with help of AI - quicker implementation
   useEffect(() => {
     const getSession = async () => {
       const {
@@ -65,6 +70,7 @@ export default function UploadData() {
 
   const dataTypes = ["Programs", "Courses", "Instructors"];
 
+  //Created with the help of AI (making sure bases were covered)
   const validateFile = (file) => {
     const validTypes = [
       "application/vnd.ms-excel",
@@ -139,6 +145,8 @@ export default function UploadData() {
   };
 
   //headers will either be one from the headersMap or if not there, just what is found in the returned data
+  //headers will also be ordered in the same way they were received
+  //Created with the help of AI
   const formatPreviewData = (data, columnOrder = []) => {
     const headers = columnOrder.length
       ? columnOrder.map((key) => ({
@@ -205,6 +213,7 @@ export default function UploadData() {
     Instructors: "instructors",
   };
 
+  //created with help of AI - helped properly track user's email
   const handleFileUpload = async (event) => {
     // const {
     //   data: { session },

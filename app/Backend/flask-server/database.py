@@ -1,3 +1,6 @@
+# Parts of this code related to general-purpose file reading, data cleaning, type-safe DataFrame processing, 
+# and Supabase insert patterns were assisted or inspired by AI. All database schema, table mappings, and 
+# application-specific logic were written independently.
 from supabase import create_client, Client 
 # supabase is a python package
     #create_client is a function within that package
@@ -142,6 +145,7 @@ TABLE_PRIMARY_KEYS = {
 }
 
 # data is formatted for JSON format and database upload 
+#Created with help of AI - helped ensure all cases of Nan, None, and infinite numbers were accounted for
 def formatted_data(df, table_name):
 
     # variable to store the primary key to check against later 
@@ -151,7 +155,7 @@ def formatted_data(df, table_name):
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
-    # Timestamp and datetime values are converted to ISO format
+    # Timestamp and datetime values are converted to y-m-d format
     df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
     # map() applies the lambda function to all the elements of the dataframe 
     # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
@@ -190,6 +194,7 @@ def formatted_data(df, table_name):
 
 
 # function to upload the file while using more data formatting 
+#Created with help of AI - ensured proper data formatting for database insurtion 
 def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
 
     # get the file extension
@@ -334,7 +339,7 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         print("Error inside save_uploaded_file():", e)
         raise
 
-
+# created with help of AI - needed help understanding why filter was needed
 def clear_table_data(table_name):
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
     # ensure table holds a primary key

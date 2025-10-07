@@ -6,11 +6,13 @@ export default function InstructorProfiles() {
   //create the loading functional component
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedData, setFetchedData] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const displayColumns = [
     { header: "First Name", key: "instructor_name" },
     { header: "Last Name", key: "instructor_lastname" },
     { header: "ID", key: "instructor_id" },
+    { header: "CCH Target", key: "cch_target_ay2025" },
     { header: "Contract Type", key: "contract_type" },
     { header: "Instructor Status", key: "instructor_status" },
     { header: "Start Date", key: "salaried_begin_date" },
@@ -30,7 +32,7 @@ export default function InstructorProfiles() {
 
       if (!response.ok) throw new Error(result.error || "Failed to fetch data");
 
-      setFetchedData(result.data || []);
+      setFetchedData(result.data?.data || []);
     } catch {
       setFetchedData([]);
     } finally {
@@ -42,16 +44,36 @@ export default function InstructorProfiles() {
     fetchInstructorData();
   }, []);
 
+  // filter the search
+  const filteredData = fetchedData.filter((row) =>
+    Object.values(row)
+      .join(" ")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="p-6">
-      <h1 className="text-2xl">Instructor List</h1>
+      {/* Title and Search Bar */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-semibold">Instructor List</h1>
 
-      <div className="px-30 pt-6 ">
+        {/*Search Box */}
+        <input
+          type="text"
+          placeholder="Search..."
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white focus:ring-blue-700"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      <div className="px-30 pt-6">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-700"></div>
           </div>
-        ) : fetchedData.length > 0 ? (
+        ) : filteredData.length > 0 ? (
           <div className="bg-white rounded-lg overflow-auto max-h-180">
             <table className="w-full bg-white">
               <thead className="bg-gray-50 sticky top-0">
@@ -67,10 +89,13 @@ export default function InstructorProfiles() {
                 </tr>
               </thead>
               <tbody>
-                {fetchedData.map((row, rowIndex) => (
+                {filteredData.map((row, rowIndex) => (
                   <tr key={rowIndex}>
                     {displayColumns.map((col) => (
-                      <td key={col.key} className="py-2 px-4 border-b text-sm">
+                      <td
+                        key={col.key}
+                        className="py-3 px-6 border-b text-left text-sm"
+                      >
                         {row[col.key] || "-"}
                       </td>
                     ))}
