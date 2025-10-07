@@ -1,3 +1,6 @@
+# Parts of this code related to general-purpose file reading, data cleaning, type-safe DataFrame processing, 
+# and Supabase insert patterns were assisted or inspired by AI. All database schema, table mappings, and 
+# application-specific logic were written independently.
 from supabase import create_client, Client 
 # supabase is a python package
     #create_client is a function within that package
@@ -71,49 +74,18 @@ TABLE_COLUMN_MAPPINGS = {
         "Group": "group", 
         "Credits": "credits", 
         "Contact Hours": "contact_hours",
-        "Modality": "modality", 
         "Program_Type": "program_type", 
         "Credential": "credential", 
         "Req_Elec": "req_elec", 
         "Delivery_Method": "delivery_method", 
-        "AC_Name": "ac_name", 
+        "AC_Name - Loading": "ac_name_loading", 
         "School": "school",
         "Exam_OTR": "exam_otr", 
         "Semester": "semester", 
         "Fall": "fall", 
         "Winter": "winter", 
         "Spring_Summer": "spring_summer", 
-        "Order": "order", 
-        "Duration (days)": "duration_days", 
         "Notes": "notes",
-    },
-    "courses_backup": {
-        "Backup_ID": "backup_id",
-        "Version_ID": "version_id",
-        "Course_ID": "course_id", 
-        "Course_Code": "course_code", 
-        "Course_Name": "course_name", 
-        "Program/ Major": "program_major", 
-        "Group": "group", 
-        "Credits": "credits", 
-        "Contact Hours": "contact_hours",
-        "Modality": "modality", 
-        "Program_Type": "program_type", 
-        "Credential": "credential", 
-        "Req_Elec": "req_elec", 
-        "Delivery_Method": "delivery_method", 
-        "AC_Name": "ac_name", 
-        "School": "school",
-        "Exam_OTR": "exam_otr", 
-        "Semester": "semester", 
-        "Fall": "fall", 
-        "Winter": "winter", 
-        "Spring_Summer": "spring_summer", 
-        "Order": "order", 
-        "Duration (days)": "duration_days", 
-        "Notes": "notes",
-        "Uploaded_At": "uploaded_at",
-        "Uploaded_By": "uploaded_by",
     },
     "instructors": {
         "Instructor_ID": "instructor_id",
@@ -121,31 +93,20 @@ TABLE_COLUMN_MAPPINGS = {
         "Instructor_Name": "instructor_name",
         "Contract_Type": "contract_type",
         "Instructor_Status": "instructor_status",
-        "Start Date": "start_date",
-        "End Date": "end_date",
+        "Salaried Begin Date": "salaried_begin_date",
+        "Contract End": "contract_end",
+        "Reporting_AC": "reporting_ac",
+        "CCH Target AY2025": "cch_target_ay2025",
+        "Primary Program": "primary_program",
+        "Position #": "position_number",
+        "Years as Temp": "years_as_temp",
+        "Highest Education - TBC": "highest_education_tbc",
+        "Skill Scope": "skill_scope",
+        "Action Plan": "action_plan",
+        "Notes/Plan": "notes_plan",
+        "Full Name": "full_name",
+        "FTE": "fte",
         "Time off": "time_off",
-        "ID_Manager": "id_manager",
-        "Name_Manager": "name_manager",
-        "Comments": "comments",
-        "ID_Position": "id_position",
-    },
-    "instructors_backup": {
-        "Backup_ID": "backup_id",
-        "Version_ID": "version_id",
-        "Instructor_ID": "instructor_id",
-        "Instructor_LastName": "instructor_lastname",
-        "Instructor_Name": "instructor_name",
-        "Contract_Type": "contract_type",
-        "Instructor_Status": "instructor_status",
-        "Start Date": "start_date",
-        "End Date": "end_date",
-        "Time off": "time_off",
-        "ID_Manager": "id_manager",
-        "Name_Manager": "name_manager",
-        "Comments": "comments",
-        "ID_Position": "id_position",
-        "Uploaded_At": "uploaded_at",
-        "Uploaded_By": "uploaded_by",
     },
     "programs": {
         "Group": "group",
@@ -158,23 +119,6 @@ TABLE_COLUMN_MAPPINGS = {
         "Intakes": "intakes",
         "Duration": "duration",
         "Starting Date": "starting_date",
-    },
-    "programs_backup": {
-        "Backup ID": "backup_id",
-        "Version ID": "version_id",
-        "Program ID": "program_id",
-        "Group": "group",
-        "Acronym": "acronym",
-        "Program": "program",
-        "Academic Chair": "academic_chair",
-        "Associate Dean": "associate_dean",
-        "Credential": "credential",
-        "Courses": "courses",
-        "Intakes": "intakes",
-        "Duration": "duration",
-        "Starting Date": "starting_date",
-        "Uploaded At": "uploaded_at",
-        "Uploaded By": "uploaded_by",
     }
 }
 
@@ -182,24 +126,26 @@ TABLE_COLUMN_MAPPINGS = {
 # dictionary used to validate which columns are allowed in each table by using the other dictionary to get the values
 TABLE_VALID_COLUMNS = {
     "courses": set(TABLE_COLUMN_MAPPINGS["courses"].values()),
-    "courses_backup": set(TABLE_COLUMN_MAPPINGS["courses_backup"].values()),
     "instructors": set(TABLE_COLUMN_MAPPINGS["instructors"].values()),
-    "instructors_backup": set(TABLE_COLUMN_MAPPINGS["instructors_backup"].values()),
     "programs": set(TABLE_COLUMN_MAPPINGS["programs"].values()),
-    "programs_backup": set(TABLE_COLUMN_MAPPINGS["programs_backup"].values())
+}
+
+# certain data not needed to be displayed back to user 
+HIDDEN_COLUMNS = {
+    "programs": ["program_id"],
+    "courses": [], #just in case we need to add a hidden column to courses 
+    "instructors": [] #just in case we need to add a hidden column to instructors 
 }
 
 # dictionary of primary keys in the database so that my logic can check if row data for a primary key exists (used to skip empty rows)
 TABLE_PRIMARY_KEYS = {
     "courses" : "course_id",
-    "courses_backup": "backup_id",
     "instructors" : "instructor_id",
-    "instructors_backup": "backup_id",
     "programs": "program_id",
-    "programs_backup": "backup_id"
 }
 
 # data is formatted for JSON format and database upload 
+#Created with help of AI - helped ensure all cases of Nan, None, and infinite numbers were accounted for
 def formatted_data(df, table_name):
 
     # variable to store the primary key to check against later 
@@ -209,8 +155,8 @@ def formatted_data(df, table_name):
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
-    # Timestamp and datetime values are converted to ISO format
-    df = df.applymap(lambda x: x.isoformat() if isinstance(x, (pd.Timestamp, datetime)) else x)
+    # Timestamp and datetime values are converted to y-m-d format
+    df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
     # map() applies the lambda function to all the elements of the dataframe 
     # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
     # if it isnt either, it is not changed
@@ -219,6 +165,17 @@ def formatted_data(df, table_name):
     df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
     df = df.where(pd.notnull(df), None)
     # this acts as a type of safety net using True/False condition (if False then replaced with None)
+
+    if table_name == "instructors" and 'years_as_temp' in df.columns:
+        # Convert to numeric, coercing invalid entries to NaN
+        df['years_as_temp'] = pd.to_numeric(df['years_as_temp'], errors='coerce')
+        
+        # Round to 2 decimal places
+        df['years_as_temp'] = df['years_as_temp'].round(2)
+        
+        # Replace NaN and infinities with None (JSON-safe)
+        df['years_as_temp'] = df['years_as_temp'].replace([np.nan, np.inf, -np.inf], None)
+
 
     # Drop rows where the primary key is missing
     if primary_key and primary_key in df.columns:
@@ -230,10 +187,14 @@ def formatted_data(df, table_name):
     if primary_key and primary_key not in df.columns:
         df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))] # _ is a throwaway variable (we don't need it's value)
         # primary key created for each row of dataframe and converted to string 
+
     return df
 
 
+
+
 # function to upload the file while using more data formatting 
+#Created with help of AI - ensured proper data formatting for database insurtion 
 def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
 
     # get the file extension
@@ -259,9 +220,13 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
         raise ValueError ("Unsupported file type. Please upload a CSV or XLSX file.")
     # df is a Pandas DataFrame object containing all data from the file
 
+
     df.columns = df.columns.str.strip() # this gets rid of white space before or after the column name
     df.columns = df.columns.str.replace('\xa0', ' ') # replaces the non-breaking space (\xa0) with regular space (non-breaking space doesnt work for data upload)
+    df.columns = df.columns.str.replace(r'\s+', ' ', regex=True)  # collapse multiple spaces
+    df.columns = df.columns.str.strip() # strip again just in case
 
+    column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
     df = df.rename(columns = column_standardization)
     # renames the columns in the dataframe to fit the standards of the database 
 
@@ -269,7 +234,7 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     df = formatted_data(df, table_name)
     # the data in the dataframe is formatted according to the formatted_data function
 
-    df['uploaded_at'] = datetime.now().isoformat() # converted to ISO format (standard string format) to be accepted into JSON 
+    df['uploaded_at'] = datetime.now().strftime("%Y-%m-%d @%H:%M") # converted to ISO format (standard string format) to be accepted into JSON 
     df['uploaded_by'] = uploaded_by
     # these metadata columns will be used across all uploaded tables
     
@@ -281,6 +246,12 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     # uploads the data to supabase
     # execute() is the function that actually sends this data through
 
+    column_order = list(df.columns)
+    return column_order
+
+
+
+# Don't think we will need this functionality anymore
 def backup_table(table_name):
     backup_table_name = f"{table_name}_backup"
     version_id = str(uuid.uuid4())
@@ -307,44 +278,68 @@ def backup_table(table_name):
         print("Backup failed: ", e)
 
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
+    try:
+        print("Starting save_uploaded_file()...")  # DEBUG
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        unique_id = str(uuid.uuid4())
+        storage_path = f"{timestamp}_{unique_id}_{file.filename}"
+        print("Storage path:", storage_path)  # DEBUG
 
-    # Generate unique file name (timestamp + uuid + original name)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    unique_id = str(uuid.uuid4())
-    storage_path = f"{timestamp}_{unique_id}_{file.filename}"
+        # Read file safely
+        file_bytes = file.read()
+        print(f"Read {len(file_bytes)} bytes from file")  # DEBUG
 
-    # upload the file to supabase bucket
-    supabase.storage.from_(bucket_name).upload(storage_path, file.read())
+        # Upload to Supabase Storage
+        upload_response = supabase.storage.from_(bucket_name).upload(storage_path, file_bytes)
+        print("Upload response:", upload_response)  # DEBUG
 
-    # rewind the pointer so that the file can be read again (like for database table upload)
-    file.stream.seek(0)
+        # Reset stream pointer
+        if hasattr(file, "stream"):
+            file.stream.seek(0)
+            print("Reset file stream")  # DEBUG
+        else:
+            print("No stream attribute found on file")  # DEBUG
 
-    # get most recent version for this file name (AI Generated)
-    existing = supabase.table("uploaded_files") \
-        .select("version") \
-        .eq("original_name", file.filename) \
-        .eq("table_name", table_name) \
-        .execute()
-    next_version = (max([r["version"] for r in existing.data], default = 0) + 1)
+        # Fetch version
+        existing = supabase.table("uploaded_files") \
+            .select("version") \
+            .eq("original_name", file.filename) \
+            .eq("table_name", table_name) \
+            .execute()
+        next_version = (max([r["version"] for r in existing.data], default=0) + 1)
+        print("Next version:", next_version)  # DEBUG
 
-    # insert the metadata into upload_files table
-    supabase.table("uploaded_files").insert({
-        "original_name": file.filename,
-        "table_name": table_name,
-        "storage_path": storage_path,
-        "version": next_version,
-        "uploaded_by": user_email,
-        "uploaded_at": datetime.now(timezone.utc).isoformat()
-    }).execute()
+        print(f"Clearing table '{table_name}' before upload...")
+        clear_table_data(table_name)
 
-    return {
-        "version": next_version,
-        "storage_path": storage_path,
-        "original_name": file.filename,
-        "table_name": table_name
-    }
+        column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
+        column_order = upload_file(file, table_name, column_standardization, user_email)
+        print("Column order:", column_order)  # DEBUG
 
+        supabase.table("uploaded_files").insert({
+            "original_name": file.filename,
+            "table_name": table_name,
+            "storage_path": storage_path,
+            "version": next_version,
+            "uploaded_by": user_email,
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "column_order": column_order
+        }).execute()
 
+        print("File metadata inserted successfully")  # DEBUG
+        return {
+            "version": next_version,
+            "storage_path": storage_path,
+            "original_name": file.filename,
+            "table_name": table_name,
+            "column_order": column_order
+        }
+
+    except Exception as e:
+        print("Error inside save_uploaded_file():", e)
+        raise
+
+# created with help of AI - needed help understanding why filter was needed
 def clear_table_data(table_name):
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
     # ensure table holds a primary key
@@ -357,6 +352,7 @@ def clear_table_data(table_name):
     print(f"Successfully deleted old data from table: {table_name}")
 
 def upload_table(file, table_name, uploaded_by):
+    print(f"Starting upload_table() for {table_name}...")
     if table_name not in TABLE_COLUMN_MAPPINGS:
         raise ValueError(f"Unsupported table: {table_name}")
     
@@ -379,6 +375,7 @@ def upload_table(file, table_name, uploaded_by):
 
     print(f"Data successfully uploaded to table: {table_name}")
 
+
 # function to get the table data from the database
 def fetch_table_data (table_name):
     if table_name not in TABLE_COLUMN_MAPPINGS:
@@ -386,8 +383,30 @@ def fetch_table_data (table_name):
     
     try:
         response = supabase_client.table(table_name).select("*").execute()
+        data = response.data or []
 
-        return response.data
+        hidden_cols = HIDDEN_COLUMNS.get(table_name, [])
+
+        meta_response = supabase_client.table("uploaded_files") \
+                    .select("column_order") \
+                    .eq("table_name", table_name) \
+                    .order("uploaded_at", desc=True) \
+                    .limit(1) \
+                    .execute()
+                    
+        column_order = []
+        if meta_response.data and len(meta_response.data) > 0:
+            column_order = meta_response.data[0].get("column_order", list(data[0].keys()) if data else [])
+        elif data:
+            column_order = list(data[0].keys())
+
+        if hidden_cols:
+            for row in data:
+                for col in hidden_cols:
+                    row.pop(col, None)
+            column_order = [col for col in column_order if col not in hidden_cols]
+
+        return {"data": data, "column_order": column_order}
     except Exception as e:
         raise RuntimeError(f"Error fetching data from {table_name}: {e}")
     
