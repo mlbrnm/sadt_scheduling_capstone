@@ -10,9 +10,11 @@
   background-color: #ae132a;
   transition: background-color 0.2s ease;
 }
+
 .button-primary:hover {
   background-color: #b91c1c;
 }
+
 .button-clicked {
   background-color: #333333;
 }
@@ -42,3 +44,14 @@
   100%{ transform: rotate(360deg); }
 }
 
+/* Border Styles */
+.border-secondary {
+  border-color: #005eb8;
+}
+.border-tertiary {
+  border-color: #333333;
+}
+.border-tertiary:focus {
+  outline-color: #ae132a;
+  border-color: #333333;
+}
