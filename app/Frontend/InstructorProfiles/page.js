@@ -1,13 +1,21 @@
-"use client";
+// Portions of this file, including the `displayColumns` array structure and the
+// search filtering logic, were developed with the assistance of
+"use client"; //confirm component runs on client side
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; //import state management hooks
 
 export default function InstructorProfiles() {
-  //create the loading functional component
+  //create the loading functional component for data loading from api
   const [isLoading, setIsLoading] = useState(false);
+
+  //this will store the instructor data from database table
   const [fetchedData, setFetchedData] = useState([]);
+
+  //this will store the user's search to filter the table
   const [searchQuery, setSearchQuery] = useState("");
 
+  //this is an array of objects for which columns will be diplayed in the instructor table
+  //created with hep of AI - redundant code creation
   const displayColumns = [
     { header: "First Name", key: "instructor_name" },
     { header: "Last Name", key: "instructor_lastname" },
@@ -23,28 +31,34 @@ export default function InstructorProfiles() {
   // create function to populate the table list with instructor data from database
   const fetchInstructorData = async (table) => {
     try {
-      setIsLoading(true);
+      setIsLoading(true); //this will show the loading spinner
 
+      //send request to API endpoint to get instructor info
       const response = await fetch(
         `http://localhost:5000/admin/data/instructors`
       );
       const result = await response.json();
 
+      //ok is a boolean used to see if response was successful, if not error is thrown
       if (!response.ok) throw new Error(result.error || "Failed to fetch data");
 
-      setFetchedData(result.data?.data || []);
+      //this will store the instructor data
+      setFetchedData(result.data?.data || []); //if result.data exists then get the data within it, if not return the empty array
     } catch {
-      setFetchedData([]);
+      setFetchedData([]); //clears table data if requet fails
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); //turns off loading spinner
     }
   };
 
+  //this will make sure that data is fetched once when the component is opened
   useEffect(() => {
     fetchInstructorData();
   }, []);
 
   // filter the search
+  //converts row data into string and lower case for searchability
+  //created using AI suggestions
   const filteredData = fetchedData.filter((row) =>
     Object.values(row)
       .join(" ")
@@ -68,6 +82,7 @@ export default function InstructorProfiles() {
         />
       </div>
 
+      {/*Instructor Table*/}
       <div className="px-30 pt-6">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
