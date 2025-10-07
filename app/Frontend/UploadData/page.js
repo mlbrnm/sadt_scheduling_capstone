@@ -506,19 +506,9 @@ export default function UploadData() {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
             </div>
           ) : previewData.rows && previewData.rows.length > 0 ? (
-            <div className="bg-white rounded-lg overflow-auto max-h-80">
+            <div className="bg-white rounded-lg overflow-auto max-h-120">
               <table className="w-full bg-white">
                 <thead className="bg-gray-50 sticky top-0">
-                  {/* <tr className="bg-gray-100">
-                    {Object.keys(previewData[0]).map((key) => (
-                      <th
-                        key={key}
-                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
-                      >
-                        {key}
-                      </th>
-                    ))}
-                  </tr> */}
                   <tr className="bg-gray-100">
                     {previewData.headers?.map((header) => (
                       <th
@@ -530,25 +520,13 @@ export default function UploadData() {
                     ))}
                   </tr>
                 </thead>
-                {/* <tbody>
-                  {previewData.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {Object.values(row).map((cell, cellIndex) => (
-                        <td
-                          key={cellIndex}
-                          className="py-2 px-4 border-b text-sm"
-                        >
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody> */}
                 <tbody>
                   {previewData.rows?.map((row, index) => (
                     <tr key={index}>
                       {previewData.headers.map((header) => (
-                        <td key={header.key}>{row[header.key]}</td>
+                        <td key={header.key} className="px-6 py-3">
+                          {row[header.key]}
+                        </td>
                       ))}
                     </tr>
                   ))}

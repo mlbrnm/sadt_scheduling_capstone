@@ -215,17 +215,6 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
         raise ValueError ("Unsupported file type. Please upload a CSV or XLSX file.")
     # df is a Pandas DataFrame object containing all data from the file
 
-    # print("Original columns:", df.columns.tolist())
-    # print("Column mapping:", column_standardization)
-    # df = df.rename(columns=column_standardization)
-    # print("Renamed columns:", df.columns.tolist())
-
-    # valid_columns = TABLE_VALID_COLUMNS.get(table_name, set())
-    # print("Valid columns:", valid_columns)
-    # df = df[[col for col in df.columns if col in valid_columns]]
-    # print("Filtered columns:", df.columns.tolist())
-    # print("Number of rows:", len(df))
-
 
     df.columns = df.columns.str.strip() # this gets rid of white space before or after the column name
     df.columns = df.columns.str.replace('\xa0', ' ') # replaces the non-breaking space (\xa0) with regular space (non-breaking space doesnt work for data upload)
@@ -284,47 +273,66 @@ def backup_table(table_name):
         print("Backup failed: ", e)
 
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
+    try:
+        print("Starting save_uploaded_file()...")  # DEBUG
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        unique_id = str(uuid.uuid4())
+        storage_path = f"{timestamp}_{unique_id}_{file.filename}"
+        print("Storage path:", storage_path)  # DEBUG
 
-    # Generate unique file name (timestamp + uuid + original name)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    unique_id = str(uuid.uuid4())
-    storage_path = f"{timestamp}_{unique_id}_{file.filename}"
+        # Read file safely
+        file_bytes = file.read()
+        print(f"Read {len(file_bytes)} bytes from file")  # DEBUG
 
-    # upload the file to supabase bucket
-    supabase.storage.from_(bucket_name).upload(storage_path, file.read())
+        # Upload to Supabase Storage
+        upload_response = supabase.storage.from_(bucket_name).upload(storage_path, file_bytes)
+        print("Upload response:", upload_response)  # DEBUG
 
-    # rewind the pointer so that the file can be read again (like for database table upload)
-    file.stream.seek(0)
+        # Reset stream pointer
+        if hasattr(file, "stream"):
+            file.stream.seek(0)
+            print("Reset file stream")  # DEBUG
+        else:
+            print("No stream attribute found on file")  # DEBUG
 
-    # get most recent version for this file name (AI Generated)
-    existing = supabase.table("uploaded_files") \
-        .select("version") \
-        .eq("original_name", file.filename) \
-        .eq("table_name", table_name) \
-        .execute()
-    next_version = (max([r["version"] for r in existing.data], default = 0) + 1)
+        # Fetch version
+        existing = supabase.table("uploaded_files") \
+            .select("version") \
+            .eq("original_name", file.filename) \
+            .eq("table_name", table_name) \
+            .execute()
+        next_version = (max([r["version"] for r in existing.data], default=0) + 1)
+        print("Next version:", next_version)  # DEBUG
 
-    column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
-    column_order = upload_file(file, table_name, column_standardization, user_email)
+        print(f"Clearing table '{table_name}' before upload...")
+        clear_table_data(table_name)
 
-    # insert the metadata into upload_files table
-    supabase.table("uploaded_files").insert({
-        "original_name": file.filename,
-        "table_name": table_name,
-        "storage_path": storage_path,
-        "version": next_version,
-        "uploaded_by": user_email,
-        "uploaded_at": datetime.now(timezone.utc).isoformat(),
-        "column_order": column_order
-    }).execute()
+        column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
+        column_order = upload_file(file, table_name, column_standardization, user_email)
+        print("Column order:", column_order)  # DEBUG
 
-    return {
-        "version": next_version,
-        "storage_path": storage_path,
-        "original_name": file.filename,
-        "table_name": table_name,
-        "column_order": column_order
-    }
+        supabase.table("uploaded_files").insert({
+            "original_name": file.filename,
+            "table_name": table_name,
+            "storage_path": storage_path,
+            "version": next_version,
+            "uploaded_by": user_email,
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "column_order": column_order
+        }).execute()
+
+        print("File metadata inserted successfully")  # DEBUG
+        return {
+            "version": next_version,
+            "storage_path": storage_path,
+            "original_name": file.filename,
+            "table_name": table_name,
+            "column_order": column_order
+        }
+
+    except Exception as e:
+        print("Error inside save_uploaded_file():", e)
+        raise
 
 
 def clear_table_data(table_name):
@@ -339,6 +347,7 @@ def clear_table_data(table_name):
     print(f"Successfully deleted old data from table: {table_name}")
 
 def upload_table(file, table_name, uploaded_by):
+    print(f"Starting upload_table() for {table_name}...")
     if table_name not in TABLE_COLUMN_MAPPINGS:
         raise ValueError(f"Unsupported table: {table_name}")
     
@@ -372,25 +381,27 @@ def fetch_table_data (table_name):
         data = response.data or []
 
         hidden_cols = HIDDEN_COLUMNS.get(table_name, [])
+
+        meta_response = supabase_client.table("uploaded_files") \
+                    .select("column_order") \
+                    .eq("table_name", table_name) \
+                    .order("uploaded_at", desc=True) \
+                    .limit(1) \
+                    .execute()
+                    
+        column_order = []
+        if meta_response.data and len(meta_response.data) > 0:
+            column_order = meta_response.data[0].get("column_order", list(data[0].keys()) if data else [])
+        elif data:
+            column_order = list(data[0].keys())
+
         if hidden_cols:
             for row in data:
                 for col in hidden_cols:
                     row.pop(col, None)
+            column_order = [col for col in column_order if col not in hidden_cols]
 
-            meta_response = supabase_client.table("uploaded_files") \
-                        .select("column_order") \
-                        .eq("table_name", table_name) \
-                        .order("uploaded_at", desc=True) \
-                        .limit(1) \
-                        .execute()
-                    
-            column_order = []
-            if meta_response.data and len(meta_response.data) > 0:
-                column_order = meta_response.data[0].get("column_order", list(data[0].keys()) if data else [])
-            elif data:
-                column_order = list(data[0].keys())
-
-            return {"data": data, "column_order": column_order}
+        return {"data": data, "column_order": column_order}
     except Exception as e:
         raise RuntimeError(f"Error fetching data from {table_name}: {e}")
     
