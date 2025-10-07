@@ -37,6 +37,19 @@ export default function NewSchedule() {
   const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Dynamic heights from InstructorSection for syncing row heights
+  const [rowHeights, setRowHeights] = useState({}); // { [Instructor_ID]: pxNumber }
+  const [headerHeight, setHeaderHeight] = useState(null);
+
+  // Handlers to update measured heights
+  const handleRowResize = (instructorId, h) => {
+    setRowHeights((prev) =>
+      prev[instructorId] === h ? prev : { ...prev, [instructorId]: h }
+    );
+  };
+  const handleHeaderResize = (h) => {
+    setHeaderHeight((prev) => (prev === h ? prev : h));
+  };
 
   // "Fetching" mock data on component mount
   useEffect(() => {
@@ -74,6 +87,12 @@ export default function NewSchedule() {
         (i) => i.Instructor_ID !== instructor.Instructor_ID
       ),
     }));
+    // Clear measured height for that row to keep rowHeights clean
+    setRowHeights((prev) => {
+      const copy = { ...prev };
+      delete copy[instructor.Instructor_ID];
+      return copy;
+    });
   };
 
   // Handler function to add a course to a specific semester in the newScheduleDraft state
@@ -151,10 +170,8 @@ export default function NewSchedule() {
           )
         ),
       };
-
       // Create a new assignments object with only valid keys
       const updatedAssignments = {};
-
       // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
       for (const [key, value] of Object.entries(prev)) {
         const [iId, cId, sem] = key.split("-");
@@ -185,6 +202,8 @@ export default function NewSchedule() {
       addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
     }));
     setAssignments({});
+    setRowHeights({});
+    setHeaderHeight(null);
   };
 
   // Determine which semesters are active for rendering CourseSection and AssignmentGrid
@@ -204,7 +223,7 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
-      {/* Heading */}
+      {/* Controls */}
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
@@ -262,6 +281,8 @@ export default function NewSchedule() {
               addedInstructors={newScheduleDraft.addedInstructors}
               assignments={assignments}
               addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
+              onRowResize={handleRowResize}
+              onHeaderResize={handleHeaderResize}
             />
           </div>
 
@@ -274,6 +295,8 @@ export default function NewSchedule() {
                 assignments={assignments}
                 onToggleSection={toggleSection}
                 activeSemesters={newScheduleDraft.metaData.activeSemesters}
+                rowHeights={rowHeights}
+                headerHeight={headerHeight}
               />
             </div>
           </div>
