@@ -49,6 +49,21 @@ export default function Header() {
           <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
         </div>
 
+        {/*Schedule Manager*/}
+        <div className="flex-1 h-full relative">
+          <Link
+            href={"/Frontend/ScheduleManager"}
+            className="
+            absolute inset-0 flex justify-center items-center
+            text-white hover:bg-[#00A3E0] transition-colors font-medium
+          "
+          >
+            
+            Schedule Manager
+          </Link>
+          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
+        </div>
+
         <div className="flex-1 h-full relative">
           <Link
             href={"/Frontend/Reports"}
