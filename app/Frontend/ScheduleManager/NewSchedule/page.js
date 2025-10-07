@@ -14,11 +14,6 @@ assignments structure
     sections: ["A", "B", "C"] 
   },
 }
-Example:
-{
-  "16491-CPRG211SD-winter": { sections: ["A", "B"] },
-  "16491-CPRG211SD-fall":   { sections: ["A"] },
-}
 */
 
 const semester_list = ["winter", "springSummer", "fall"];
@@ -46,7 +41,7 @@ export default function NewSchedule() {
       try {
         // REPLACE WITH API CALL
         // const response = await fetch("");
-        // const instructorData = await response.json();
+        // const Data = await response.json();
         setInstructorData(mockInstructors);
         setCourseData(mockCourses);
       } catch (error) {
@@ -119,58 +114,14 @@ export default function NewSchedule() {
         : [...current.sections, section];
 
       if (sections.length === 0) {
-        // nothing left for this (instructor, course, semester) combo - remove the key
-        const { [key]: _, ...rest } = prev;
+        // nothing left for this key (instructor, course, semester) - remove the key
+        const rest = { ...prev };
+        delete rest[key];
         return rest;
       }
       return { ...prev, [key]: { sections } };
     });
   };
-
-  // Clean up assignments if instructors or courses are removed, otherwise assignments retain stale data
-  // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
-  useEffect(() => {
-    setAssignments((prev) => {
-      const validInstructorIds = new Set(
-        newScheduleDraft.addedInstructors.map((i) => String(i.Instructor_ID))
-      );
-      const validCourseIdsBySemester = {
-        winter: new Set(
-          newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
-            String(c.Course_ID)
-          )
-        ),
-        springSummer: new Set(
-          newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
-            String(c.Course_ID)
-          )
-        ),
-        fall: new Set(
-          newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
-            String(c.Course_ID)
-          )
-        ),
-      };
-
-      // Create a new assignments object with only valid keys
-      const updatedAssignments = {};
-
-      // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
-      for (const [key, value] of Object.entries(prev)) {
-        const [iId, cId, sem] = key.split("-");
-        if (
-          validInstructorIds.has(iId) &&
-          validCourseIdsBySemester[sem]?.has(cId)
-        ) {
-          updatedAssignments[key] = value;
-        }
-      }
-      return updatedAssignments;
-    });
-  }, [
-    newScheduleDraft.addedInstructors,
-    newScheduleDraft.addedCoursesBySemester,
-  ]);
 
   // Handlers for Save and Clear buttons
   const handleSave = () => {
