@@ -55,3 +55,46 @@
   outline-color: #ae132a;
   border-color: #333333;
 }
+
+/* Text Styles */
+.text-primary {
+  color: #333333;
+}
+
+/* Chip Styles */
+.chip-diploma {
+  background-color: #74a8c9;
+  border-color:#333333;
+}
+.chip-certificate {
+  background-color: #b98bc5;
+  border-color:#333333;
+}
+.chip-bachelors {
+  background-color: #e9aa52;
+  border-color:#333333;
+}
+.chip-approved {
+  background-color: #86cb8a;
+  border-color:#333333;
+}
+.chip-submitted {
+  background-color: #bdbdbd;
+  border-color:#333333;
+}
+.chip-inreview {
+  background-color: #f9d800;
+  border-color:#333333;
+}
+.chip-rejected {
+  background-color: #ce5252;
+  border-color:#333333;
+}
+.chip-uploaded {
+  background-color: #9e4242;
+  border-color:#333333;
+}
+.chip-empty {
+  background-color: #b49494;
+  border-color:#333333;
+}
