@@ -293,6 +293,7 @@ export default function UploadData() {
       setIsLoading(true);
       setError(null);
       //const token = authorize_user();
+
       const response = await fetch(
         `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}`,
         {
@@ -406,6 +407,16 @@ export default function UploadData() {
       setError("Failed to restore version: " + error.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownload = async (storagePath) => {
+    const response = await fetch(
+      `http://localhost:5000/admin/uploads/download/${storagePath}`
+    );
+    const data = await response.json();
+    if (data.download_url) {
+      window.open(data.download_url, "_blank");
     }
   };
 
@@ -572,9 +583,8 @@ export default function UploadData() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3">File Name</th>
-                      <th className="text-left p-3">Uploaded</th>
-                      <th className="text-left p-3">By</th>
-                      <th className="text-left p-3">Size</th>
+                      <th className="text-left p-3">Uploaded At</th>
+                      <th className="text-left p-3">Uploaded By</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -587,7 +597,36 @@ export default function UploadData() {
                         <td className="p-3">{version.fileName}</td>
                         <td className="p-3">{version.uploadTime}</td>
                         <td className="p-3">{version.uploadedBy}</td>
-                        <td className="p-3">{version.size}</td>
+                        <td className="border px-4 py-2">
+                          <button
+                            className={`bg-blue-500 text-white px-2 py-1 rounded transition-opacity duration-200 
+                              hover:opacity-80 active:opacity-60 
+                              ${
+                                isLoading ? "opacity-50 cursor-not-allowed" : ""
+                              }`}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setIsLoading(true);
+                              try {
+                                const response = await fetch(
+                                  `http://localhost:5000/admin/uploads/download/${version.storagePath}`
+                                );
+                                const data = await response.json();
+                                if (data.download_url) {
+                                  window.open(data.download_url, "_blank");
+                                }
+                              } catch (err) {
+                                console.error("Download failed:", err);
+                                setError("Download failed: " + err.message);
+                              } finally {
+                                setIsLoading(false);
+                              }
+                            }}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? "Downloading..." : "Download"}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
