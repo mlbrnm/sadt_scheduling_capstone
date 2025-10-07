@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 export default function UploadData() {
   const [selectedDataType, setSelectedDataType] = useState("");
@@ -26,7 +27,82 @@ export default function UploadData() {
     return validTypes.includes(file.type) || file.name.match(/\.(xlsx|csv)$/i);
   };
 
-  // create function to populate previewData with data from database
+  //this function will track the header names to be mapped and formatted for user display from database
+  const headersMap = {
+    //Programs headers mapping
+    program_id: "Program ID",
+    group: "Group",
+    acronym: "Acronym",
+    program: "Program",
+    academic_chair: "Academic Chair",
+    associate_dean: "Associate Dean",
+    credential: "Credential",
+    courses: "Courses",
+    intakes: "Intakes",
+    duration: "Duration",
+    starting_date: "Starting Date",
+    uploaded_at: "Uploaded At",
+    uploaded_by: "Uploaded By",
+
+    //Courses headers mapping
+    course_id: "Course ID",
+    course_code: "Course Code",
+    course_name: "Course Name",
+    program_major: "Program Major",
+    program_type: "Program Type",
+    credential: "Credential",
+    req_elec: "Req Elec",
+    delivery_method: "Delivery Method",
+    school: "School",
+    exam_otr: "Exam OTR",
+    semester: "Semester",
+    fall: "Fall",
+    winter: "Winter",
+    spring_summer: "Spring/Summer",
+    notes: "Notes",
+    uploaded_by: "Uploaded By",
+    uploaded_at: "Uploaded At",
+    credits: "Credits",
+    contact_hours: "Contact Hours",
+    group: "Group",
+    ac_name_loading: "AC Name - Loading",
+
+    //Instructors header mapping
+    instructor_id: "Instructor ID",
+    instructor_name: "First Name",
+    instructor_lastname: "Last Name",
+    contract_type: "Contract Type",
+    instructor_status: "Instructor Status",
+    time_off: "Time Off",
+    uploaded_by: "Uploaded By",
+    uploaded_at: "Uploaded At",
+    salaried_begin_date: "Start Date",
+    contract_end: "End Date",
+    reporting_ac: "Reporting AC",
+    cch_target_ay2025: "CCH Target AY2025",
+    primary_program: "Primary Program",
+    position_number: "Position #",
+    years_as_temp: "Years as Temp",
+    highest_education_tbc: "Highest Education - TBC",
+    skill_scope: "Skill Scope",
+    action_plan: "Action Plan",
+    notes_plan: "Notes/Plan",
+    full_name: "Full Name",
+    fte: "FTE",
+  };
+
+  //headers will either be one from the headersMap or if not there, just what is found in the returned data
+  const formatPreviewData = (data) => {
+    const headers = data.length
+      ? Object.keys(data[0]).map((key) => ({
+          key,
+          label: headersMap[key] || key,
+        }))
+      : [];
+    return { headers, rows: data };
+  };
+
+  // create function to populate previewData with data from database while using headersMap
   const fetchTableData = async (table) => {
     try {
       setIsLoading(true);
@@ -37,10 +113,20 @@ export default function UploadData() {
 
       if (!response.ok) throw new Error(result.error || "Failed to fetch data");
 
-      setPreviewData(result.data || []);
+      // //setPreviewData(result.data || []);
+      // const data = result.data || [];
+
+      // const headers = data.length
+      //   ? Object.keys(data[0]).map((key) => ({
+      //       key,
+      //       label: headersMap[key] || key,
+      //     }))
+      //   : [];
+
+      setPreviewData(formatPreviewData(result.data || []));
     } catch (err) {
       setError(err.message);
-      setPreviewData([]);
+      setPreviewData(formatPreviewData(result.data || []));
     } finally {
       setIsLoading(false);
     }
@@ -107,14 +193,15 @@ export default function UploadData() {
         fileName: file.name,
         uploadTime: new Date().toLocaleString(),
       });
-      setPreviewData(result.data || []);
+      //setPreviewData(result.data || []);
+      setPreviewData(formatPreviewData(result.data || []));
       setSuccessMessage(`File "${file.name}" uploaded successfully!`);
 
       await fetchTableData(table);
     } catch (err) {
       setError(err.message);
       setUploadDetails({ fileName: "", uploadTime: "" });
-      setPreviewData([]);
+      setPreviewData(formatPreviewData(result.data || []));
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +309,7 @@ export default function UploadData() {
 
       const result = await response.json();
 
-      setPreviewData(result.data || []);
+      setPreviewData(formatPreviewData(result.data || []));
       setUploadDetails({
         fileName: `RESTORED_${version.fileName}`,
         uploadTime: new Date().toLocaleString(),
@@ -333,11 +420,11 @@ export default function UploadData() {
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
             </div>
-          ) : previewData.length > 0 ? (
+          ) : previewData.rows && previewData.rows.length > 0 ? (
             <div className="bg-white rounded-lg overflow-auto max-h-80">
               <table className="w-full bg-white">
                 <thead className="bg-gray-50 sticky top-0">
-                  <tr className="bg-gray-100">
+                  {/* <tr className="bg-gray-100">
                     {Object.keys(previewData[0]).map((key) => (
                       <th
                         key={key}
@@ -346,9 +433,19 @@ export default function UploadData() {
                         {key}
                       </th>
                     ))}
+                  </tr> */}
+                  <tr className="bg-gray-100">
+                    {previewData.headers?.map((header) => (
+                      <th
+                        key={header.key}
+                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      >
+                        {header.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody>
+                {/* <tbody>
                   {previewData.map((row, rowIndex) => (
                     <tr key={rowIndex}>
                       {Object.values(row).map((cell, cellIndex) => (
@@ -358,6 +455,15 @@ export default function UploadData() {
                         >
                           {cell}
                         </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody> */}
+                <tbody>
+                  {previewData.rows?.map((row, index) => (
+                    <tr key={index}>
+                      {previewData.headers.map((header) => (
+                        <td key={header.key}>{row[header.key]}</td>
                       ))}
                     </tr>
                   ))}
