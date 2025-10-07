@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 const instructorCardHeaders = [
@@ -19,6 +19,21 @@ const instructorListHeaders = [
   "Status",
 ];
 
+// Hook to observe size changes of an element
+function useResizeObserver(el, onSize) {
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = Math.ceil(entry.contentRect.height);
+        onSize(h);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el, onSize]);
+}
+
 export default function InstructorSection({
   instructors,
   onAddInstructor,
@@ -26,6 +41,8 @@ export default function InstructorSection({
   addedInstructors,
   assignments,
   addedCoursesBySemester,
+  onRowResize,
+  onHeaderResize,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,7 +56,6 @@ export default function InstructorSection({
 
   // Handler function to remove an instructor
   const handleRemoveInstructor = (instructor) => {
-    // USED AI Q: how can we add a confirmation message for removing an added instructor without making a custom modal? (https://chat.deepseek.com/a/chat/s/cdbd0a66-d6f9-47e0-b1da-c564f09c6e7d)
     const confirmRemove = window.confirm(
       `Are you sure you want to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}?`
     );
@@ -63,7 +79,6 @@ export default function InstructorSection({
 
     // Filter by searching ID
     const matchesID = instructor.Instructor_ID.toString().includes(searchTerm);
-
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
@@ -107,6 +122,28 @@ export default function InstructorSection({
     return base + assigned * 15;
   };
 
+  // Measure header + each row height and report up
+  const headerRef = useRef(null);
+  useResizeObserver(headerRef.current, (h) => onHeaderResize?.(h));
+
+  const rowRefs = useRef(new Map());
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const observers = [];
+    rowRefs.current.forEach((node, id) => {
+      if (!node) return;
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const h = Math.ceil(entry.contentRect.height);
+          onRowResize?.(id, h);
+        }
+      });
+      ro.observe(node);
+      observers.push(ro);
+    });
+    return () => observers.forEach((ro) => ro.disconnect());
+  }, [addedInstructors, onRowResize]);
+
   return (
     <div>
       {/* Added Instructors */}
@@ -116,7 +153,7 @@ export default function InstructorSection({
           {addedInstructors.length === 0 ? (
             <table>
               <thead className="bg-gray-50">
-                <tr>
+                <tr ref={headerRef}>
                   {instructorCardHeaders.map((header) => (
                     <th
                       key={header}
@@ -132,7 +169,7 @@ export default function InstructorSection({
           ) : (
             <table>
               <thead>
-                <tr>
+                <tr ref={headerRef}>
                   {instructorCardHeaders.map((header) => (
                     <th
                       key={header}
@@ -148,6 +185,10 @@ export default function InstructorSection({
                 {addedInstructors.map((instructor) => (
                   <tr
                     key={instructor.Instructor_ID}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(instructor.Instructor_ID, el);
+                      else rowRefs.current.delete(instructor.Instructor_ID);
+                    }}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
                     title={`Click to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}`}

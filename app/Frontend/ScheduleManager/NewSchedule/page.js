@@ -14,6 +14,11 @@ assignments structure
     sections: ["A", "B", "C"] 
   },
 }
+Example:
+{
+  "16491-CPRG211SD-winter": { sections: ["A", "B"] },
+  "16491-CPRG211SD-fall":   { sections: ["A"] },
+}
 */
 
 const semester_list = ["winter", "springSummer", "fall"];
@@ -32,6 +37,19 @@ export default function NewSchedule() {
   const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Dynamic heights from InstructorSection for syncing row heights
+  const [rowHeights, setRowHeights] = useState({}); // { [Instructor_ID]: pxNumber }
+  const [headerHeight, setHeaderHeight] = useState(null);
+
+  // Handlers to update measured heights
+  const handleRowResize = (instructorId, h) => {
+    setRowHeights((prev) =>
+      prev[instructorId] === h ? prev : { ...prev, [instructorId]: h }
+    );
+  };
+  const handleHeaderResize = (h) => {
+    setHeaderHeight((prev) => (prev === h ? prev : h));
+  };
 
   // "Fetching" mock data on component mount
   useEffect(() => {
@@ -41,7 +59,7 @@ export default function NewSchedule() {
       try {
         // REPLACE WITH API CALL
         // const response = await fetch("");
-        // const Data = await response.json();
+        // const instructorData = await response.json();
         setInstructorData(mockInstructors);
         setCourseData(mockCourses);
       } catch (error) {
@@ -69,6 +87,12 @@ export default function NewSchedule() {
         (i) => i.Instructor_ID !== instructor.Instructor_ID
       ),
     }));
+    // Clear measured height for that row to keep rowHeights clean
+    setRowHeights((prev) => {
+      const copy = { ...prev };
+      delete copy[instructor.Instructor_ID];
+      return copy;
+    });
   };
 
   // Handler function to add a course to a specific semester in the newScheduleDraft state
@@ -114,14 +138,56 @@ export default function NewSchedule() {
         : [...current.sections, section];
 
       if (sections.length === 0) {
-        // nothing left for this key (instructor, course, semester) - remove the key
-        const rest = { ...prev };
-        delete rest[key];
+        // nothing left for this (instructor, course, semester) combo - remove the key
+        const { [key]: _, ...rest } = prev;
         return rest;
       }
       return { ...prev, [key]: { sections } };
     });
   };
+
+  // Clean up assignments if instructors or courses are removed, otherwise assignments retain stale data
+  // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
+  useEffect(() => {
+    setAssignments((prev) => {
+      const validInstructorIds = new Set(
+        newScheduleDraft.addedInstructors.map((i) => String(i.Instructor_ID))
+      );
+      const validCourseIdsBySemester = {
+        winter: new Set(
+          newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+        springSummer: new Set(
+          newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+        fall: new Set(
+          newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
+            String(c.Course_ID)
+          )
+        ),
+      };
+      // Create a new assignments object with only valid keys
+      const updatedAssignments = {};
+      // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
+      for (const [key, value] of Object.entries(prev)) {
+        const [iId, cId, sem] = key.split("-");
+        if (
+          validInstructorIds.has(iId) &&
+          validCourseIdsBySemester[sem]?.has(cId)
+        ) {
+          updatedAssignments[key] = value;
+        }
+      }
+      return updatedAssignments;
+    });
+  }, [
+    newScheduleDraft.addedInstructors,
+    newScheduleDraft.addedCoursesBySemester,
+  ]);
 
   // Handlers for Save and Clear buttons
   const handleSave = () => {
@@ -136,6 +202,8 @@ export default function NewSchedule() {
       addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
     }));
     setAssignments({});
+    setRowHeights({});
+    setHeaderHeight(null);
   };
 
   // Determine which semesters are active for rendering CourseSection and AssignmentGrid
@@ -155,7 +223,7 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
-      {/* Heading */}
+      {/* Controls */}
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
@@ -213,6 +281,8 @@ export default function NewSchedule() {
               addedInstructors={newScheduleDraft.addedInstructors}
               assignments={assignments}
               addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
+              onRowResize={handleRowResize}
+              onHeaderResize={handleHeaderResize}
             />
           </div>
 
@@ -225,6 +295,8 @@ export default function NewSchedule() {
                 assignments={assignments}
                 onToggleSection={toggleSection}
                 activeSemesters={newScheduleDraft.metaData.activeSemesters}
+                rowHeights={rowHeights}
+                headerHeight={headerHeight}
               />
             </div>
           </div>
