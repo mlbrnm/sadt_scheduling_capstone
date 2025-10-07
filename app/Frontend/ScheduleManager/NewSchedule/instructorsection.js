@@ -1,32 +1,34 @@
 "use client";
 import { useState } from "react";
-import { getUtilizationColor } from "../_Utils/utilizationColorsUtil";
+import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
+
+const instructorCardHeaders = [
+  "Contract",
+  "Win",
+  "Sp/Su",
+  "Fall",
+  "Total",
+  "Instructor",
+];
+const instructorListHeaders = [
+  "ID",
+  "Name",
+  "Contract",
+  "Semester Hours",
+  "Total Hours",
+  "Status",
+];
 
 export default function InstructorSection({
   instructors,
   onAddInstructor,
   onRemoveInstructor,
   addedInstructors,
+  assignments,
+  addedCoursesBySemester,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
-  const instructorCardHeaders = [
-    "Contract",
-    "Win",
-    "Sp/Su",
-    "Fall",
-    "Total",
-    "Instructor",
-  ];
-  const instructorListHeaders = [
-    "ID",
-    "Name",
-    "Contract",
-    "Semester Hours",
-    "Total Hours",
-    "Status",
-  ];
 
   // Handler function to add the selected instructor
   const handleAddInstructor = (instructor) => {
@@ -46,7 +48,7 @@ export default function InstructorSection({
     }
   };
 
-  // Filter instructors based on search term
+  // Filter instructors based on search term and if already added
   const filteredInstructors = instructors.filter((instructor) => {
     // Check if instructor is already added
     // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
@@ -65,17 +67,50 @@ export default function InstructorSection({
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
+  // Helper function to get hours per section for a (semester, courseId)
+  const hoursPerSection = (semester, courseId) => {
+    const courses = addedCoursesBySemester?.[semester] || [];
+    const course = courses.find(
+      (c) => String(c.Course_ID) === String(courseId)
+    );
+    return (course?.Online || 0) + (course?.Class || 0);
+  };
+
+  // Helper Function to Sum total assigned hours for an instructor in a specific semester
+  const sumHours = (instructorId, semester) => {
+    let sum = 0;
+    const iId = String(instructorId);
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const [iid, cid, sem] = key.split("-");
+      if (iid === iId && sem === semester) {
+        const h = hoursPerSection(sem, cid);
+        sum += (value.sections.length || 0) * h;
+      }
+    }
+    return sum;
+  };
+
+  // Helper Function to Sum total assigned hours for an instructor across all semesters and add to current total hours
+  const sumTotal = (instructorId) => {
+    // base hours for this instructor
+    const base =
+      addedInstructors.find(
+        (i) => String(i.Instructor_ID) === String(instructorId)
+      )?.Total_Hours || 0;
+
+    // add up assigned hours from all semesters
+    let assigned = 0;
+    for (const sem of ["winter", "springSummer", "fall"]) {
+      assigned += sumHours(instructorId, sem);
+    }
+    // 15 for number of weeks in a semester
+    return base + assigned * 15;
+  };
+
   return (
     <div>
-      {/* Added Instructors + Add Instructor Button */}
-      <div className="max-w-auto p-2 bg-gray-50 rounded-md">
-        <button
-          className="cursor-pointer hover:bg-green-100 p-2"
-          onClick={() => setIsModalOpen(true)}
-        >
-          + Add Instructor
-        </button>
-
+      {/* Added Instructors */}
+      <div className="bg-gray-50">
         {/* Display added instructors */}
         <div>
           {addedInstructors.length === 0 ? (
@@ -86,7 +121,7 @@ export default function InstructorSection({
                     <th
                       key={header}
                       scope="col"
-                      className="px-1 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      className="px-2 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
                     >
                       {header}
                     </th>
@@ -102,7 +137,7 @@ export default function InstructorSection({
                     <th
                       key={header}
                       scope="col"
-                      className="px-2 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                      className="px-2 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
                     >
                       {header}
                     </th>
@@ -115,22 +150,30 @@ export default function InstructorSection({
                     key={instructor.Instructor_ID}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
+                    title={`Click to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}`}
                   >
                     <td className="px-3 py-2 text-sm">
                       {instructor.Contract_Type}
                     </td>
-                    {/* Placeholder for Winter Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
-                    {/* Placeholder for Spring/Summer Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
-                    {/* Placeholder for Fall Hours - REPLACE!!! */}
-                    <td className="px-3 py-2 text-sm">0</td>
+                    {/* Winter Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "winter")}
+                    </td>
+                    {/* Spring/Summer Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "springSummer")}
+                    </td>
+                    {/* Fall Hours */}
+                    <td className="px-3 py-2 text-sm">
+                      {sumHours(instructor.Instructor_ID, "fall")}
+                    </td>
                     <td
-                      className={`px-3 py-2 text-sm ${getUtilizationColor(
-                        instructor
-                      )}`}
+                      className={`px-3 py-2 text-sm ${getUtilizationColor({
+                        ...instructor,
+                        Total_Hours: sumTotal(instructor.Instructor_ID),
+                      })}`}
                     >
-                      {`${instructor.Total_Hours} h`}
+                      {`${sumTotal(instructor.Instructor_ID)} h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
                       {instructor.Instructor_Name +
@@ -148,7 +191,7 @@ export default function InstructorSection({
       {/* Modal for selecting instructors */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50"
           onClick={() => setIsModalOpen(false)}
         >
           <div
@@ -177,22 +220,22 @@ export default function InstructorSection({
             </div>
 
             {/* Instructor List */}
-            <div className="max-h-60 overflow-y-auto">
-              <table className="min-w-full">
+            <div className="overflow-y-auto h-80">
+              <table className="min-w-full border border-gray-300">
                 <thead className="bg-gray-50 sticky top-0">
-                  <tr>
+                  <tr className="bg-gray-200">
                     {instructorListHeaders.map((header) => (
                       <th
                         key={header}
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                        className="px-3 py-2 text-left text-sm font-medium text-gray-700 border-b border-gray-300"
                       >
                         {header}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-black">
+                <tbody className="bg-white divide-y">
                   {filteredInstructors.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="px-6 py-4 text-sm text-center">
@@ -210,30 +253,32 @@ export default function InstructorSection({
                         }}
                         className="cursor-pointer hover:bg-gray-100"
                       >
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.Instructor_ID}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.Instructor_Name}{" "}
                           {instructor.Instructor_LastName}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.Contract_Type}
                         </td>
-                        <td className="px-6 py-4 text-sm">
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {`${instructor.Semester_Hours} h`}
                         </td>
-                        <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                        <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span className={getUtilizationColor(instructor)}>
                             {`${instructor.Total_Hours}/${
-                              instructor.Contract_Type === "CS" ? "800" : "615"
+                              instructor.Contract_Type === "Casual"
+                                ? "800"
+                                : "615"
                             } h`}
                           </span>
                         </td>
-                        <td className="px-2 py-1 text-sm font-semibold rounded-full">
+                        <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span
                             className={`${
-                              instructor.Instructor_Status === "Available"
+                              instructor.Instructor_Status === "Active"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             } rounded-sm p-2`}
@@ -250,6 +295,16 @@ export default function InstructorSection({
           </div>
         </div>
       )}
+      {/* Add Instructor Button */}
+      <div>
+        <button
+          className="cursor-pointer text-sm font-semibold p-2"
+          onClick={() => setIsModalOpen(true)}
+          title="Add Instructor"
+        >
+          + Add Instructor
+        </button>
+      </div>
     </div>
   );
 }

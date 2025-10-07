@@ -1,7 +1,15 @@
+// Some logic for file validation, dynamic table formatting, session handling,
+// async uploads, and fetching previous versions was assisted by AI.
+// UI layout, styling, logic, and state management were implemented independently.
+
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
+//import { createClient } from "@supabase/supabase-js";
 
 export default function UploadData() {
+  const [session, setSession] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [selectedDataType, setSelectedDataType] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
@@ -15,14 +23,54 @@ export default function UploadData() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const dataTypes = [
-    "Program",
-    "Course",
-    "Instructor",
-    "Instructor Courses",
-    "Instructor Skills",
-  ];
+  // const authorize_user = async () => {
+  //   const {
+  //     data: { session },
+  //   } = await supabase.auth.getSession();
 
+  //   if (!session) {
+  //     throw new Error("Unauthorized user - access denied.");
+  //   }
+
+  //   return session.access_token;
+  // };
+
+  //persist the user's session so we can track user info
+  //Created with help of AI - quicker implementation
+  useEffect(() => {
+    const getSession = async () => {
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        setError("Error fetching session");
+        console.error(error);
+        return;
+      }
+
+      if (session) {
+        setSession(session);
+        console.log("user session:", session);
+      }
+    };
+
+    getSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+      }
+    );
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const userEmail = session?.user?.email;
+
+  const dataTypes = ["Programs", "Courses", "Instructors"];
+
+  //Created with the help of AI (making sure bases were covered)
   const validateFile = (file) => {
     const validTypes = [
       "application/vnd.ms-excel",
@@ -30,6 +78,124 @@ export default function UploadData() {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ];
     return validTypes.includes(file.type) || file.name.match(/\.(xlsx|csv)$/i);
+  };
+
+  //this function will track the header names to be mapped and formatted for user display from database
+  const headersMap = {
+    //Programs headers mapping
+    program_id: "Program ID",
+    group: "Group",
+    acronym: "Acronym",
+    program: "Program",
+    academic_chair: "Academic Chair",
+    associate_dean: "Associate Dean",
+    credential: "Credential",
+    courses: "Courses",
+    intakes: "Intakes",
+    duration: "Duration",
+    starting_date: "Starting Date",
+    uploaded_at: "Uploaded At",
+    uploaded_by: "Uploaded By",
+
+    //Courses headers mapping
+    course_id: "Course ID",
+    course_code: "Course Code",
+    course_name: "Course Name",
+    program_major: "Program Major",
+    program_type: "Program Type",
+    credential: "Credential",
+    req_elec: "Req Elec",
+    delivery_method: "Delivery Method",
+    school: "School",
+    exam_otr: "Exam OTR",
+    semester: "Semester",
+    fall: "Fall",
+    winter: "Winter",
+    spring_summer: "Spring/Summer",
+    notes: "Notes",
+    uploaded_by: "Uploaded By",
+    uploaded_at: "Uploaded At",
+    credits: "Credits",
+    contact_hours: "Contact Hours",
+    group: "Group",
+    ac_name_loading: "AC Name - Loading",
+
+    //Instructors header mapping
+    instructor_id: "Instructor ID",
+    instructor_name: "First Name",
+    instructor_lastname: "Last Name",
+    contract_type: "Contract Type",
+    instructor_status: "Instructor Status",
+    time_off: "Time Off",
+    uploaded_by: "Uploaded By",
+    uploaded_at: "Uploaded At",
+    salaried_begin_date: "Start Date",
+    contract_end: "End Date",
+    reporting_ac: "Reporting AC",
+    cch_target_ay2025: "CCH Target AY2025",
+    primary_program: "Primary Program",
+    position_number: "Position #",
+    years_as_temp: "Years as Temp",
+    highest_education_tbc: "Highest Education - TBC",
+    skill_scope: "Skill Scope",
+    action_plan: "Action Plan",
+    notes_plan: "Notes/Plan",
+    full_name: "Full Name",
+    fte: "FTE",
+  };
+
+  //headers will either be one from the headersMap or if not there, just what is found in the returned data
+  //headers will also be ordered in the same way they were received
+  //Created with the help of AI
+  const formatPreviewData = (data, columnOrder = []) => {
+    const headers = columnOrder.length
+      ? columnOrder.map((key) => ({
+          key,
+          label: headersMap[key] || key,
+        }))
+      : data.length
+      ? Object.keys(data[0]).map((key) => ({
+          key,
+          label: headersMap[key] || key,
+        }))
+      : [];
+
+    return { headers, rows: data };
+  };
+
+  // create function to populate previewData with data from database while using headersMap
+  const fetchTableData = async (table) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch(`http://localhost:5000/admin/data/${table}`);
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.error || "Failed to fetch data");
+
+      // //setPreviewData(result.data || []);
+      // const data = result.data || [];
+
+      // const headers = data.length
+      //   ? Object.keys(data[0]).map((key) => ({
+      //       key,
+      //       label: headersMap[key] || key,
+      //     }))
+      //   : [];
+
+      setPreviewData(
+        formatPreviewData(
+          result.data.data || [],
+          result.data.column_order || []
+        )
+      );
+    } catch (err) {
+      setError(err.message);
+      setPreviewData(formatPreviewData(result.data || []));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDataTypeSelect = (type) => {
@@ -42,14 +208,24 @@ export default function UploadData() {
 
   //map to track which table to upload to
   const tableMap = {
-    Program: "programs",
-    Course: "courses",
-    Instructor: "instructors",
-    "Instructor Courses": "instructor_course_history",
-    "Instructor Skills": "instructor_skills",
+    Programs: "programs",
+    Courses: "courses",
+    Instructors: "instructors",
   };
 
+  //created with help of AI - helped properly track user's email
   const handleFileUpload = async (event) => {
+    // const {
+    //   data: { session },
+    // } = await supabase.auth.getSession();
+
+    // if (!session) {
+    //   setError("Unauthorized user - no access.");
+    //   return;
+    // }
+
+    // const token = session.access_token;
+
     const file = event.target.files[0];
     if (!file) return;
 
@@ -71,30 +247,47 @@ export default function UploadData() {
 
       if (!validateFile(file)) throw new Error("Invalid file type.");
 
+      //const token = authorize_user();
+
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("table", table); //send table dynamically
-
-      const response = await fetch("http://localhost:5000/upload", {
-        method: "POST",
-        body: formData,
-      });
+      //formData.append("table", table); //send table dynamically
+      const response = await fetch(
+        `http://localhost:5000/admin/upload/${table}`, //uses table value to access correct backend route
+        {
+          method: "POST",
+          headers: {
+            "X-User-Email": userEmail || "",
+            //Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
       const result = await response.json();
 
-      if (!result.success) throw new Error(result.error || "Upload failed");
+      if (!response.ok) throw new Error(result.error || "Upload failed");
 
       setUploadedFile(file);
       setUploadDetails({
         fileName: file.name,
         uploadTime: new Date().toLocaleString(),
       });
-      setPreviewData(result.data || []);
+      //setPreviewData(result.data || []);
+      //setPreviewData(formatPreviewData(result.data || []));
+      setPreviewData(
+        formatPreviewData(
+          result.data.data || [],
+          result.data.column_order || []
+        )
+      );
       setSuccessMessage(`File "${file.name}" uploaded successfully!`);
+
+      await fetchTableData(table);
     } catch (err) {
       setError(err.message);
       setUploadDetails({ fileName: "", uploadTime: "" });
-      setPreviewData([]);
+      setPreviewData({ headers: [], rows: [] });
     } finally {
       setIsLoading(false);
     }
@@ -108,39 +301,71 @@ export default function UploadData() {
     try {
       setIsLoading(true);
       setError(null);
-      // TODO: Implement fetching previous versions from the backend with actual API call
-      // const response = await fetch(`/api/versions?type=${selectedDataType}`);
-      // const data = await response.json();
-      // return data;
+      //const token = authorize_user();
 
-      // Fake timeout
-      await new Promise((resolve) => setTimeout(resolve, 500)); //!!!REMOVE!!!!
-      // Mock data - !!!REMOVE AFTER!!!
-      return [
+      const response = await fetch(
+        `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}`,
         {
-          id: "1",
-          fileName: `${selectedDataType.toLowerCase()}_20230815.xlsx`,
-          uploadTime: "August 6, 2025, 10:30 AM",
-          uploadedBy: "Vanessa Diaz",
-          dataType: selectedDataType,
-          size: "245 KB",
-        },
-        {
-          id: "2",
-          fileName: `${selectedDataType.toLowerCase()}_20230801.xlsx`,
-          uploadTime: "August 1, 2025, 2:15 PM",
-          uploadedBy: "Vanessa Diaz",
-          dataType: selectedDataType,
-          size: "238 KB",
-        },
-      ];
+          method: "GET",
+          headers: {
+            "X-User-Email": userEmail || "",
+            //Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error. Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      return (data.uploads || []).map((file, index) => ({
+        id: file.id || index.toString(),
+        fileName: file.original_name,
+        uploadTime: new Date(file.uploaded_at).toLocaleString(),
+        uploadedBy: file.uploaded_by,
+        dataType: selectedDataType,
+        storagePath: file.storage_path,
+        size: file.size || "-", // backend doesn’t send size - placeholder
+        version: file.version,
+      }));
     } catch (error) {
-      setError("Failed to load previous versions.");
+      console.error(error);
+      setError("Failed to load previous versions");
       return [];
     } finally {
       setIsLoading(false);
     }
   };
+
+  //   // Fake timeout
+  //   await new Promise((resolve) => setTimeout(resolve, 500)); //!!!REMOVE!!!!
+  //   // Mock data - !!!REMOVE AFTER!!!
+  //   return [
+  //     {
+  //       id: "1",
+  //       fileName: `${selectedDataType.toLowerCase()}_20230815.xlsx`,
+  //       uploadTime: "August 6, 2025, 10:30 AM",
+  //       uploadedBy: "Vanessa Diaz",
+  //       dataType: selectedDataType,
+  //       size: "245 KB",
+  //     },
+  //     {
+  //       id: "2",
+  //       fileName: `${selectedDataType.toLowerCase()}_20230801.xlsx`,
+  //       uploadTime: "August 1, 2025, 2:15 PM",
+  //       uploadedBy: "Vanessa Diaz",
+  //       dataType: selectedDataType,
+  //       size: "238 KB",
+  //     },
+  //   ];
+  // } catch (error) {
+  //   setError("Failed to load previous versions.");
+  //   return [];
+  // } finally {
+  //   setIsLoading(false);
+  // }
 
   const handleRestoreButtonClick = async () => {
     const versions = await fetchPreviousVersions();
@@ -153,76 +378,54 @@ export default function UploadData() {
       setIsLoading(true);
       setError(null);
       setSuccessMessage("");
-      // TODO: Implement version selection logic with actual API call
-      // const response = await fetch(`/api/versions/${version.id}`);
-      // const data = await response.json();
 
-      // Fake timeout
-      await new Promise((resolve) => setTimeout(resolve, 800)); //!!!REMOVE!!!!
-      // Mock data - !!!REMOVE AFTER!!!
-      const mockData = {
-        Program: [
-          {
-            Group: "Cyber Security",
-            Acronym: "CSA",
-            Program: "Cyber Security Analyst (CSA)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Post-diploma Certificate",
-            Courses: "10",
-            Intakes: "Fall",
-            Duration: "18 months",
-            StartingDate: "Jan-24",
+      const response = await fetch(
+        `http://localhost:5000/admin/uploads/restore/${version.dataType.toLowerCase()}/${
+          version.storagePath
+        }`,
+        {
+          method: "POST",
+          headers: {
+            "X-User-Email": userEmail || "",
+            //Authorization: `Bearer ${token}`,
           },
-          {
-            Group: "Cyber Security",
-            Acronym: "CS",
-            Program: "Cyber Security for Control Systems (CS)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Post-diploma Certificate",
-            Courses: "10",
-            Intakes: "Fall-Spring",
-            Duration: "21 weeks",
-            StartingDate: "Jan-24",
-          },
-          {
-            Group: "Cyber Security",
-            Acronym: "ISA",
-            Program: "Information Security Analyst (ISA)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Post-diploma Certificate",
-            Courses: "9",
-            Intakes: "Fall-Spring",
-            Duration: "21 weeks",
-            StartingDate: "Jan-24",
-          },
-          {
-            Group: "Cyber Security",
-            Acronym: "ISS",
-            Program: "Information Systems Security (ISS)",
-            AcademicChair: "CM",
-            AssociateDean: "Jessica Whiting",
-            Credential: "Diploma",
-            Courses: "20",
-            Intakes: "Fall-Winter-Spring",
-            Duration: "2 years",
-            StartingDate: "Jan-24",
-          },
-        ],
-      };
-      setPreviewData(mockData[version.dataType] || []); // !!!CHANGE WITH REAL DATA!!!
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to restore version");
+      }
+
+      const result = await response.json();
+
+      setPreviewData(
+        formatPreviewData(
+          result.data.data || [],
+          result.data.column_order || []
+        )
+      );
       setUploadDetails({
         fileName: `RESTORED_${version.fileName}`,
-        uploadTime: "August 6, 2025, 10:30 AM", // !!!CHANGE WITH REAL DATA!!!
+        uploadTime: new Date().toLocaleString(),
       });
       setShowVersionsModal(false);
       setSuccessMessage(`Successfully restored from ${version.fileName}`);
     } catch (error) {
-      setError("Failed to restore version.");
+      console.error(error);
+      setError("Failed to restore version: " + error.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownload = async (storagePath) => {
+    const response = await fetch(
+      `http://localhost:5000/admin/uploads/download/${storagePath}`
+    );
+    const data = await response.json();
+    if (data.download_url) {
+      window.open(data.download_url, "_blank");
     }
   };
 
@@ -322,30 +525,30 @@ export default function UploadData() {
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
             </div>
-          ) : previewData.length > 0 ? (
-            <div className="bg-white rounded-lg overflow-auto max-h-80">
-              <table className="w-full bg-white">
+          ) : previewData.rows && previewData.rows.length > 0 ? (
+            <div className="bg-white rounded-lg overflow-x-auto overflow-y-auto max-h-120">
+              <table className="table-auto w-full bg-white">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr className="bg-gray-100">
-                    {Object.keys(previewData[0]).map((key) => (
+                    {previewData.headers?.map((header) => (
                       <th
-                        key={key}
-                        className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
+                        key={header.key}
+                        className="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase"
                       >
-                        {key}
+                        {header.label}
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {previewData.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {Object.values(row).map((cell, cellIndex) => (
+                  {previewData.rows?.map((row, index) => (
+                    <tr key={index}>
+                      {previewData.headers.map((header) => (
                         <td
-                          key={cellIndex}
-                          className="py-2 px-4 border-b text-sm"
+                          key={header.key}
+                          className="whitespace-nowrap px-6 py-3"
                         >
-                          {cell}
+                          {row[header.key]}
                         </td>
                       ))}
                     </tr>
@@ -389,9 +592,8 @@ export default function UploadData() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-3">File Name</th>
-                      <th className="text-left p-3">Uploaded</th>
-                      <th className="text-left p-3">By</th>
-                      <th className="text-left p-3">Size</th>
+                      <th className="text-left p-3">Uploaded At</th>
+                      <th className="text-left p-3">Uploaded By</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -404,7 +606,36 @@ export default function UploadData() {
                         <td className="p-3">{version.fileName}</td>
                         <td className="p-3">{version.uploadTime}</td>
                         <td className="p-3">{version.uploadedBy}</td>
-                        <td className="p-3">{version.size}</td>
+                        <td className="border px-4 py-2">
+                          <button
+                            className={`bg-blue-500 text-white px-2 py-1 rounded transition-opacity duration-200 
+                              hover:opacity-80 active:opacity-60 
+                              ${
+                                isLoading ? "opacity-50 cursor-not-allowed" : ""
+                              }`}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              setIsLoading(true);
+                              try {
+                                const response = await fetch(
+                                  `http://localhost:5000/admin/uploads/download/${version.storagePath}`
+                                );
+                                const data = await response.json();
+                                if (data.download_url) {
+                                  window.open(data.download_url, "_blank");
+                                }
+                              } catch (err) {
+                                console.error("Download failed:", err);
+                                setError("Download failed: " + err.message);
+                              } finally {
+                                setIsLoading(false);
+                              }
+                            }}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? "Downloading..." : "Download"}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
