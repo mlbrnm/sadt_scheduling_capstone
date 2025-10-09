@@ -106,8 +106,8 @@ export default function CourseSection({
                   <span className="font-semibold">{course.Course_Code}</span>
                   <span>{course.Course_Name}</span>
                   <span>{course.Delivery}</span>
-                  <span>{`Online ${course.Online}h`}</span>
-                  <span>{`Class ${course.Class}h`}</span>
+                  <span>{`Online: ${course.Online_hrs}hrs`}</span>
+                  <span>{`Class: ${course.Class_hrs}hrs`}</span>
                 </>
               )}
             </li>
@@ -193,10 +193,10 @@ export default function CourseSection({
                           {course.Delivery}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {`${course.Online} h`}
+                          {`${course.Online_hrs} h`}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {`${course.Class} h`}
+                          {`${course.Class_hrs} h`}
                         </td>
                       </tr>
                     ))
