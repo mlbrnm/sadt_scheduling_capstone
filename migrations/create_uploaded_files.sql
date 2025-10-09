@@ -5,5 +5,6 @@ create table if not exists uploaded_files (
     storage_path text not null, 
     version int not null,  
     uploaded_by text not null,
-    uploaded_at character varying(50) null
+    uploaded_at character varying(50) null,
+    column_order text not null
 );
