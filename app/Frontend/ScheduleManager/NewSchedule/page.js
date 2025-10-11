@@ -14,7 +14,6 @@ assignments: {
       "A": { class: true,  online: true  }, // instructor owns Class & Online of section A
       "B": { class: true,  online: false }, // owns only Class of section B
       "C": { class: false, online: true  }, // owns only Online of section C
-      // ...
     }
   },
 }
