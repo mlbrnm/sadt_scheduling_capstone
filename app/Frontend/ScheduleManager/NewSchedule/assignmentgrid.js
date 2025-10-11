@@ -113,7 +113,7 @@ export default function AssignmentGrid({
                             semester
                           );
                         const hours =
-                          (course?.Online || 0) + (course?.Class || 0);
+                          (course?.Online_hrs || 0) + (course?.Class_hrs || 0);
 
                         return (
                           <button
