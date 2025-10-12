@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 const instructorCardHeaders = [
@@ -19,6 +19,21 @@ const instructorListHeaders = [
   "Status",
 ];
 
+// Hook to observe size changes of an element
+function useResizeObserver(el, onSize) {
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = Math.ceil(entry.contentRect.height);
+        onSize(h);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el, onSize]);
+}
+
 export default function InstructorSection({
   instructors,
   onAddInstructor,
@@ -26,6 +41,8 @@ export default function InstructorSection({
   addedInstructors,
   assignments,
   addedCoursesBySemester,
+  onRowResize,
+  onHeaderResize,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,7 +56,6 @@ export default function InstructorSection({
 
   // Handler function to remove an instructor
   const handleRemoveInstructor = (instructor) => {
-    // USED AI Q: how can we add a confirmation message for removing an added instructor without making a custom modal? (https://chat.deepseek.com/a/chat/s/cdbd0a66-d6f9-47e0-b1da-c564f09c6e7d)
     const confirmRemove = window.confirm(
       `Are you sure you want to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}?`
     );
@@ -63,28 +79,34 @@ export default function InstructorSection({
 
     // Filter by searching ID
     const matchesID = instructor.Instructor_ID.toString().includes(searchTerm);
-
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
-  // Helper function to get hours per section for a (semester, courseId)
+  // Helper function to get per-week hours for this course
   const hoursPerSection = (semester, courseId) => {
     const courses = addedCoursesBySemester?.[semester] || [];
     const course = courses.find(
       (c) => String(c.Course_ID) === String(courseId)
     );
-    return (course?.Online || 0) + (course?.Class || 0);
+    return {
+      classHrs: course?.Class_hrs || 0,
+      onlineHrs: course?.Online_hrs || 0,
+    };
   };
 
-  // Helper Function to Sum total assigned hours for an instructor in a specific semester
+  // Helper Function to Sum per-week hours for an instructor in a semester
   const sumHours = (instructorId, semester) => {
     let sum = 0;
     const iId = String(instructorId);
     for (const [key, value] of Object.entries(assignments || {})) {
       const [iid, cid, sem] = key.split("-");
-      if (iid === iId && sem === semester) {
-        const h = hoursPerSection(sem, cid);
-        sum += (value.sections.length || 0) * h;
+      if (iid !== iId || sem !== semester) continue;
+
+      const { classHrs, onlineHrs } = hoursPerSection(sem, cid);
+      const sections = value?.sections || {};
+      for (const sec of Object.values(sections)) {
+        if (sec.class) sum += classHrs;
+        if (sec.online) sum += onlineHrs;
       }
     }
     return sum;
@@ -107,6 +129,28 @@ export default function InstructorSection({
     return base + assigned * 15;
   };
 
+  // Measure header + each row height and report up
+  const headerRef = useRef(null);
+  useResizeObserver(headerRef.current, (h) => onHeaderResize?.(h));
+
+  const rowRefs = useRef(new Map());
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const observers = [];
+    rowRefs.current.forEach((node, id) => {
+      if (!node) return;
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const h = Math.ceil(entry.contentRect.height);
+          onRowResize?.(id, h);
+        }
+      });
+      ro.observe(node);
+      observers.push(ro);
+    });
+    return () => observers.forEach((ro) => ro.disconnect());
+  }, [addedInstructors, onRowResize]);
+
   return (
     <div>
       {/* Added Instructors */}
@@ -116,7 +160,7 @@ export default function InstructorSection({
           {addedInstructors.length === 0 ? (
             <table>
               <thead className="bg-gray-50">
-                <tr>
+                <tr ref={headerRef}>
                   {instructorCardHeaders.map((header) => (
                     <th
                       key={header}
@@ -132,7 +176,7 @@ export default function InstructorSection({
           ) : (
             <table>
               <thead>
-                <tr>
+                <tr ref={headerRef}>
                   {instructorCardHeaders.map((header) => (
                     <th
                       key={header}
@@ -148,6 +192,10 @@ export default function InstructorSection({
                 {addedInstructors.map((instructor) => (
                   <tr
                     key={instructor.Instructor_ID}
+                    ref={(el) => {
+                      if (el) rowRefs.current.set(instructor.Instructor_ID, el);
+                      else rowRefs.current.delete(instructor.Instructor_ID);
+                    }}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
                     title={`Click to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}`}
@@ -157,15 +205,15 @@ export default function InstructorSection({
                     </td>
                     {/* Winter Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {sumHours(instructor.Instructor_ID, "winter")}
+                      {`${sumHours(instructor.Instructor_ID, "winter")}h`}
                     </td>
                     {/* Spring/Summer Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {sumHours(instructor.Instructor_ID, "springSummer")}
+                      {`${sumHours(instructor.Instructor_ID, "springSummer")}h`}
                     </td>
                     {/* Fall Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {sumHours(instructor.Instructor_ID, "fall")}
+                      {`${sumHours(instructor.Instructor_ID, "fall")}h`}
                     </td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor({
@@ -173,7 +221,7 @@ export default function InstructorSection({
                         Total_Hours: sumTotal(instructor.Instructor_ID),
                       })}`}
                     >
-                      {`${sumTotal(instructor.Instructor_ID)} h`}
+                      {`${sumTotal(instructor.Instructor_ID)}h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
                       {instructor.Instructor_Name +
