@@ -198,12 +198,10 @@ export default function ACScheduleManage() {
     }
   };
 
-  // Navigate to NewSchedule page with schedule_id
+  // Placeholder button functions
   const handleCreateModifySchedule = (scheduleId) => {
-    // OLD CODE - keeping for reference:
-    // console.log("Create/Modify schedule:", scheduleId);
-    
-    router.push(`/Frontend/ScheduleManager/NewSchedule?schedule_id=${scheduleId}`);
+    console.log("Create/Modify schedule:", scheduleId);
+    // TODO: schedule creation/modification that links to Amrit's page
   };
 
   const handleSubmitSchedule = (scheduleId) => {
