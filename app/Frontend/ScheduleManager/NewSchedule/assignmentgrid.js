@@ -240,7 +240,7 @@ export default function AssignmentGrid({
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            className="block w-full px-3 py-1 rounded text-left hover:bg-gray-100"
             onClick={() => {
               onToggleSection(
                 contextMenu.instructorId,
@@ -255,7 +255,7 @@ export default function AssignmentGrid({
             Toggle Class
           </button>
           <button
-            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            className="block w-full px-3 py-1 rounded text-left hover:bg-gray-100"
             onClick={() => {
               onToggleSection(
                 contextMenu.instructorId,

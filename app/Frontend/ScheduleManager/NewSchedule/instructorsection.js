@@ -205,15 +205,15 @@ export default function InstructorSection({
                     </td>
                     {/* Winter Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {`${sumHours(instructor.Instructor_ID, "winter")}h`}
+                      {`${sumHours(instructor.Instructor_ID, "winter")}`}
                     </td>
                     {/* Spring/Summer Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {`${sumHours(instructor.Instructor_ID, "springSummer")}h`}
+                      {`${sumHours(instructor.Instructor_ID, "springSummer")}`}
                     </td>
                     {/* Fall Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {`${sumHours(instructor.Instructor_ID, "fall")}h`}
+                      {`${sumHours(instructor.Instructor_ID, "fall")}`}
                     </td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor({
