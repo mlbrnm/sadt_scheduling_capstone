@@ -1,3 +1,6 @@
+"use client";
+import { useState, useEffect } from "react";
+
 const semester_list = ["winter", "springSummer", "fall"];
 const semester_titles = {
   winter: "Winter",
@@ -15,6 +18,16 @@ export default function AssignmentGrid({
   rowHeights,
   headerHeight,
 }) {
+  // contextMenu = { x, y, instructorId, courseId, section, semester } or null
+  const [contextMenu, setContextMenu] = useState(null);
+
+  // useEffect to listen for outside clicks (close context menu on any window click)
+  useEffect(() => {
+    const handleOutsideClick = () => setContextMenu(null);
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
+
   // Helper function to add sentinel course to end of addedCourses for "+ Add Course" button
   const coursesWithAdd = (semester) => [
     ...(addedCoursesBySemester[semester] || []),
@@ -187,6 +200,17 @@ export default function AssignmentGrid({
                                       }
                                     }
                               }
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setContextMenu({
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  instructorId: instructor.Instructor_ID,
+                                  course,
+                                  section,
+                                  semester,
+                                });
+                              }}
                               title={
                                 isAdd
                                   ? "Add Course to create sections"
@@ -196,56 +220,6 @@ export default function AssignmentGrid({
                             >
                               {/* Main Label */}
                               {!isAdd ? label : ""}
-
-                              {/* Inline Split Controls */}
-                              {!isAdd && (
-                                <div className="absolute top-0 right-0 hidden group-hover:flex gap-1">
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    className={`px-1 text-[10px] leading-none rounded border pointer-events-auto ${
-                                      ownsClass
-                                        ? "bg-green-300"
-                                        : "bg-white hover:bg-gray-200"
-                                    }`}
-                                    title="Toggle Class only"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onToggleSection(
-                                        instructor.Instructor_ID,
-                                        course,
-                                        section,
-                                        semester,
-                                        "class"
-                                      );
-                                    }}
-                                  >
-                                    C
-                                  </span>
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    className={`px-1 text-[10px] leading-none rounded border pointer-events-auto ${
-                                      ownsOnline
-                                        ? "bg-green-300"
-                                        : "bg-white hover:bg-gray-200"
-                                    }`}
-                                    title="Toggle Online only"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onToggleSection(
-                                        instructor.Instructor_ID,
-                                        course,
-                                        section,
-                                        semester,
-                                        "online"
-                                      );
-                                    }}
-                                  >
-                                    O
-                                  </span>
-                                </div>
-                              )}
                             </button>
                           );
                         })}
@@ -258,6 +232,45 @@ export default function AssignmentGrid({
           })}
         </div>
       ))}
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="absolute bg-white border rounded shadow-lg text-sm z-50"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            onClick={() => {
+              onToggleSection(
+                contextMenu.instructorId,
+                contextMenu.course,
+                contextMenu.section,
+                contextMenu.semester,
+                "class"
+              );
+              setContextMenu(null);
+            }}
+          >
+            Toggle Class
+          </button>
+          <button
+            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            onClick={() => {
+              onToggleSection(
+                contextMenu.instructorId,
+                contextMenu.course,
+                contextMenu.section,
+                contextMenu.semester,
+                "online"
+              );
+              setContextMenu(null);
+            }}
+          >
+            Toggle Online
+          </button>
+        </div>
+      )}
     </div>
   );
 }
