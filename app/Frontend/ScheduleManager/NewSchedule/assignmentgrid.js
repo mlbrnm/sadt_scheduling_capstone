@@ -213,7 +213,7 @@ export default function AssignmentGrid({
                               }}
                               title={
                                 isAdd
-                                  ? "Add Course to create sections"
+                                  ? ""
                                   : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.Course_Code} to ${instructor.Instructor_Name} ${instructor.Instructor_LastName}.
                                   `
                               }
@@ -240,7 +240,7 @@ export default function AssignmentGrid({
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            className="block w-full px-3 py-1 rounded text-left hover:bg-gray-100"
             onClick={() => {
               onToggleSection(
                 contextMenu.instructorId,
@@ -255,7 +255,7 @@ export default function AssignmentGrid({
             Toggle Class
           </button>
           <button
-            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            className="block w-full px-3 py-1 rounded text-left hover:bg-gray-100"
             onClick={() => {
               onToggleSection(
                 contextMenu.instructorId,
