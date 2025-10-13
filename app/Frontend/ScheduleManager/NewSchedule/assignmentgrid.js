@@ -213,7 +213,7 @@ export default function AssignmentGrid({
                               }}
                               title={
                                 isAdd
-                                  ? "Add Course to create sections"
+                                  ? ""
                                   : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.Course_Code} to ${instructor.Instructor_Name} ${instructor.Instructor_LastName}.
                                   `
                               }
