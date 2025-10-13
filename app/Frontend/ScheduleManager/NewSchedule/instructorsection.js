@@ -82,24 +82,31 @@ export default function InstructorSection({
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
-  // Helper function to get hours per section for a (semester, courseId)
+  // Helper function to get per-week hours for this course
   const hoursPerSection = (semester, courseId) => {
     const courses = addedCoursesBySemester?.[semester] || [];
     const course = courses.find(
       (c) => String(c.Course_ID) === String(courseId)
     );
-    return (course?.Online || 0) + (course?.Class || 0);
+    return {
+      classHrs: course?.Class_hrs || 0,
+      onlineHrs: course?.Online_hrs || 0,
+    };
   };
 
-  // Helper Function to Sum total assigned hours for an instructor in a specific semester
+  // Helper Function to Sum per-week hours for an instructor in a semester
   const sumHours = (instructorId, semester) => {
     let sum = 0;
     const iId = String(instructorId);
     for (const [key, value] of Object.entries(assignments || {})) {
       const [iid, cid, sem] = key.split("-");
-      if (iid === iId && sem === semester) {
-        const h = hoursPerSection(sem, cid);
-        sum += (value.sections.length || 0) * h;
+      if (iid !== iId || sem !== semester) continue;
+
+      const { classHrs, onlineHrs } = hoursPerSection(sem, cid);
+      const sections = value?.sections || {};
+      for (const sec of Object.values(sections)) {
+        if (sec.class) sum += classHrs;
+        if (sec.online) sum += onlineHrs;
       }
     }
     return sum;
@@ -198,15 +205,15 @@ export default function InstructorSection({
                     </td>
                     {/* Winter Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {sumHours(instructor.Instructor_ID, "winter")}
+                      {`${sumHours(instructor.Instructor_ID, "winter")}h`}
                     </td>
                     {/* Spring/Summer Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {sumHours(instructor.Instructor_ID, "springSummer")}
+                      {`${sumHours(instructor.Instructor_ID, "springSummer")}h`}
                     </td>
                     {/* Fall Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {sumHours(instructor.Instructor_ID, "fall")}
+                      {`${sumHours(instructor.Instructor_ID, "fall")}h`}
                     </td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor({
@@ -214,7 +221,7 @@ export default function InstructorSection({
                         Total_Hours: sumTotal(instructor.Instructor_ID),
                       })}`}
                     >
-                      {`${sumTotal(instructor.Instructor_ID)} h`}
+                      {`${sumTotal(instructor.Instructor_ID)}h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
                       {instructor.Instructor_Name +

@@ -1,9 +1,13 @@
+"use client";
+import { useState, useEffect } from "react";
+
 const semester_list = ["winter", "springSummer", "fall"];
 const semester_titles = {
   winter: "Winter",
   springSummer: "Spring/Summer",
   fall: "Fall",
 };
+const maxSections = 6; // A–F
 
 export default function AssignmentGrid({
   addedInstructors,
@@ -14,7 +18,15 @@ export default function AssignmentGrid({
   rowHeights,
   headerHeight,
 }) {
-  const maxSections = 6; // A–F
+  // contextMenu = { x, y, instructorId, courseId, section, semester } or null
+  const [contextMenu, setContextMenu] = useState(null);
+
+  // useEffect to listen for outside clicks (close context menu on any window click)
+  useEffect(() => {
+    const handleOutsideClick = () => setContextMenu(null);
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, []);
 
   // Helper function to add sentinel course to end of addedCourses for "+ Add Course" button
   const coursesWithAdd = (semester) => [
@@ -22,11 +34,11 @@ export default function AssignmentGrid({
     { __isAdd: true, Course_ID: `__add-${semester}` },
   ];
 
-  // Helper function to check if a section is assigned
-  const isSectionAssigned = (instructorId, courseId, section, semester) => {
+  // Helper function to check if an instructor owns class or online of a course section
+  const owns = (instructorId, courseId, section, semester, comp) => {
     const key = `${instructorId}-${courseId}-${semester}`;
-    const entry = assignments[key];
-    return entry ? entry.sections.includes(section) : false;
+    const sec = assignments[key]?.sections?.[section];
+    return !!sec?.[comp];
   };
 
   const visibleSemesters = semester_list.filter(
@@ -91,77 +103,174 @@ export default function AssignmentGrid({
 
           {/* Instructor Rows */}
           {addedInstructors.map((instructor) => {
-            const h =
+            const rowH =
               ((rowHeights?.[instructor.Instructor_ID] ?? 36) | 0) + "px";
             return (
               <div
                 key={instructor.Instructor_ID}
                 className="flex items-stretch"
-                style={{ height: h }}
+                style={{ height: rowH }}
               >
-                {coursesWithAdd(semester).map((course) => (
-                  <div key={course.Course_ID} className="w-36 h-full">
-                    <div className="grid grid-cols-6 h-full">
-                      {Array.from({ length: maxSections }, (_, i) => {
-                        const section = String.fromCharCode(65 + i);
-                        const assigned =
-                          !course.__isAdd &&
-                          isSectionAssigned(
-                            instructor.Instructor_ID,
-                            course.Course_ID,
-                            section,
-                            semester
-                          );
-                        const hours =
-                          (course?.Online || 0) + (course?.Class || 0);
+                {coursesWithAdd(semester).map((course) => {
+                  const classHrs = course.Class_hrs || 0;
+                  const onlineHrs = course.Online_hrs || 0;
+                  const totalHrs = classHrs + onlineHrs;
+                  return (
+                    <div key={course.Course_ID} className="w-36 h-full">
+                      <div className="grid grid-cols-6 h-full">
+                        {Array.from({ length: maxSections }, (_, i) => {
+                          const section = String.fromCharCode(65 + i);
+                          const isAdd = !!course.__isAdd;
+                          const ownsClass =
+                            !isAdd &&
+                            owns(
+                              instructor.Instructor_ID,
+                              course.Course_ID,
+                              section,
+                              semester,
+                              "class"
+                            );
+                          const ownsOnline =
+                            !isAdd &&
+                            owns(
+                              instructor.Instructor_ID,
+                              course.Course_ID,
+                              section,
+                              semester,
+                              "online"
+                            );
+                          const ownsAny = ownsClass || ownsOnline;
+                          const ownsBoth = ownsClass && ownsOnline;
+                          let label = "";
+                          if (!isAdd) {
+                            if (ownsBoth) {
+                              label = `${totalHrs}h`;
+                            } else if (ownsClass) {
+                              label = `C${classHrs}h`;
+                            } else if (ownsOnline) {
+                              label = `O${onlineHrs}h`;
+                            } else {
+                              label = "";
+                            }
+                          }
+                          const baseClasses =
+                            "relative border box-border text-[11px] flex items-center justify-center";
+                          const bgClasses = isAdd
+                            ? "bg-gray-50 opacity-50 cursor-not-allowed"
+                            : ownsBoth
+                            ? "bg-green-200 hover:bg-red-200 font-semibold cursor-pointer"
+                            : ownsAny
+                            ? "bg-green-200 hover:bg-red-200 font-semibold cursor-pointer"
+                            : "bg-gray-50 hover:bg-green-100 font-semibold cursor-pointer";
 
-                        return (
-                          <button
-                            key={section}
-                            disabled={!!course.__isAdd}
-                            aria-pressed={assigned}
-                            className={`border box-border text-sm flex items-center justify-center cursor-pointer ${
-                              course.__isAdd
-                                ? "bg-gray-50 opacity-50 cursor-default"
-                                : assigned
-                                ? "bg-green-200 font-semibold"
-                                : "bg-gray-50 hover:bg-green-100"
-                            }`}
-                            onClick={
-                              course.__isAdd
-                                ? undefined
-                                : () =>
-                                    onToggleSection(
-                                      instructor.Instructor_ID,
-                                      course,
-                                      section,
-                                      semester
-                                    )
-                            }
-                            title={
-                              course.__isAdd
-                                ? "Add Course to create sections"
-                                : `Click to ${
-                                    assigned ? "Remove" : "Assign"
-                                  } Section ${section} (${
-                                    semester_titles[semester]
-                                  }) for ${instructor.Instructor_Name} ${
-                                    instructor.Instructor_LastName
-                                  } for ${course.Course_Code}`
-                            }
-                          >
-                            {course.__isAdd ? "" : assigned ? `${hours}h` : ""}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={section}
+                              disabled={isAdd}
+                              aria-pressed={ownsAny}
+                              className={`${baseClasses} ${bgClasses} group`}
+                              onClick={
+                                isAdd
+                                  ? undefined
+                                  : (e) => {
+                                      if (e.altKey) {
+                                        onToggleSection(
+                                          instructor.Instructor_ID,
+                                          course,
+                                          section,
+                                          semester,
+                                          "class"
+                                        );
+                                      } else if (e.shiftKey) {
+                                        onToggleSection(
+                                          instructor.Instructor_ID,
+                                          course,
+                                          section,
+                                          semester,
+                                          "online"
+                                        );
+                                      } else {
+                                        onToggleSection(
+                                          instructor.Instructor_ID,
+                                          course,
+                                          section,
+                                          semester,
+                                          "both"
+                                        );
+                                      }
+                                    }
+                              }
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setContextMenu({
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  instructorId: instructor.Instructor_ID,
+                                  course,
+                                  section,
+                                  semester,
+                                });
+                              }}
+                              title={
+                                isAdd
+                                  ? "Add Course to create sections"
+                                  : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.Course_Code} to ${instructor.Instructor_Name} ${instructor.Instructor_LastName}.
+                                  `
+                              }
+                            >
+                              {/* Main Label */}
+                              {!isAdd ? label : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             );
           })}
         </div>
       ))}
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="absolute bg-white border rounded shadow-lg text-sm z-50"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            onClick={() => {
+              onToggleSection(
+                contextMenu.instructorId,
+                contextMenu.course,
+                contextMenu.section,
+                contextMenu.semester,
+                "class"
+              );
+              setContextMenu(null);
+            }}
+          >
+            Toggle Class
+          </button>
+          <button
+            className="block w-full px-3 py-1 text-left hover:bg-gray-100"
+            onClick={() => {
+              onToggleSection(
+                contextMenu.instructorId,
+                contextMenu.course,
+                contextMenu.section,
+                contextMenu.semester,
+                "online"
+              );
+              setContextMenu(null);
+            }}
+          >
+            Toggle Online
+          </button>
+        </div>
+      )}
     </div>
   );
 }
