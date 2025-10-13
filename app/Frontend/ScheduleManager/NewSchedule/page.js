@@ -1,7 +1,9 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import mockInstructors from "./mockinstructors.json"; // MOCK DATA - REMOVE LATER
-import mockCourses from "./mockcourses.json"; // MOCK DATA - REMOVE LATER
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "../../supabaseClient";
+// import mockInstructors from "./mockinstructors.json"; // OLD MOCK DATA - REMOVED
+// import mockCourses from "./mockcourses.json"; // OLD MOCK DATA - REMOVED
 import ScheduleControls from "./schedulecontrols";
 import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
@@ -35,6 +37,10 @@ assignments = {
 const semester_list = ["winter", "springSummer", "fall"];
 
 export default function NewSchedule() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const scheduleId = searchParams.get("schedule_id");
+  
   const [newScheduleDraft, setNewScheduleDraft] = useState({
     metaData: {
       year: 2025,
@@ -43,11 +49,14 @@ export default function NewSchedule() {
     addedInstructors: [],
     addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
   });
-  const [instructorData, setInstructorData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
-  const [courseData, setCourseData] = useState([]); // Currently holds Mock data for courses - REPLACE WITH API CALL
+  const [instructorData, setInstructorData] = useState([]); // Real instructors from database
+  const [courseData, setCourseData] = useState([]); // Real courses from database
   const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [academicChairId, setAcademicChairId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null); // { type: 'success' | 'error', message: string }
+  const [isSaving, setIsSaving] = useState(false);
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [Instructor_ID]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
@@ -62,25 +71,136 @@ export default function NewSchedule() {
     setHeaderHeight((prev) => (prev === h ? prev : h));
   };
 
-  // "Fetching" mock data on component mount
+  // Get current user (academic chair)
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setAcademicChairId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
+
+  // Fetching real instructors and courses from database on component mount
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // REPLACE WITH API CALL
-        // const response = await fetch("");
-        // const instructorData = await response.json();
-        setInstructorData(mockInstructors);
-        setCourseData(mockCourses);
+        // Fetch instructors from database
+        const { data: instructorsData, error: instructorsError } = await supabase
+          .from("instructors")
+          .select("*");
+
+        if (instructorsError) throw instructorsError;
+
+        // Fetch courses from database
+        const { data: coursesData, error: coursesError } = await supabase
+          .from("courses")
+          .select("*");
+
+        if (coursesError) throw coursesError;
+
+        // Map database fields to expected format (Instructor_ID, Course_ID)
+        const mappedInstructors = instructorsData.map((instructor) => ({
+          ...instructor,
+          Instructor_ID: instructor.instructor_id,
+        }));
+
+        const mappedCourses = coursesData.map((course) => ({
+          ...course,
+          Course_ID: course.course_id,
+        }));
+
+        setInstructorData(mappedInstructors);
+        setCourseData(mappedCourses);
+
+        // OLD MOCK DATA CODE:
+        // setInstructorData(mockInstructors);
+        // setCourseData(mockCourses);
       } catch (error) {
-        setError("Failed to fetch data.");
+        console.error("Error fetching data:", error);
+        setError("Failed to fetch data: " + error.message);
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
   }, []);
+
+  // Fetch existing schedule data if schedule_id is provided
+  useEffect(() => {
+    if (!scheduleId || instructorData.length === 0 || courseData.length === 0) return;
+
+    const fetchScheduleData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`http://localhost:5000/schedules/${scheduleId}/json`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch schedule data");
+        }
+
+        const data = await response.json();
+
+        // Update metaData
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          metaData: {
+            year: data.metaData.year,
+            activeSemesters: data.metaData.activeSemesters,
+          },
+        }));
+
+        // Set assignments
+        setAssignments(data.assignments || {});
+
+        // Derive addedInstructors and addedCoursesBySemester from assignments
+        const instructorIds = new Set();
+        const coursesBySemester = { winter: new Set(), springSummer: new Set(), fall: new Set() };
+
+        Object.keys(data.assignments || {}).forEach((key) => {
+          const parts = key.split("-");
+          const instructorId = parts[0];
+          const semester = parts[parts.length - 1];
+          const courseId = parts.slice(1, -1).join("-");
+          
+          instructorIds.add(instructorId);
+          coursesBySemester[semester]?.add(courseId);
+        });
+
+        // Find instructor objects from database data
+        const instructorsToAdd = instructorData.filter((instructor) =>
+          instructorIds.has(String(instructor.Instructor_ID))
+        );
+
+        // Find course objects from database data
+        const coursesToAdd = {
+          winter: courseData.filter((course) => coursesBySemester.winter.has(String(course.Course_ID))),
+          springSummer: courseData.filter((course) => coursesBySemester.springSummer.has(String(course.Course_ID))),
+          fall: courseData.filter((course) => coursesBySemester.fall.has(String(course.Course_ID))),
+        };
+
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          addedInstructors: instructorsToAdd,
+          addedCoursesBySemester: coursesToAdd,
+        }));
+
+      } catch (error) {
+        console.error("Error fetching schedule:", error);
+        setError("Failed to load schedule: " + error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchScheduleData();
+  }, [scheduleId, instructorData, courseData]);
 
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
@@ -288,10 +408,74 @@ export default function NewSchedule() {
   ]);
 
   // Handlers for Save and Clear buttons
-  const handleSave = () => {
-    // STILL NEED TO FINISH!!!
-    console.log("Saving schedule draft:", newScheduleDraft);
-    console.log("With assignments:", assignments);
+  const handleSave = async () => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "Are you sure you want to save this schedule? This will update the database."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    // Validate academic_chair_id
+    if (!academicChairId) {
+      setSaveStatus({
+        type: "error",
+        message: "Unable to save: No academic chair ID found. Please ensure you are logged in.",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveStatus(null);
+
+    try {
+      // Construct payload
+      const payload = {
+        schedule_id: scheduleId || null,
+        academic_year: newScheduleDraft.metaData.year,
+        academic_chair_id: academicChairId,
+        assignments: assignments,
+      };
+
+      // OLD CODE - keeping for reference:
+      // console.log("Saving schedule draft:", newScheduleDraft);
+      // console.log("With assignments:", assignments);
+
+      const response = await fetch("http://localhost:5000/schedules/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save schedule");
+      }
+
+      setSaveStatus({
+        type: "success",
+        message: `Schedule saved successfully! Created ${data.sections_created} section(s).`,
+      });
+
+      // Redirect to ACScheduleManage after a lil delay
+      setTimeout(() => {
+        router.push("/Frontend/ACScheduleManage");
+      }, 2000);
+
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      setSaveStatus({
+        type: "error",
+        message: "Failed to save schedule: " + error.message,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
   const handleClear = () => {
     setNewScheduleDraft((d) => ({
@@ -321,6 +505,33 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
+      {/* Save Status Message */}
+      {saveStatus && (
+        <div
+          className={`mb-4 p-4 rounded-md ${
+            saveStatus.type === "success"
+              ? "bg-green-50 text-green-700"
+              : "bg-red-50 text-red-700"
+          }`}
+        >
+          {saveStatus.message}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 rounded-md bg-red-50 text-red-700">
+          Error: {error}
+        </div>
+      )}
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="text-center py-8 text-gray-500">
+          Loading schedule data...
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
@@ -329,6 +540,7 @@ export default function NewSchedule() {
           setNewScheduleDraft={setNewScheduleDraft}
           onSave={handleSave}
           onClear={handleClear}
+          isSaving={isSaving}
         />
       </div>
 

@@ -40,8 +40,9 @@ def register_schedule_routes(app):
             
             # Create or update schedule record
             if schedule_id:
-                # Update existing schedule
+                # Update existing schedule and set completion_status to in_progress
                 schedule_response = supabase_client.table("schedules").update({
+                    "completion_status": "in_progress",
                     "updated_at": "now()"
                 }).eq("id", schedule_id).execute()
                 
@@ -51,7 +52,7 @@ def register_schedule_routes(app):
                 # Delete existing sections for this schedule
                 supabase_client.table("sections").delete().eq("schedule_id", schedule_id).execute()
             else:
-                # Create new schedule
+                # Create new schedule with completion_status set to in_progress
                 schedule_data = {
                     "academic_year": academic_year,
                     "academic_chair_id": academic_chair_id,
