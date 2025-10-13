@@ -250,33 +250,6 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     return column_order
 
 
-
-# Don't think we will need this functionality anymore
-def backup_table(table_name):
-    backup_table_name = f"{table_name}_backup"
-    version_id = str(uuid.uuid4())
-
-    try:
-        response = supabase_client.table(table_name).select("*").execute()
-        data = response.data
-
-        if not data:
-            print(f"No data found in {table_name}, skipping backup.")
-            return
-        
-        backup_data = []
-        for row in data:
-            backup_row = row.copy()
-            backup_row["backup_id"] = str(uuid.uuid4())
-            backup_row["version_id"] = version_id
-            backup_data.append(backup_row)
-
-        supabase_client.table(backup_table_name).insert(backup_data).execute()
-        print(f"Backup successful: {len(backup_data)} rows saved with version_id {version_id}")
-    
-    except Exception as e:
-        print("Backup failed: ", e)
-
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
     try:
         print("Starting save_uploaded_file()...")  # DEBUG
