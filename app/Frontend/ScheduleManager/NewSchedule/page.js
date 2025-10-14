@@ -8,16 +8,27 @@ import CourseSection from "./coursesection";
 import AssignmentGrid from "./assignmentgrid";
 
 /* 
-assignments structure 
-{
+assignments: {
   "instructorId-courseId-semester": {
-    sections: ["A", "B", "C"] 
+    sections: {
+      "A": { class: true,  online: true  }, // instructor owns Class & Online of section A
+      "B": { class: true,  online: false }, // owns only Class of section B
+      "C": { class: false, online: true  }, // owns only Online of section C
+    }
   },
 }
 Example:
-{
-  "16491-CPRG211SD-winter": { sections: ["A", "B"] },
-  "16491-CPRG211SD-fall":   { sections: ["A"] },
+assignments = {
+  "16491-CPRG211SD-winter": {
+    sections: {
+      "C": { class: false, online: true }  // Elizabeth: Online only
+    }
+  },
+  "48921-CPRG211SD-winter": {
+    sections: {
+      "C": { class: true, online: false }  // Michael: Class only
+    }
+  }
 }
 */
 
@@ -37,6 +48,19 @@ export default function NewSchedule() {
   const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Dynamic heights from InstructorSection for syncing row heights
+  const [rowHeights, setRowHeights] = useState({}); // { [Instructor_ID]: pxNumber }
+  const [headerHeight, setHeaderHeight] = useState(null);
+
+  // Handlers to update measured heights
+  const handleRowResize = (instructorId, h) => {
+    setRowHeights((prev) =>
+      prev[instructorId] === h ? prev : { ...prev, [instructorId]: h }
+    );
+  };
+  const handleHeaderResize = (h) => {
+    setHeaderHeight((prev) => (prev === h ? prev : h));
+  };
 
   // "Fetching" mock data on component mount
   useEffect(() => {
@@ -74,6 +98,12 @@ export default function NewSchedule() {
         (i) => i.Instructor_ID !== instructor.Instructor_ID
       ),
     }));
+    // Clear measured height for that row to keep rowHeights clean
+    setRowHeights((prev) => {
+      const copy = { ...prev };
+      delete copy[instructor.Instructor_ID];
+      return copy;
+    });
   };
 
   // Handler function to add a course to a specific semester in the newScheduleDraft state
@@ -106,24 +136,111 @@ export default function NewSchedule() {
     }));
   };
 
-  // Toggle section assignment in Assignment Grid component
-  const toggleSection = (instructorId, course, section, semester) => {
-    const key = `${instructorId}-${course.Course_ID}-${semester}`;
+  // Toggle which part of a section (class/online/both) are assigned to a specific instructor for a specific (course, semester, section)
+  // Enforce exclusivity (at most one instructor can own class and at most one can own online for a given (course, semester, section))
+  const toggleSection = (
+    instructorId,
+    course,
+    section,
+    semester,
+    component // "class" | "online" | "both"
+  ) => {
+    const courseId = String(course.Course_ID);
+    const key = `${instructorId}-${courseId}-${semester}`;
 
     setAssignments((prev) => {
-      const current = prev[key] || { sections: [] };
-      const exists = current.sections.includes(section);
+      const next = { ...prev };
 
-      const sections = exists
-        ? current.sections.filter((s) => s !== section)
-        : [...current.sections, section];
+      // Helper to enforce exclusivity. Turn component off for other instructor when we turn component on for target instructor.
+      const unsetFromOthers = (comp) => {
+        // Remove component from any other instructor for the same (course, semester, section)
+        for (const [k, entry] of Object.entries(next)) {
+          const [iId, cId, sem] = k.split("-");
+          // Continue if not same
+          if (
+            cId !== courseId ||
+            sem !== semester ||
+            iId === String(instructorId)
+          )
+            continue;
 
-      if (sections.length === 0) {
-        // nothing left for this (instructor, course, semester) combo - remove the key
-        const { [key]: _, ...rest } = prev;
-        return rest;
+          const sections = entry?.sections || {};
+          const secState = sections[section];
+          if (secState?.[comp]) {
+            const newSecState = { ...secState, [comp]: false }; // Turn off the component
+            const newSections = { ...sections };
+            // If both class and online are now false, remove the section entry
+            if (!newSecState.class && !newSecState.online) {
+              delete newSections[section];
+            } else {
+              newSections[section] = newSecState;
+            }
+            // If section has no components left, remove the entire entry
+            const updatedEntry = { ...entry, sections: newSections };
+            if (Object.keys(updatedEntry.sections).length === 0) {
+              delete next[k];
+            } else {
+              next[k] = updatedEntry;
+            }
+          }
+        }
+      };
+      // Ensure exclusivity (unsetFromOthers()) if we are turning a component on
+      // Toggles or sets specific component flag (class or online) for target (instructorId, courseId, semester, section)
+      const apply = (comp, toValue) => {
+        const entry = next[key] || { sections: {} };
+        const currentSec = entry.sections[section] ?? {
+          class: false,
+          online: false,
+        };
+
+        // Determine target value: if toValue is undefined, we toggle; else we set to toValue
+        const target = toValue === undefined ? !currentSec[comp] : !!toValue;
+
+        if (target) {
+          unsetFromOthers(comp); // Turning on, remove from others first (exclusivity)
+        }
+
+        const newSec = { ...currentSec, [comp]: target };
+        let newSections = { ...entry.sections };
+
+        // If both class and online are false, remove the section entry
+        if (!newSec.class && !newSec.online) {
+          delete newSections[section];
+        } else {
+          newSections[section] = newSec;
+        }
+
+        // If no sections left for this (instructor, course, semester), remove entire entry
+        if (Object.keys(newSections).length === 0) {
+          // Nothing left for this (instructor, course, semester), remove entry
+          if (next[key]) delete next[key];
+        } else {
+          next[key] = { ...entry, sections: newSections };
+        }
+      };
+
+      // Handle the three cases: "class", "online", "both"
+      if (component === "both") {
+        const existing = next[key]?.sections?.[section] ?? {
+          class: false,
+          online: false,
+        };
+        const hasBoth = !!(existing.class && existing.online);
+        if (hasBoth) {
+          // Clicking "both" again; Toggle both off
+          apply("class", false);
+          apply("online", false);
+        } else {
+          // Else Assign both to this instructor (and remove from others)
+          apply("class", true);
+          apply("online", true);
+        }
+      } else if (component === "class" || component === "online") {
+        apply(component, undefined); // toggle single component
       }
-      return { ...prev, [key]: { sections } };
+
+      return next;
     });
   };
 
@@ -151,10 +268,8 @@ export default function NewSchedule() {
           )
         ),
       };
-
       // Create a new assignments object with only valid keys
       const updatedAssignments = {};
-
       // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
       for (const [key, value] of Object.entries(prev)) {
         const [iId, cId, sem] = key.split("-");
@@ -185,6 +300,8 @@ export default function NewSchedule() {
       addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
     }));
     setAssignments({});
+    setRowHeights({});
+    setHeaderHeight(null);
   };
 
   // Determine which semesters are active for rendering CourseSection and AssignmentGrid
@@ -204,7 +321,7 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
-      {/* Heading */}
+      {/* Controls */}
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
         <ScheduleControls
@@ -262,6 +379,8 @@ export default function NewSchedule() {
               addedInstructors={newScheduleDraft.addedInstructors}
               assignments={assignments}
               addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
+              onRowResize={handleRowResize}
+              onHeaderResize={handleHeaderResize}
             />
           </div>
 
@@ -274,6 +393,8 @@ export default function NewSchedule() {
                 assignments={assignments}
                 onToggleSection={toggleSection}
                 activeSemesters={newScheduleDraft.metaData.activeSemesters}
+                rowHeights={rowHeights}
+                headerHeight={headerHeight}
               />
             </div>
           </div>

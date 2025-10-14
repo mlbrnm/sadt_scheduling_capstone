@@ -75,6 +75,13 @@ export default function ScheduleControls({
           </button>
         </div>
       </div>
+      {/* Legend */}
+      <div>
+        <p className="text-xs text-gray-500 ml-2">
+          <span>Legend:</span> Left Click = Assign Both. Alt+Click = Assign
+          Class Only. Shift+Click = Assign Online Only.
+        </p>
+      </div>
     </div>
   );
 }
