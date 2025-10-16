@@ -25,24 +25,25 @@ export default function InstructorWorkload() {
   const filteredInstructors = instructorWorkloadData.filter((instructor) => {
     // Filter by searching name
     const name =
-      instructor.Instructor_Name + " " + instructor.Instructor_LastName;
+      instructor.instructor_name + " " + instructor.instructor_lastName;
     const matchesName = name
       .toLowerCase()
       .includes(searchInstructor.toLowerCase());
 
     // Filter by searching ID
-    const matchesID =
-      instructor.Instructor_ID.toString().includes(searchInstructor);
+    const matchesID = instructor.instructor_id
+      .toString()
+      .includes(searchInstructor);
 
     // Filter by status
     const matchesStatus =
-      statusFilter === "All" || instructor.Instructor_Status === statusFilter;
+      statusFilter === "All" || instructor.instructor_status === statusFilter;
 
     // Filter by hours
     let matchesHours = true;
     if (hoursFilter === "hasRemaining") {
-      const yearlyMax = instructor.Contract_Type === "Casual" ? 800 : 615;
-      matchesHours = instructor.Total_Hours < yearlyMax;
+      const yearlyMax = instructor.contract_type === "Casual" ? 800 : 615;
+      matchesHours = instructor.total_hours < yearlyMax;
     }
 
     return (matchesID || matchesName) && matchesStatus && matchesHours;
@@ -52,23 +53,23 @@ export default function InstructorWorkload() {
   const totalInstructors = instructorWorkloadData.length;
   const underUtilized = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.Total_Hours <
-      (instructor.Contract_Type === "Casual" ? 480 : 369)
+      instructor.total_hours <
+      (instructor.contract_type === "Casual" ? 480 : 369)
   ).length;
   const overUtilized = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.Total_Hours >=
-        (instructor.Contract_Type === "Casual" ? 480 : 369) &&
-      instructor.Total_Hours <
-        (instructor.Contract_Type === "Casual" ? 800 : 615)
+      instructor.total_hours >=
+        (instructor.contract_type === "Casual" ? 480 : 369) &&
+      instructor.total_hours <
+        (instructor.contract_type === "Casual" ? 800 : 615)
   ).length;
   const overMaxHours = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.Total_Hours >=
-      (instructor.Contract_Type === "Casual" ? 800 : 615)
+      instructor.total_hours >=
+      (instructor.contract_type === "Casual" ? 800 : 615)
   ).length;
   const onLeave = instructorWorkloadData.filter(
-    (instructor) => instructor.Instructor_Status === "On Leave"
+    (instructor) => instructor.instructor_status === "On Leave"
   ).length;
 
   return (
@@ -217,36 +218,36 @@ export default function InstructorWorkload() {
               </thead>
               <tbody className="bg-white divide-y divide-black">
                 {filteredInstructors.map((instructor) => (
-                  <tr key={instructor.Instructor_ID}>
+                  <tr key={instructor.instructor_id}>
                     <td className="px-6 py-4 text-sm">
-                      {instructor.Instructor_ID}
+                      {instructor.instructor_id}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {instructor.Instructor_Name}{" "}
-                      {instructor.Instructor_LastName}
+                      {instructor.instructor_name}{" "}
+                      {instructor.instructor_lastName}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {instructor.Contract_Type}
+                      {instructor.contract_type}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {`${instructor.Semester_Hours} h`}
+                      {`${instructor.semester_hours} h`}
                     </td>
                     <td className="px-6 py-1 text-sm font-semibold rounded-full">
                       <span className={getUtilizationColor(instructor)}>
-                        {`${instructor.Total_Hours}/${
-                          instructor.Contract_Type === "Casual" ? "800" : "615"
+                        {`${instructor.total_hours}/${
+                          instructor.contract_type === "Casual" ? "800" : "615"
                         } h`}
                       </span>
                     </td>
                     <td className="px-2 py-1 text-sm font-semibold rounded-full">
                       <span
                         className={`${
-                          instructor.Instructor_Status === "Active"
+                          instructor.instructor_status === "Active"
                             ? "bg-green-100 text-green-800"
                             : "bg-yellow-100 text-yellow-800"
                         } rounded-sm p-2`}
                       >
-                        {instructor.Instructor_Status}
+                        {instructor.instructor_status}
                       </span>
                     </td>
                   </tr>
