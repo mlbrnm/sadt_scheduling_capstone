@@ -1,101 +1,101 @@
 [
   {
-    "Instructor_ID": 16491,
-    "Instructor_LastName": "Moore",
-    "Instructor_Name": "Elizabeth",
-    "Contract_Type": "Permanent",
-    "Semester_Hours": 205,
-    "Total_Hours": 205,
-    "Instructor_Status": "Active"
+    "instructor_id": 16491,
+    "instructor_lastName": "Moore",
+    "instructor_name": "Elizabeth",
+    "contract_type": "Permanent",
+    "semester_hours": 205,
+    "total_hours": 205,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 23756,
-    "Instructor_LastName": "Johnson",
-    "Instructor_Name": "Sarah",
-    "Contract_Type": "Permanent",
-    "Semester_Hours": 0,
-    "Total_Hours": 615,
-    "Instructor_Status": "On Leave"
+    "instructor_id": 23756,
+    "instructor_lastName": "Johnson",
+    "instructor_name": "Sarah",
+    "contract_type": "Permanent",
+    "semester_hours": 0,
+    "total_hours": 615,
+    "instructor_status": "On Leave"
   },
   {
-    "Instructor_ID": 48921,
-    "Instructor_LastName": "Brennan",
-    "Instructor_Name": "Michael",
-    "Contract_Type": "Casual",
-    "Semester_Hours": 205,
-    "Total_Hours": 410,
-    "Instructor_Status": "Active"
+    "instructor_id": 48921,
+    "instructor_lastName": "Brennan",
+    "instructor_name": "Michael",
+    "contract_type": "Casual",
+    "semester_hours": 205,
+    "total_hours": 410,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 75234,
-    "Instructor_LastName": "Chen",
-    "Instructor_Name": "Robert",
-    "Contract_Type": "Temporary",
-    "Semester_Hours": 0,
-    "Total_Hours": 410,
-    "Instructor_Status": "On Leave"
+    "instructor_id": 75234,
+    "instructor_lastName": "Chen",
+    "instructor_name": "Robert",
+    "contract_type": "Temporary",
+    "semester_hours": 0,
+    "total_hours": 410,
+    "instructor_status": "On Leave"
   },
   {
-    "Instructor_ID": 91583,
-    "Instructor_LastName": "Kim",
-    "Instructor_Name": "Daniel",
-    "Contract_Type": "Permanent",
-    "Semester_Hours": 205,
-    "Total_Hours": 410,
-    "Instructor_Status": "Active"
+    "instructor_id": 91583,
+    "instructor_lastName": "Kim",
+    "instructor_name": "Daniel",
+    "contract_type": "Permanent",
+    "semester_hours": 205,
+    "total_hours": 410,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 34672,
-    "Instructor_LastName": "Kapoor",
-    "Instructor_Name": "Priya",
-    "Contract_Type": "Permanent",
-    "Semester_Hours": 205,
-    "Total_Hours": 205,
-    "Instructor_Status": "Active"
+    "instructor_id": 34672,
+    "instructor_lastName": "Kapoor",
+    "instructor_name": "Priya",
+    "contract_type": "Permanent",
+    "semester_hours": 205,
+    "total_hours": 205,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 62845,
-    "Instructor_LastName": "Carter",
-    "Instructor_Name": "Ethan",
-    "Contract_Type": "Permanent",
-    "Semester_Hours": 0,
-    "Total_Hours": 410,
-    "Instructor_Status": "On Leave"
+    "instructor_id": 62845,
+    "instructor_lastName": "Carter",
+    "instructor_name": "Ethan",
+    "contract_type": "Permanent",
+    "semester_hours": 0,
+    "total_hours": 410,
+    "instructor_status": "On Leave"
   },
   {
-    "Instructor_ID": 19387,
-    "Instructor_LastName": "Pickles",
-    "Instructor_Name": "Dill",
-    "Contract_Type": "Casual",
-    "Semester_Hours": 205,
-    "Total_Hours": 800,
-    "Instructor_Status": "Active"
+    "instructor_id": 19387,
+    "instructor_lastName": "Pickles",
+    "instructor_name": "Dill",
+    "contract_type": "Casual",
+    "semester_hours": 205,
+    "total_hours": 800,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 50618,
-    "Instructor_LastName": "Morgan",
-    "Instructor_Name": "Taylor",
-    "Contract_Type": "Temporary",
-    "Semester_Hours": 205,
-    "Total_Hours": 410,
-    "Instructor_Status": "Active"
+    "instructor_id": 50618,
+    "instructor_lastName": "Morgan",
+    "instructor_name": "Taylor",
+    "contract_type": "Temporary",
+    "semester_hours": 205,
+    "total_hours": 410,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 87412,
-    "Instructor_LastName": "Bennett",
-    "Instructor_Name": "Olivia",
-    "Contract_Type": "Permanent",
-    "Semester_Hours": 0,
-    "Total_Hours": 615,
-    "Instructor_Status": "Active"
+    "instructor_id": 87412,
+    "instructor_lastName": "Bennett",
+    "instructor_name": "Olivia",
+    "contract_type": "Permanent",
+    "semester_hours": 0,
+    "total_hours": 615,
+    "instructor_status": "Active"
   },
   {
-    "Instructor_ID": 68753,
-    "Instructor_LastName": "Warren",
-    "Instructor_Name": "Daniel",
-    "Contract_Type": "Temporary",
-    "Semester_Hours": 0,
-    "Total_Hours": 615,
-    "Instructor_Status": "Active"
+    "instructor_id": 68753,
+    "instructor_lastName": "Warren",
+    "instructor_name": "Daniel",
+    "contract_type": "Temporary",
+    "semester_hours": 0,
+    "total_hours": 615,
+    "instructor_status": "Active"
   }
 ]
