@@ -3,7 +3,6 @@ import { useState } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
 import CertificatesTable from "./certificatestable";
 import DeliveryPicker from "./deliverypicker";
-import CertificateEditor from "./certificateeditor";
 
 export default function CertificateSchedule() {
   // ADD deliveryId INDEX IS FINE FOR NOW!!!
@@ -65,7 +64,7 @@ export default function CertificateSchedule() {
             <option value="ISS">ISS</option>
           </select>
         </label>
-
+        {/* Edit Course Button */}
         <button
           onClick={handleOpenPicker}
           className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center"
@@ -73,9 +72,9 @@ export default function CertificateSchedule() {
           Edit Course
         </button>
       </div>
-
+      {/* Certificate Table */}
       <CertificatesTable certificatesData={certificatesData} />
-
+      {/* Delivery Picker Modal */}
       {isPickerOpen && (
         <DeliveryPicker
           certificatesData={certificatesData}
