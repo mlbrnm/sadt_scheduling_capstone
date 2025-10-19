@@ -2,71 +2,87 @@
 import { useState } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
 import CertificatesTable from "./certificatestable";
+import DeliveryPicker from "./deliverypicker";
 import CertificateEditor from "./certificateeditor";
 
-const certificateHeaders = [
-  "Term",
-  "ID Record",
-  "Program",
-  "Program Type",
-  "Course Code",
-  "Course Name",
-  "Section",
-  "Status Section",
-  "Delivery Mode",
-  "Start Date",
-  "End Date",
-  "Start Time",
-  "End Time",
-  "Hours Class",
-  "M",
-  "T",
-  "W",
-  "Th",
-  "F",
-  "S",
-  "Weeks",
-  "Contact Hours",
-  "Total Hours",
-  "Room Requirements",
-  "Exam Booking",
-  "Total Hours Course",
-  "Semester Code",
-  "Course Section",
-];
-
 export default function CertificateSchedule() {
-  const [certificatesData, setCertificatesData] = useState(mockCertificates); // Currently holds Mock data for certificates - REPLACE WITH API CALL
+  // ADD deliveryId INDEX IS FINE FOR NOW!!!
+  const [certificatesData, setCertificatesData] = useState(
+    mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // Currently holds Mock data for certificates - REPLACE WITH API CALL
+  );
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  // Dropdowns state STATIC HARDCODED FOR NOW!!!
+  const [year, setYear] = useState("2026");
+  const [semester, setSemester] = useState("Winter");
+  const [program, setProgram] = useState("ISS");
+
+  function handleOpenPicker() {
+    setIsPickerOpen(true);
+  }
+
+  function handleSelectDelivery(deliveryId) {
+    const foundDelivery = certificatesData.find(
+      (r) => r.deliveryId === deliveryId
+    );
+    if (!foundDelivery) return;
+    setSelectedDeliveryId(deliveryId);
+    setIsPickerOpen(false);
+    console.log("Selected Delivery ID:", deliveryId);
+  }
 
   return (
     <div className="p-4">
-      {/* Selection Dropdowns - CURRENTLY EMPTY SHOWING DEFAULT VALUES!! */}
+      {/* Selection Dropdowns */}
       <div className="flex justify-center space-x-20 mb-4">
         <label className="flex flex-col">
           Academic Year:
-          <select className="border border-gray-300 rounded p-1 bg-white">
-            <option value="">2026</option>
+          <select
+            className="border border-gray-300 rounded p-1 bg-white"
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+          >
+            <option value="2026">2026</option>
           </select>
         </label>
         <label className="flex flex-col">
           Semester:
-          <select className="border border-gray-300 rounded p-1 bg-white">
-            <option value="">Winter</option>
+          <select
+            className="border border-gray-300 rounded p-1 bg-white"
+            value={semester}
+            onChange={(e) => setSemester(e.target.value)}
+          >
+            <option value="Winter">Winter</option>
           </select>
         </label>
         <label className="flex flex-col">
           Program:
-          <select className="border border-gray-300 rounded p-1 bg-white">
-            <option value="">ISS</option>
+          <select
+            className="border border-gray-300 rounded p-1 bg-white"
+            value={program}
+            onChange={(e) => setProgram(e.target.value)}
+          >
+            <option value="ISS">ISS</option>
           </select>
         </label>
-        <button className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center">
+
+        <button
+          onClick={handleOpenPicker}
+          className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center"
+        >
           Edit Course
         </button>
       </div>
 
-      {/* Certificates Table */}
       <CertificatesTable certificatesData={certificatesData} />
+
+      {isPickerOpen && (
+        <DeliveryPicker
+          certificatesData={certificatesData}
+          onSelectDelivery={handleSelectDelivery}
+          onClose={() => setIsPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
