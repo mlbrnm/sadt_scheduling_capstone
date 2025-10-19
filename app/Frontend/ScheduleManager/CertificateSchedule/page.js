@@ -2,6 +2,7 @@
 import { useState } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
 import CertificatesTable from "./certificatestable";
+import CertificateEditor from "./certificateeditor";
 
 const certificateHeaders = [
   "Term",
