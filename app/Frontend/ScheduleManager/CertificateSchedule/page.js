@@ -43,21 +43,19 @@ export default function CertificateSchedule() {
     const selectedDelivery = certificatesData.find(
       (r) => r.deliveryId === selectedDeliveryId
     );
-    if (!selectedDelivery) {
-      return (
-        <div>
-          <h2 className="font-bold px-4 pt-2">
-            Section {selectedDelivery.section}
-          </h2>
-          <EditDelivery
-            selectedDelivery={selectedDelivery}
-            onSave={handleSaveEdit}
-            onCancel={handleCancelEdit}
-          />
-          {/* Add Delivery Button */}
-        </div>
-      );
-    }
+    return (
+      <div>
+        <h2 className="font-bold px-4 pt-2">
+          Section {selectedDelivery.section}
+        </h2>
+        <EditDelivery
+          selectedDelivery={selectedDelivery}
+          onSave={handleSaveEdit}
+          onCancel={handleCancelEdit}
+        />
+        {/* Add Delivery Button */}
+      </div>
+    );
   }
 
   // TABLE VIEW

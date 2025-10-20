@@ -48,7 +48,7 @@ export default function CertificatesTable({ certificatesData }) {
         </thead>
         <tbody className="bg-white divide-y divide-black">
           {certificatesData.map((certificate, index) => (
-            <tr key={certificate.deliverId}>
+            <tr key={index}>
               <td className="px-6 py-2 text-sm">{certificate.term}</td>
               <td className="px-6 py-2 text-sm">{certificate.id_record}</td>
               <td className="px-6 py-2 text-sm">{certificate.program}</td>
