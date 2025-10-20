@@ -31,7 +31,7 @@ const certificateHeaders = [
 
 export default function CertificatesTable({ certificatesData }) {
   return (
-    <div className="bg-white rounded-lg overflow-auto max-h-125">
+    <div className="bg-white rounded-lg overflow-auto max-h-150">
       <table className="min-w-full">
         <thead className="bg-gray-50 sticky top-0">
           <tr>
