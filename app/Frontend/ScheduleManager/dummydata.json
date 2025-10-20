@@ -4,7 +4,6 @@
     "title": "SD Winter '26",
     "programType": "Diploma",
     "status": "Submitted",
-    "tags": ["#AliMoussa", "#Winter26", "#EasterLong"],
     "timeslots": "Empty - Upload Now"
   },
   {
@@ -12,7 +11,6 @@
     "title": "SD Fall '25",
     "programType": "Diploma",
     "status": "In Review",
-    "tags": ["#ACRotation", "#Fall25", "#AliMoussa", "#LostofVacation"],
     "timeslots": "Empty - Upload Now"
   },
   {
@@ -20,7 +18,6 @@
     "title": "Infosec Analyst Fall '25",
     "programType": "Certificate",
     "status": "Rejected",
-    "tags": ["#NewCohort", "#PostDiploma", "#ShortProgram", "#800hrs"],
     "timeslots": "Empty - Upload Now"
   },
   {
@@ -28,15 +25,13 @@
     "title": "ITS Fall '25",
     "programType": "Diploma",
     "status": "In Review",
-    "tags": ["#AliMoussa", "#Fall25"],
     "timeslots": "Uploaded 25/08/2025"
   },
   {
     "dateSubmitted": "19/06/2025",
     "title": "WebDev Fall'25",
     "programType": "Certificate",
-    "status": "Submitted",  
-    "tags": ["#AliMoussa", "#Fall25"],
+    "status": "Submitted",
     "timeslots": "Empty - Upload Now"
   },
   {
@@ -44,7 +39,6 @@
     "title": "SD BTech Fall '25",
     "programType": "Bachelors",
     "status": "Approved",
-    "tags": ["#AliMoussa", "#Fall25"],
     "timeslots": "Uploaded 25/06/2025"
   },
   {
@@ -52,7 +46,6 @@
     "title": "ISS Fall '25",
     "programType": "Diploma",
     "status": "Submitted",
-    "tags": ["#AliMoussa", "#Fall25"],
     "timeslots": "Empty - Upload Now"
   },
   {
@@ -60,7 +53,6 @@
     "title": "NSS Fall '25",
     "programType": "Diploma",
     "status": "Submitted",
-    "tags": ["#AliMoussa", "#Fall25"],
     "timeslots": "Empty - Upload Now"
   }, 
   {
@@ -68,7 +60,6 @@
     "title": "SD Spring '25",
     "programType": "Diploma",
     "status": "Approved",
-    "tags": ["#AliMoussa", "#Spring25"],
     "timeslots": "Uploaded 28/02/2025"
   },
   {
@@ -76,7 +67,6 @@
     "title": "Cybersec BTech Fall '25",
     "programType": "Bachelors",
     "status": "Submitted",
-    "tags": ["#AliMoussa", "#Fall25"],
     "timeslots": "Empty - Upload Now"
   }
 ]

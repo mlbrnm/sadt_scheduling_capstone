@@ -114,7 +114,7 @@ export default function ScheduleManager() {
         {/* Filter/Sort Container */}
         <div className="text-lg text-bold flex items-center gap-1">Sort by
           <select className="px-3 py-2 mx-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-xs text-gray-500" onChange={handleSortChange} value={sortOption}>
-            <option disabled selected defaultValue="Select an option" className="text-gray-400">Select an option</option>
+            <option disabled selected className="text-gray-400">Select an option</option>
             <option value="newest" className="text-primary">Date Submitted, newest</option>
             <option value="oldest" className="text-primary">Date Submitted, oldest</option>
             <option value="title-a" className="text-primary">Title, A-Z</option>
@@ -138,19 +138,18 @@ export default function ScheduleManager() {
           <div className="h-[calc(100vh-269px)] overflow-y-auto overflow-x-hidden">
             <table className="table-auto min-w-full">
               <thead className="bg-gray-300 sticky top-0">
-                <tr className="grid grid-cols-7 gap-8 py-3 text-left font-sm pl-6">
+                <tr className="grid grid-cols-6 gap-8 py-3 text-left font-sm pl-6">
                   <th>Date Submitted</th>
                   <th>Title</th>
                   <th>Program Type</th>
                   <th>Status</th>
                   {/* Placeholder for now for design of AC sched manager */}
-                  <th>Tags</th>
                   <th>Timeslots</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedData.map((schedule, index) => (
-                  <tr key={index} className="grid grid-cols-7 gap-8 py-3 border-b pl-6">
+                  <tr key={index} className="grid grid-cols-6 gap-8 py-3 border-b pl-6">
                     <td className="mt-1">{schedule.dateSubmitted}</td>
                     <td className="mt-1">{schedule.title}</td>
                     <td className="p-4-md mt-1.5 text-justify-center">
@@ -159,7 +158,6 @@ export default function ScheduleManager() {
                     <td className="mt-1.5">
                       <span className={getStatusColour(schedule.status)}>{schedule.status}</span>
                     </td>
-                    <td className="text-xs mt-1">{schedule.tags}</td>
                     <td className="mt-1">
                       <span className={getTimeslotsColour(schedule.timeslots)}>{schedule.timeslots}</span>
                     </td>
