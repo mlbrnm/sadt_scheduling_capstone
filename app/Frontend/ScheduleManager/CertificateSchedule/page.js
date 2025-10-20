@@ -10,7 +10,7 @@ export default function CertificateSchedule() {
   const [certificatesData, setCertificatesData] = useState(
     mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // Currently holds Mock data for certificates - REPLACE WITH API CALL
   );
-  const [selectedDeliveryId, setSelectedDeliveryId] = useState(null);
+  const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   // Dropdowns state STATIC HARDCODED FOR NOW!!!
   const [year, setYear] = useState("2026");
@@ -22,12 +22,12 @@ export default function CertificateSchedule() {
   };
 
   const handleSelectDelivery = (deliveryId) => {
-    setSelectedDeliveryId(deliveryId);
+    setSelectedDeliveryIds([deliveryId]);
     setIsPickerOpen(false);
   };
 
   const handleCancelEdit = () => {
-    setSelectedDeliveryId(null);
+    setSelectedDeliveryIds([]);
   };
 
   const handleSaveEdit = (updatedDelivery) => {
@@ -35,25 +35,57 @@ export default function CertificateSchedule() {
       r.deliveryId === updatedDelivery.deliveryId ? { ...updatedDelivery } : r
     );
     setCertificatesData(updatedCertificates);
-    setSelectedDeliveryId(null);
+    setSelectedDeliveryIds([]); // REMOVE?!
+  };
+
+  const handleAddSiblingDelivery = () => {
+    if (selectedDeliveryIds.length === 0) return;
+
+    // Use the FIRST selected delivery as the anchor for course_section
+    const anchorId = selectedDeliveryIds[0];
+    const anchorRow = certificatesData.find((r) => r.deliveryId === anchorId);
+    if (!anchorRow) return;
+
+    // Find sibling deliveries in the SAME Section (course_section), not already selected
+    const siblingDeliveries = certificatesData.filter(
+      (r) =>
+        r.course_section === anchorRow.course_section &&
+        !selectedDeliveryIds.includes(r.deliveryId)
+    );
+
+    if (siblingDeliveries.length === 0) {
+      // No more siblings exist in data to add
+      alert("No other deliveries exist for this section.");
+      return;
+    }
+
+    // Take the first unselected sibling and append it
+    const nextSiblingId = siblingDeliveries[0].deliveryId;
+    setSelectedDeliveryIds((prevIds) => [...prevIds, nextSiblingId]);
   };
 
   // EDIT VIEW
-  if (selectedDeliveryId !== null) {
-    const selectedDelivery = certificatesData.find(
-      (r) => r.deliveryId === selectedDeliveryId
-    );
+  if (selectedDeliveryIds.length > 0) {
+    const selectedDeliveries = selectedDeliveryIds
+      .map((id) => certificatesData.find((r) => r.deliveryId === id))
+      .filter(Boolean);
+
     return (
       <div>
-        <h2 className="font-bold px-4 pt-2">
-          Section {selectedDelivery.section}
-        </h2>
-        <EditDelivery
-          selectedDelivery={selectedDelivery}
-          onSave={handleSaveEdit}
-          onCancel={handleCancelEdit}
-        />
-        {/* Add Delivery Button */}
+        {selectedDeliveries.map((selectedDelivery) => (
+          <div key={selectedDelivery.deliveryId}>
+            <h2 className="font-bold px-4 pt-2">
+              Section {selectedDelivery.section}
+            </h2>
+            <EditDelivery
+              selectedDelivery={selectedDelivery}
+              onSave={handleSaveEdit}
+              onCancel={handleCancelEdit}
+              onAddSiblingDelivery={handleAddSiblingDelivery}
+            />
+            {/* Add Delivery Button */}
+          </div>
+        ))}
       </div>
     );
   }

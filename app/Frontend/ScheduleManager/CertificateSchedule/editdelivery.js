@@ -1,6 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-export default function EditDelivery({ selectedDelivery, onSave, onCancel }) {
+export default function EditDelivery({
+  selectedDelivery,
+  onSave,
+  onCancel,
+  onAddSiblingDelivery,
+}) {
   // Editor draft state
   const [startDate, setStartDate] = useState(selectedDelivery.start_date || "");
   const [endDate, setEndDate] = useState(selectedDelivery.end_date || "");
@@ -112,7 +117,10 @@ export default function EditDelivery({ selectedDelivery, onSave, onCancel }) {
         </div>
         {/* Add delivery button */}
         <div className="mt-4">
-          <button className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer">
+          <button
+            onClick={onAddSiblingDelivery}
+            className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+          >
             Add Delivery
           </button>
         </div>
