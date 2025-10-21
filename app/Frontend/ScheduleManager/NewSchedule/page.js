@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import { supabase } from "../../supabaseClient";
 import ScheduleControls from "./schedulecontrols";
 import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
@@ -33,6 +35,9 @@ assignments = {
 const semester_list = ["winter", "springSummer", "fall"];
 
 export default function NewSchedule() {
+  const searchParams = useSearchParams();
+  const scheduleId = searchParams.get("schedule_id");
+  
   const [newScheduleDraft, setNewScheduleDraft] = useState({
     metaData: {
       year: 2025,
@@ -45,7 +50,10 @@ export default function NewSchedule() {
   const [courseData, setCourseData] = useState([]);
   const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [error, setError] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null); // { type: 'success' | 'error', message: string }
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
@@ -59,6 +67,19 @@ export default function NewSchedule() {
   const handleHeaderResize = (h) => {
     setHeaderHeight((prev) => (prev === h ? prev : h));
   };
+
+  // Get current user from Supabase
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   // Fetch instructors and courses from API on component mount
   useEffect(() => {
@@ -89,6 +110,94 @@ export default function NewSchedule() {
     };
     fetchData();
   }, []);
+
+  // Load existing schedule if schedule_id is provided
+  useEffect(() => {
+    if (!scheduleId || isLoading || !instructorData.length || !courseData.length) {
+      return;
+    }
+
+    const loadSchedule = async () => {
+      setLoadingSchedule(true);
+      try {
+        const response = await fetch(
+          `http://localhost:5000/schedules/${scheduleId}/json`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load schedule");
+        }
+
+        const data = await response.json();
+
+        // Update metadata
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          metaData: {
+            year: data.metaData.year,
+            activeSemesters: data.metaData.activeSemesters,
+          },
+        }));
+
+        // Set assignments directly
+        setAssignments(data.assignments);
+
+        // Extract unique instructor IDs and course IDs from assignments
+        const instructorIds = new Set();
+        const courseIdsBySemester = {
+          winter: new Set(),
+          springSummer: new Set(),
+          fall: new Set(),
+        };
+
+        for (const [key, _] of Object.entries(data.assignments)) {
+          const parts = key.split("-");
+          if (parts.length >= 3) {
+            const instructorId = parts[0];
+            const courseId = parts.slice(1, -1).join("-");
+            const semester = parts[parts.length - 1];
+
+            instructorIds.add(instructorId);
+            if (courseIdsBySemester[semester]) {
+              courseIdsBySemester[semester].add(courseId);
+            }
+          }
+        }
+
+        // Match instructor IDs to full instructor objects
+        const addedInstructors = instructorData.filter((instructor) =>
+          instructorIds.has(String(instructor.instructor_id))
+        );
+
+        // Match course IDs to full course objects for each semester
+        const addedCoursesBySemester = {
+          winter: courseData.filter((course) =>
+            courseIdsBySemester.winter.has(String(course.course_id))
+          ),
+          springSummer: courseData.filter((course) =>
+            courseIdsBySemester.springSummer.has(String(course.course_id))
+          ),
+          fall: courseData.filter((course) =>
+            courseIdsBySemester.fall.has(String(course.course_id))
+          ),
+        };
+
+        // Update draft with loaded instructors and courses
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          addedInstructors,
+          addedCoursesBySemester,
+        }));
+      } catch (error) {
+        setError("Failed to load schedule: " + error.message);
+        console.error("Error loading schedule:", error);
+      } finally {
+        setLoadingSchedule(false);
+      }
+    };
+
+    loadSchedule();
+  }, [scheduleId, isLoading, instructorData, courseData]);
 
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
@@ -296,10 +405,68 @@ export default function NewSchedule() {
   ]);
 
   // Handlers for Save and Clear buttons
-  const handleSave = () => {
-    // STILL NEED TO FINISH!!!
-    console.log("Saving schedule draft:", newScheduleDraft);
-    console.log("With assignments:", assignments);
+  const handleSave = async () => {
+    setSaveStatus(null);
+
+    // Validation
+    if (!currentUserId) {
+      setSaveStatus({
+        type: "error",
+        message: "User not authenticated. Please log in again.",
+      });
+      return;
+    }
+
+    if (Object.keys(assignments).length === 0) {
+      setSaveStatus({
+        type: "error",
+        message: "No assignments to save. Please assign courses to instructors.",
+      });
+      return;
+    }
+
+    try {
+      const payload = {
+        academic_year: newScheduleDraft.metaData.year,
+        academic_chair_id: currentUserId,
+        assignments: assignments,
+      };
+
+      // Include schedule_id if updating existing schedule
+      if (scheduleId) {
+        payload.schedule_id = scheduleId;
+      }
+
+      const response = await fetch("http://localhost:5000/schedules/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save schedule");
+      }
+
+      setSaveStatus({
+        type: "success",
+        message: `Schedule saved successfully! ${data.sections_created} section(s) created.`,
+      });
+
+      // Clear status message after 5 seconds
+      setTimeout(() => {
+        setSaveStatus(null);
+      }, 5000);
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      setSaveStatus({
+        type: "error",
+        message: "Failed to save schedule: " + error.message,
+      });
+    }
   };
   const handleClear = () => {
     setNewScheduleDraft((d) => ({
@@ -329,6 +496,54 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
+      {/* Loading State */}
+      {(isLoading || loadingSchedule) && (
+        <div className="mb-4 p-4 bg-blue-50 text-blue-700 rounded-md flex items-center">
+          <svg
+            className="animate-spin h-5 w-5 mr-3"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+          {loadingSchedule ? "Loading schedule..." : "Loading data..."}
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Save Status Message */}
+      {saveStatus && (
+        <div
+          className={`mb-4 p-4 rounded-md ${
+            saveStatus.type === "success"
+              ? "bg-green-50 text-green-700"
+              : "bg-red-50 text-red-700"
+          }`}
+        >
+          <strong>{saveStatus.type === "success" ? "Success!" : "Error:"}</strong>{" "}
+          {saveStatus.message}
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex justify-around">
         {/* Top-Left: Controls Year, Semester Toggles, Save/Clear Buttons */}
