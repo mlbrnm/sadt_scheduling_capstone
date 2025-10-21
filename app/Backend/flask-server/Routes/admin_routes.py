@@ -8,17 +8,6 @@ import os
 import io
 from supabase_client import supabase
 
-#CHANGING STRUCTURE TO NOT HAVE TEMP FOLDER
-# create a folder to temporarily store the file that will be uploaded
-    # storing it in a folder takes up less space since it is not aved directly to memory 
-    # this also gives you a clear space where the file will exist and can control it's deletion
-# UPLOAD_FOLDER = os.path.join(os.getcwd(), "temp_uploads") # interacts with OS to get current working directory and creates (through join()) a "temp_uploads" folder
-# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-# makedirs() will create parent directories if needed
-# mkdir() will only create directory 1 level deep (technically works now, but won't work later if I want to add more folders to save the upload file into)
-# exist_ok= checks what to do if the folder already exists, True means it is ok if it exists (it will skip creation), False means it is not ok if folder already exists (it will raise an error)
-
-
 # function to check user authorization and get authorized user's email
 # def authorize_user(supabase):
 #     authorization_header = request.headers.get("Authorization")

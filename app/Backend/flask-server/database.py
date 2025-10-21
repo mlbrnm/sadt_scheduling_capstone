@@ -51,18 +51,6 @@ supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # : Client - type hint that says the variable supabase_client is an object instance 
 # of class Client (a class from the supabase package we imported)
 
-# CONNECTION TEST FUNCTION (will only work if courses table actually has data in it)
-def test_connection():
-    try:
-        # Attempt to fetch 1 row from the "courses" table
-        response = supabase_client.table("courses").select("*").limit(1).execute()
-        
-        # Check if data was returned
-        if response.data:
-            print("Supabase connected successfully!")
-
-    except Exception as e:
-        print("Supabase connection failed:", e)
 
 # dictionary to organize and map table columns to what they will be in the database
 TABLE_COLUMN_MAPPINGS = {
@@ -123,7 +111,7 @@ TABLE_COLUMN_MAPPINGS = {
 }
 
 
-# dictionary used to validate which columns are allowed in each table by using the other dictionary to get the values
+# dictionary used to validate which columns are allowed in each table by using the TABLE_COLUMN_MAPPINGS dictionary to get the values
 TABLE_VALID_COLUMNS = {
     "courses": set(TABLE_COLUMN_MAPPINGS["courses"].values()),
     "instructors": set(TABLE_COLUMN_MAPPINGS["instructors"].values()),
@@ -144,6 +132,20 @@ TABLE_PRIMARY_KEYS = {
     "programs": "program_id",
 }
 
+# CONNECTION TEST FUNCTION (will only work if courses table actually has data in it)
+def test_connection():
+    try:
+        # Attempt to fetch 1 row from the "courses" table
+        response = supabase_client.table("courses").select("*").limit(1).execute()
+        
+        # Check if data was returned
+        if response.data:
+            print("Supabase connected successfully!")
+
+    except Exception as e:
+        print("Supabase connection failed:", e)
+
+
 # data is formatted for JSON format and database upload 
 #Created with help of AI - helped ensure all cases of Nan, None, and infinite numbers were accounted for
 def formatted_data(df, table_name):
@@ -151,14 +153,14 @@ def formatted_data(df, table_name):
     # variable to store the primary key to check against later 
     primary_key =  TABLE_PRIMARY_KEYS.get(table_name)
 
-    # Filter unexpected columns
+    # Filter out unexpected columns
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
     # Timestamp and datetime values are converted to y-m-d format
     df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
     # map() applies the lambda function to all the elements of the dataframe 
-    # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
+    # the lambda function converts the value to strftime("%Y-%m-%d") if it is eitherpd.Timestamp or datetime
     # if it isnt either, it is not changed
 
     # Replace invalid numeric values
@@ -249,33 +251,6 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     column_order = list(df.columns)
     return column_order
 
-
-
-# Don't think we will need this functionality anymore
-def backup_table(table_name):
-    backup_table_name = f"{table_name}_backup"
-    version_id = str(uuid.uuid4())
-
-    try:
-        response = supabase_client.table(table_name).select("*").execute()
-        data = response.data
-
-        if not data:
-            print(f"No data found in {table_name}, skipping backup.")
-            return
-        
-        backup_data = []
-        for row in data:
-            backup_row = row.copy()
-            backup_row["backup_id"] = str(uuid.uuid4())
-            backup_row["version_id"] = version_id
-            backup_data.append(backup_row)
-
-        supabase_client.table(backup_table_name).insert(backup_data).execute()
-        print(f"Backup successful: {len(backup_data)} rows saved with version_id {version_id}")
-    
-    except Exception as e:
-        print("Backup failed: ", e)
 
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
     try:
@@ -420,3 +395,18 @@ def restore_file_from_url(file_url, table_name, uploaded_by):
     file_like.filename = file_url.split("/")[-1] # gives the filename an attribute
 
     upload_table(file_like, table_name, uploaded_by)
+
+def get_user_name(id):
+    try:
+        print("Looking for user id:", id)
+        response = supabase_client.table("users").select("first_name, last_name").eq("id", id).single().execute()
+        print("Supabase response:", response)
+
+        if response.data:
+            return f"{response.data['first_name']} {response.data['last_name']}"
+        else:
+            return "You shouldn't be here"
+    
+    except Exception as e:
+        print("Error fetching user name:", e)
+        return "User not found"
