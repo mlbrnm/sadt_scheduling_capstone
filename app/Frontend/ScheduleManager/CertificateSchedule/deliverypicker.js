@@ -25,7 +25,7 @@ export default function DeliveryPicker({
 
       <div className="relative bg-white rounded-lg shadow-lg w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Select Delivery to Edit</h2>
+          <h2 className="text-lg font-semibold">Select A Delivery to Edit</h2>
           <button
             className="text-gray-600 hover:text-gray-800 text-xl font-bold px-2 cursor-pointer"
             aria-label="Close modal"
@@ -44,11 +44,12 @@ export default function DeliveryPicker({
             >
               <div className="text-sm">
                 <div className="font-medium">
-                  {r.course_code} – {r.course_name} ({r.course_section})
+                  {r.course_code} - {r.course_name} ({r.course_section})
                 </div>
                 <div className="text-gray-600">
-                  {r.start_date} {r.start_time} → {r.end_date} {r.end_time} •{" "}
-                  {daysToString(r) || "—"} • Room: {r.room_requirements}
+                  {r.start_date} {r.start_time} to {r.end_date} {r.end_time}
+                  {"  "}
+                  {daysToString(r) || "—"}
                 </div>
               </div>
             </div>

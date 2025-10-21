@@ -92,6 +92,12 @@ export default function EditDelivery({
 
   return (
     <div className="p-4">
+      <div>
+        <span className="text-lg font-semibold">
+          Section {drafts[0]?.section} - {drafts[0]?.course_name} (
+          {drafts[0]?.course_code})
+        </span>
+      </div>
       {drafts.map((draft, index) => (
         <div key={draft.deliveryId} className="bg-white p-4">
           <div>
@@ -180,6 +186,11 @@ export default function EditDelivery({
           onClick={onAddSiblingDelivery}
         >
           Add Delivery
+        </button>
+      </div>
+      <div className="mt-4">
+        <button className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
+          Add Section
         </button>
       </div>
       {/* Save & Cancel Buttons */}
