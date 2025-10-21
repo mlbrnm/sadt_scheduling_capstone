@@ -112,21 +112,20 @@ export default function InstructorSection({
     return sum;
   };
 
-  // Helper Function to Sum total assigned hours for an instructor across all semesters and add to current total hours
-  const sumTotal = (instructorId) => {
-    // base hours for this instructor
-    const base =
-      addedInstructors.find(
-        (i) => String(i.instructor_id) === String(instructorId)
-      )?.total_hours || 0;
+  // Helper Function to calculate semester hours for an instructor in a semester
+  // Semester hours = hours per week * 15 weeks
+  const calculateSemesterHours = (instructorId, semester) => {
+    return sumHours(instructorId, semester) * 15;
+  };
 
-    // add up assigned hours from all semesters
-    let assigned = 0;
+  // Helper Function to Sum total assigned hours for an instructor across all semesters
+  const sumTotal = (instructorId) => {
+    // add up assigned hours from all semesters (each semester is 15 weeks)
+    let total = 0;
     for (const sem of ["winter", "springSummer", "fall"]) {
-      assigned += sumHours(instructorId, sem);
+      total += calculateSemesterHours(instructorId, sem);
     }
-    // 15 for number of weeks in a semester
-    return base + assigned * 15;
+    return total;
   };
 
   // Measure header + each row height and report up
