@@ -60,19 +60,29 @@ export default function NewSchedule() {
     setHeaderHeight((prev) => (prev === h ? prev : h));
   };
 
-  // "Fetching" mock data on component mount
+  // Fetch instructors and courses from API on component mount
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // REPLACE WITH API CALL
-        // const response = await fetch("");
-        // const instructorData = await response.json();
-        setInstructorData(mockInstructors);
-        setCourseData(mockCourses);
+        const [instructorsResponse, coursesResponse] = await Promise.all([
+          fetch("http://localhost:5000/api/instructors"),
+          fetch("http://localhost:5000/api/courses")
+        ]);
+
+        if (!instructorsResponse.ok || !coursesResponse.ok) {
+          throw new Error("Failed to fetch data from server");
+        }
+
+        const instructorsData = await instructorsResponse.json();
+        const coursesData = await coursesResponse.json();
+
+        setInstructorData(instructorsData);
+        setCourseData(coursesData);
       } catch (error) {
-        setError("Failed to fetch data.");
+        setError("Failed to fetch data: " + error.message);
+        console.error("Error fetching data:", error);
       } finally {
         setIsLoading(false);
       }
