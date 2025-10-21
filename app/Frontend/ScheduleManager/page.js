@@ -38,9 +38,9 @@ export default function ScheduleManager() {
     else {
       switch (option) {
         case "newest":
-        //   return [...data].sort((a, b) => new Date(b.dateSubmitted) - new Date(a.dateSubmitted));
-        // case "oldest":
-        //   return [...data].sort((a, b) => new Date(a.dateSubmitted) - new Date(b.dateSubmitted));
+          return [...data].sort((a, b) => new Date(b.dateSubmitted) - new Date(a.dateSubmitted));
+        case "oldest":
+          return [...data].sort((a, b) => new Date(a.dateSubmitted) - new Date(b.dateSubmitted));
         case "title-a":
           return [...data].sort((a, b) => a.title.localeCompare(b.title));
         case "title-z":
@@ -127,6 +127,18 @@ export default function ScheduleManager() {
   if (sortOption) {
     displayedData = sortData(displayedData, sortOption);
   }
+
+  // This code block was AI generated using Perplexity
+  // Format date to dd/mm/yyyy
+  const formatDate = (isoDate) => {
+  if (!isoDate) return "";
+  const date = new Date(isoDate);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 
   // Allow for file upload input & open user's device file explorer
   const handleTimeslotUploadClick = (index) => {
@@ -231,8 +243,8 @@ export default function ScheduleManager() {
       <div className="flex flex-row items-center justify-center gap-10 pb-8">
         {/* Filter/Sort Container */}
         <div className="text-lg text-bold flex items-center gap-1">Sort by
-          <select className="px-3 py-2 mx-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-xs text-gray-500" onChange={handleSortChange} value={sortOption}>
-            <option disabled selected className="text-gray-400">Select an option</option>
+          <select className="px-3 py-2 mx-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-xs text-gray-500" onChange={handleSortChange} defaultValue="Date Submitted, newest" value={sortOption}>
+            <option disabled className="text-gray-400">Select an option</option>
             <option value="newest" className="text-primary">Date Submitted, newest</option>
             <option value="oldest" className="text-primary">Date Submitted, oldest</option>
             <option value="title-a" className="text-primary">Title, A-Z</option>
@@ -288,7 +300,7 @@ export default function ScheduleManager() {
               <tbody>
                 {displayedData.map((schedule, index) => (
                   <tr key={index} className="grid grid-cols-6 gap-8 py-3 border-b pl-6">
-                    <td className="mt-1 self-center">{schedule.dateSubmitted}</td>
+                    <td className="mt-1 self-center">{formatDate(schedule.dateSubmitted)}</td>
                     <td className="mt-1 self-center">{schedule.title}</td>
                     <td className="p-4-md mt-1.5 text-justify-center self-center">
                       <span className={getProgramTypeColour(schedule.programType)}>{schedule.programType}</span>
