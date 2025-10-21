@@ -311,11 +311,11 @@ export default function InstructorSection({
                           {instructor.contract_type}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {`${instructor.semester_hours} h`}
+                          0 h
                         </td>
                         <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
-                          <span className={getUtilizationColor(instructor)}>
-                            {`${instructor.total_hours}/${
+                          <span className="bg-green-100 text-green-800">
+                            {`0/${
                               instructor.contract_type === "Casual"
                                 ? "800"
                                 : "615"
