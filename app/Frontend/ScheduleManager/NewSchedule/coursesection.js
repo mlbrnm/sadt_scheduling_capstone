@@ -31,7 +31,7 @@ export default function CourseSection({
   const handleRemoveCourse = (course) => {
     // USED AI Q: how can we add a confirmation message for removing an added instructor without making a custom modal? (https://chat.deepseek.com/a/chat/s/cdbd0a66-d6f9-47e0-b1da-c564f09c6e7d)
     const confirmRemove = window.confirm(
-      `Are you sure you want to remove ${course.Course_Name}?`
+      `Are you sure you want to remove ${course.course_name}?`
     );
     if (confirmRemove) {
       onRemoveCourse(course, semester);
@@ -43,16 +43,17 @@ export default function CourseSection({
     // Check if course is already added
     // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
     const isAlreadyAdded = addedCourses.some(
-      (c) => c.Course_ID === course.Course_ID
+      (c) => c.course_id === course.course_id
     );
 
     // Filter by searching name
-    const matchesName = course.Course_Name.toLowerCase().includes(
-      searchTerm.toLowerCase()
-    );
+    const matchesName = course.course_name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
     // Filter by searching course Code
-    const matchesCode = course.Course_Code.toLowerCase()
+    const matchesCode = course.course_code
+      .toLowerCase()
       .toString()
       .includes(searchTerm.toLowerCase());
 
@@ -63,7 +64,7 @@ export default function CourseSection({
   // USED AI Q: How can I add a button at the end of a list that opens a modal to add more items to the list? (SENTINEL ADD COURSE CARD)
   const coursesWithAdd = [
     ...addedCourses,
-    { __isAdd: true, Course_ID: `__add-${semester}` },
+    { __isAdd: true, course_id: `__add-${semester}` },
   ];
 
   return (
@@ -75,7 +76,7 @@ export default function CourseSection({
         <ul className="flex flex-nowrap">
           {coursesWithAdd.map((course) => (
             <li
-              key={course.Course_ID}
+              key={course.course_id}
               onClick={() => {
                 if (course.__isAdd) {
                   setIsModalOpen(true);
@@ -88,7 +89,7 @@ export default function CourseSection({
               title={
                 course.__isAdd
                   ? "Add Course"
-                  : `Click to remove ${course.Course_Code} - ${course.Course_Name}`
+                  : `Click to remove ${course.course_code} - ${course.course_name}`
               }
             >
               {course.__isAdd ? (
@@ -103,11 +104,11 @@ export default function CourseSection({
                 </>
               ) : (
                 <>
-                  <span className="font-semibold">{course.Course_Code}</span>
-                  <span>{course.Course_Name}</span>
-                  <span>{course.Delivery}</span>
-                  <span>{`Online: ${course.Online_hrs}hrs`}</span>
-                  <span>{`Class: ${course.Class_hrs}hrs`}</span>
+                  <span className="font-semibold">{course.course_code}</span>
+                  <span>{course.course_name}</span>
+                  <span>{course.delivery_method}</span>
+                  <span>{`Online: ${course.online_hrs}hrs`}</span>
+                  <span>{`Class: ${course.class_hrs}hrs`}</span>
                 </>
               )}
             </li>
@@ -173,30 +174,30 @@ export default function CourseSection({
                   ) : (
                     filteredCourses.map((course) => (
                       <tr
-                        key={course.Course_ID}
+                        key={course.course_id}
                         onClick={() => handleAddCourse(course)}
                         className="cursor-pointer hover:bg-gray-100"
                       >
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.Course_ID}
+                          {course.course_id}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.Course_Name}
+                          {course.course_name}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.Program}
+                          {course.program_major}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.Contact_Hours} h
+                          {course.contact_hours} h
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.Delivery}
+                          {course.delivery_method}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {`${course.Online_hrs} h`}
+                          {`${course.online_hrs} h`}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {`${course.Class_hrs} h`}
+                          {`${course.class_hrs} h`}
                         </td>
                       </tr>
                     ))

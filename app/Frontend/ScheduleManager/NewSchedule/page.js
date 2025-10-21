@@ -49,7 +49,7 @@ export default function NewSchedule() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   // Dynamic heights from InstructorSection for syncing row heights
-  const [rowHeights, setRowHeights] = useState({}); // { [Instructor_ID]: pxNumber }
+  const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
 
   // Handlers to update measured heights
@@ -95,13 +95,13 @@ export default function NewSchedule() {
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
       addedInstructors: prevDraft.addedInstructors.filter(
-        (i) => i.Instructor_ID !== instructor.Instructor_ID
+        (i) => i.instructor_id !== instructor.instructor_id
       ),
     }));
     // Clear measured height for that row to keep rowHeights clean
     setRowHeights((prev) => {
       const copy = { ...prev };
-      delete copy[instructor.Instructor_ID];
+      delete copy[instructor.instructor_id];
       return copy;
     });
   };
@@ -111,7 +111,7 @@ export default function NewSchedule() {
     setNewScheduleDraft((prevDraft) => {
       const current = prevDraft.addedCoursesBySemester[semester] || [];
       // Prevent adding duplicates
-      if (current.some((c) => c.Course_ID === course.Course_ID))
+      if (current.some((c) => c.course_id === course.course_id))
         return prevDraft;
       return {
         ...prevDraft,
@@ -130,7 +130,7 @@ export default function NewSchedule() {
       addedCoursesBySemester: {
         ...prevDraft.addedCoursesBySemester,
         [semester]: prevDraft.addedCoursesBySemester[semester].filter(
-          (c) => c.Course_ID !== course.Course_ID
+          (c) => c.course_id !== course.course_id
         ),
       },
     }));
@@ -145,7 +145,7 @@ export default function NewSchedule() {
     semester,
     component // "class" | "online" | "both"
   ) => {
-    const courseId = String(course.Course_ID);
+    const courseId = String(course.course_id);
     const key = `${instructorId}-${courseId}-${semester}`;
 
     setAssignments((prev) => {
@@ -249,22 +249,22 @@ export default function NewSchedule() {
   useEffect(() => {
     setAssignments((prev) => {
       const validInstructorIds = new Set(
-        newScheduleDraft.addedInstructors.map((i) => String(i.Instructor_ID))
+        newScheduleDraft.addedInstructors.map((i) => String(i.instructor_id))
       );
       const validCourseIdsBySemester = {
         winter: new Set(
           newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
-            String(c.Course_ID)
+            String(c.course_id)
           )
         ),
         springSummer: new Set(
           newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
-            String(c.Course_ID)
+            String(c.course_id)
           )
         ),
         fall: new Set(
           newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
-            String(c.Course_ID)
+            String(c.course_id)
           )
         ),
       };
