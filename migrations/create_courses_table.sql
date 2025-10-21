@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS courses (
     "group" character varying(50) null,
     credits numeric(4, 2) null,
     contact_hours integer null,
+    class_hrs integer null,
+    online_hrs integer null,
     program_type character varying(100) null,
     credential character varying(100) null,
     req_elec character varying(50) null,

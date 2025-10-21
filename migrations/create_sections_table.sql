@@ -18,7 +18,7 @@ CREATE INDEX idx_sections_schedule ON public.sections(schedule_id);
 -- Add index for instructor lookups
 CREATE INDEX idx_sections_instructor ON public.sections(instructor_id);
 
--- Add index for term-based queries
+-- Add index for terms
 CREATE INDEX idx_sections_term ON public.sections(term);
 
 -- Enable RLS
