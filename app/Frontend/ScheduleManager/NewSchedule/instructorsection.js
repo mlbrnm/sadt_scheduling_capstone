@@ -56,8 +56,9 @@ export default function InstructorSection({
 
   // Handler function to remove an instructor
   const handleRemoveInstructor = (instructor) => {
+    const displayName = instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`;
     const confirmRemove = window.confirm(
-      `Are you sure you want to remove ${instructor.instructor_name} ${instructor.instructor_lastName}?`
+      `Are you sure you want to remove ${displayName}?`
     );
     if (confirmRemove) {
       onRemoveInstructor(instructor);
@@ -197,7 +198,7 @@ export default function InstructorSection({
                     }}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
-                    title={`Click to remove ${instructor.instructor_name} ${instructor.instructor_lastName}`}
+                    title={`Click to remove ${instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`}`}
                   >
                     <td className="px-3 py-2 text-sm">
                       {instructor.contract_type}
@@ -223,9 +224,7 @@ export default function InstructorSection({
                       {`${sumTotal(instructor.instructor_id)}h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
-                      {instructor.instructor_name +
-                        " " +
-                        instructor.instructor_lastName}
+                      {instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`}
                     </td>
                   </tr>
                 ))}
@@ -304,8 +303,7 @@ export default function InstructorSection({
                           {instructor.instructor_id}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {instructor.instructor_name}{" "}
-                          {instructor.instructor_lastName}
+                          {instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.contract_type}
