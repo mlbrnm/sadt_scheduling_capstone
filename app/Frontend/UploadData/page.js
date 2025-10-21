@@ -419,13 +419,33 @@ export default function UploadData() {
     }
   };
 
+  // const handleDownload = async (storagePath) => {
+  //   const response = await fetch(
+  //     `http://localhost:5000/admin/uploads/download/${storagePath}`
+  //   );
+  //   const data = await response.json();
+  //   if (data.download_url) {
+  //     window.open(data.download_url, "_blank");
+  //   }
+  // };
+
   const handleDownload = async (storagePath) => {
-    const response = await fetch(
-      `http://localhost:5000/admin/uploads/download/${storagePath}`
-    );
-    const data = await response.json();
-    if (data.download_url) {
-      window.open(data.download_url, "_blank");
+    try {
+      const response = await fetch(
+        `http://localhost:5000/admin/uploads/download/${storagePath}` //api location
+      );
+      const blob = await response.blob(); //save the response as a blob (especially since it is a file)
+      const url = window.URL.createObjectURL(blob); //make a temporary url to store the blob object
+      const a = document.createElement("a"); //creates anchor element
+      const fileName = storagePath;
+      a.href = url; //this will assign the blob to the url link
+      a.download = fileName; //sets the filename for the user's browser to use
+      document.body.appendChild(a); //ensures anchor element is attached to the DOM
+      a.click(); //this tells th browser to start downloading the file when clicked
+      a.remove(); //once the download is triggered, removes the anchor element
+      window.URL.revokeObjectURL(url); //gets rid of the blob url that was created to free up memory
+    } catch (err) {
+      console.error("Download failed:", err);
     }
   };
 
