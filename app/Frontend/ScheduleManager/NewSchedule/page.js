@@ -41,8 +41,8 @@ export default function NewSchedule() {
     addedInstructors: [],
     addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
   });
-  const [instructorData, setInstructorData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
-  const [courseData, setCourseData] = useState([]); // Currently holds Mock data for courses - REPLACE WITH API CALL
+  const [instructorData, setInstructorData] = useState([]);
+  const [courseData, setCourseData] = useState([]);
   const [assignments, setAssignments] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
