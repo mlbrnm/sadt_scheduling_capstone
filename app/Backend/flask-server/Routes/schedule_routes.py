@@ -80,7 +80,7 @@ def register_schedule_routes(app):
                     
                 instructor_id = parts[0]
                 # Course ID might contain dashes, so join everything except first and last parts
-                course_name = "-".join(parts[1:-1])
+                course_id = "-".join(parts[1:-1])
                 term = parts[-1]
                 
                 sections = assignment_data.get("sections", {})
@@ -103,7 +103,7 @@ def register_schedule_routes(app):
                     section_record = {
                         "schedule_id": schedule_id,
                         "instructor_id": float(instructor_id),
-                        "course_name": course_name,
+                        "course_id": course_id,
                         "term": term,
                         "section_letter": section_letter,
                         "delivery_mode": delivery_mode,
@@ -165,7 +165,7 @@ def register_schedule_routes(app):
             
             for section in sections:
                 instructor_id = str(int(section["instructor_id"]))
-                course_name = section["course_name"]
+                course_id = section["course_id"]
                 term = section["term"]
                 section_letter = section["section_letter"]
                 delivery_mode = section["delivery_mode"]
@@ -174,7 +174,7 @@ def register_schedule_routes(app):
                 active_semesters[term] = True
                 
                 # Create assignment key
-                assignment_key = f"{instructor_id}-{course_name}-{term}"
+                assignment_key = f"{instructor_id}-{course_id}-{term}"
                 
                 # Initialize assignment entry if it doesn't exist
                 if assignment_key not in assignments:
