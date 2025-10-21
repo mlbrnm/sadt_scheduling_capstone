@@ -1,129 +1,186 @@
 "use client";
 import { useState, useEffect } from "react";
 export default function EditDelivery({
-  selectedDelivery,
+  deliveries,
   onSave,
   onCancel,
   onAddSiblingDelivery,
 }) {
-  // Editor draft state
-  const [startDate, setStartDate] = useState(selectedDelivery.start_date || "");
-  const [endDate, setEndDate] = useState(selectedDelivery.end_date || "");
-  const [startTime, setStartTime] = useState(selectedDelivery.start_time || "");
-  const [endTime, setEndTime] = useState(selectedDelivery.end_time || "");
-  const [days, setDays] = useState({
-    m: (selectedDelivery.m || "").toUpperCase() === "X",
-    t: (selectedDelivery.t || "").toUpperCase() === "X",
-    w: (selectedDelivery.w || "").toUpperCase() === "X",
-    th: (selectedDelivery.th || "").toUpperCase() === "X",
-    f: (selectedDelivery.f || "").toUpperCase() === "X",
-    s: (selectedDelivery.s || "").toUpperCase() === "X",
+  const [drafts, setDrafts] = useState([]);
+
+  // Convert flags to boolean days
+  const flagsToDays = (delivery) => ({
+    m: (delivery.m || "").toUpperCase() === "X",
+    t: (delivery.t || "").toUpperCase() === "X",
+    w: (delivery.w || "").toUpperCase() === "X",
+    th: (delivery.th || "").toUpperCase() === "X",
+    f: (delivery.f || "").toUpperCase() === "X",
+    s: (delivery.s || "").toUpperCase() === "X",
   });
 
-  const handleToggleDay = (day) => {
-    setDays((prevDays) => ({
-      ...prevDays,
-      [day]: !prevDays[day],
-    }));
+  // Initialize/append drafts when deliveries change
+  useEffect(() => {
+    setDrafts((prevDrafts) => {
+      // if editor just opened
+      if (prevDrafts.length === 0) {
+        return deliveries.map((d) => ({
+          ...d,
+          start_date: d.start_date || "",
+          end_date: d.end_date || "",
+          start_time: d.start_time || "",
+          end_time: d.end_time || "",
+          days: flagsToDays(d),
+        }));
+      }
+      // Append newly added deliveries
+      if (deliveries.length > prevDrafts.length) {
+        const newDrafts = [...prevDrafts];
+        for (let i = prevDrafts.length; i < deliveries.length; i++) {
+          const d = deliveries[i];
+          newDrafts.push({
+            ...d,
+            start_date: d.start_date || "",
+            end_date: d.end_date || "",
+            start_time: d.start_time || "",
+            end_time: d.end_time || "",
+            days: flagsToDays(d),
+          });
+        }
+        return newDrafts;
+      }
+      return prevDrafts;
+    });
+  }, [deliveries]);
+
+  const updateField = (deliveryIndex, propertyName, newValue) => {
+    setDrafts((prevDrafts) => {
+      const updatedDrafts = [...prevDrafts];
+      updatedDrafts[deliveryIndex] = {
+        ...prevDrafts[deliveryIndex],
+        [propertyName]: newValue,
+      };
+      return updatedDrafts;
+    });
+  };
+
+  const handleToggleDay = (index, day) => {
+    setDrafts((prevDrafts) => {
+      const updatedDrafts = [...prevDrafts];
+      updatedDrafts[index] = {
+        ...prevDrafts[index],
+        days: {
+          ...prevDrafts[index].days,
+          [day]: !prevDrafts[index].days[day],
+        },
+      };
+      return updatedDrafts;
+    });
   };
 
   const handleSaveEdit = () => {
-    const updatedDelivery = {
-      ...selectedDelivery,
-      start_date: startDate,
-      end_date: endDate,
-      start_time: startTime,
-      end_time: endTime,
-      m: days.m ? "X" : "",
-      t: days.t ? "X" : "",
-      w: days.w ? "X" : "",
-      th: days.th ? "X" : "",
-      f: days.f ? "X" : "",
-      s: days.s ? "X" : "",
-    };
-    onSave(updatedDelivery);
+    const updated = drafts.map((d) => ({
+      ...d,
+      m: d.days.m ? "X" : "",
+      t: d.days.t ? "X" : "",
+      w: d.days.w ? "X" : "",
+      th: d.days.th ? "X" : "",
+      f: d.days.f ? "X" : "",
+      s: d.days.s ? "X" : "",
+    }));
+    onSave(updated);
   };
 
   return (
     <div className="p-4">
-      <div className="bg-white rounded-lg p-4">
-        {/* Dates & Times */}
-        {/* Start Date */}
-        <div className="flex flex-row gap-4 mb-4">
+      {drafts.map((draft, index) => (
+        <div key={draft.deliveryId} className="bg-white p-4">
           <div>
-            <label className="text-sm font-medium mb-1">Start Date</label>
-            <input
-              type="text" // Using type="text" for now use "type=date"
-              className="border border-gray-300 rounded p-1 w-full"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder="MM/DD/YYYY"
-            />
-          </div>
-          {/* End Date */}
-          <div>
-            <label className="text-sm font-medium mb-1">End Date</label>
-            <input
-              type="text" // USING type="text" FOR NOW, USE "type=date"!!!
-              className="border border-gray-300 rounded p-1 w-full"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="MM/DD/YYYY"
-            />
-          </div>
-          {/* Start Time */}
-          <div>
-            <label className="text-sm font-medium mb-1">Start Time</label>
-            <input
-              type="time"
-              className="border border-gray-300 rounded p-1 w-full"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-          </div>
-          {/* End Time */}
-          <div>
-            <label className="text-sm font-medium mb-1">End Time</label>
-            <input
-              type="time"
-              className="border border-gray-300 rounded p-1 w-full"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </div>
-          {/* Days Selection */}
-          <div>
-            <label className="text-sm font-medium mb-1 block">Days</label>
-            <div className="flex flex-wrap gap-4">
-              {[
-                ["m", "Mon"],
-                ["t", "Tue"],
-                ["w", "Wed"],
-                ["th", "Thu"],
-                ["f", "Fri"],
-                ["s", "Sat"],
-              ].map(([key, label]) => (
-                <label key={key} className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={!!days[key]}
-                    onChange={() => handleToggleDay(key)}
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
+            <div className="flex flex-row gap-4 mb-4">
+              {/* Start Date */}
+              <div>
+                <label className="text-sm font-medium mb-1">Start Date</label>
+                <input
+                  type="text" // Using type="text" for now use "type=date"
+                  className="border border-gray-300 rounded p-1 w-full"
+                  value={draft.start_date}
+                  onChange={(e) =>
+                    updateField(index, "start_date", e.target.value)
+                  }
+                  placeholder="MM/DD/YYYY"
+                />
+              </div>
+              {/* End Date */}
+              <div>
+                <label className="text-sm font-medium mb-1">End Date</label>
+                <input
+                  type="text" // USING type="text" FOR NOW, USE "type=date"!!!
+                  className="border border-gray-300 rounded p-1 w-full"
+                  value={draft.end_date}
+                  onChange={(e) =>
+                    updateField(index, "end_date", e.target.value)
+                  }
+                  placeholder="MM/DD/YYYY"
+                />
+              </div>
+              {/* Start Time */}
+              <div>
+                <label className="text-sm font-medium mb-1">Start Time</label>
+                <input
+                  type="time"
+                  className="border border-gray-300 rounded p-1 w-full"
+                  value={draft.start_time}
+                  onChange={(e) =>
+                    updateField(index, "start_time", e.target.value)
+                  }
+                />
+              </div>
+              {/* End Time */}
+              <div>
+                <label className="text-sm font-medium mb-1">End Time</label>
+                <input
+                  type="time"
+                  className="border border-gray-300 rounded p-1 w-full"
+                  value={draft.end_time}
+                  onChange={(e) =>
+                    updateField(index, "end_time", e.target.value)
+                  }
+                />
+              </div>
+              {/* Days Selection */}
+              <div>
+                <label className="text-sm font-medium mb-1 block">Days</label>
+                <div className="flex flex-wrap gap-4">
+                  {[
+                    ["m", "Mon"],
+                    ["t", "Tue"],
+                    ["w", "Wed"],
+                    ["th", "Thu"],
+                    ["f", "Fri"],
+                    ["s", "Sat"],
+                  ].map(([key, label]) => (
+                    <label key={key} className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!draft.days[key]}
+                        onChange={() => handleToggleDay(index, key)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        {/* Add delivery button */}
-        <div className="mt-4">
-          <button
-            onClick={onAddSiblingDelivery}
-            className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-          >
-            Add Delivery
-          </button>
-        </div>
+      ))}
+      {/* Add Delivery Button */}
+      <div className="mt-4">
+        <button
+          className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+          onClick={onAddSiblingDelivery}
+        >
+          Add Delivery
+        </button>
       </div>
       {/* Save & Cancel Buttons */}
       <div className="mt-6 flex gap-3 justify-end">

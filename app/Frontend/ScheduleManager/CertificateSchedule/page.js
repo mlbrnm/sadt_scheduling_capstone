@@ -30,14 +30,18 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds([]);
   };
 
-  const handleSaveEdit = (updatedDelivery) => {
-    const updatedCertificates = certificatesData.map((r) =>
-      r.deliveryId === updatedDelivery.deliveryId ? { ...updatedDelivery } : r
-    );
+  const handleSaveEdit = (updatedDeliveries) => {
+    const updatedCertificates = certificatesData.map((r) => {
+      const match = updatedDeliveries.find(
+        (u) => u.deliveryId === r.deliveryId
+      );
+      return match ? match : r;
+    });
     setCertificatesData(updatedCertificates);
     setSelectedDeliveryIds([]); // REMOVE?!
   };
 
+  // Add another existing delivery for the certificate from the same section
   const handleAddSiblingDelivery = () => {
     if (selectedDeliveryIds.length === 0) return;
 
@@ -47,21 +51,21 @@ export default function CertificateSchedule() {
     if (!anchorRow) return;
 
     // Find sibling deliveries in the SAME Section (course_section), not already selected
-    const siblingDeliveries = certificatesData.filter(
+    const siblingDeliveries = certificatesData.find(
       (r) =>
         r.course_section === anchorRow.course_section &&
         !selectedDeliveryIds.includes(r.deliveryId)
     );
 
-    if (siblingDeliveries.length === 0) {
+    if (!siblingDeliveries) {
       // No more siblings exist in data to add
       alert("No other deliveries exist for this section.");
       return;
     }
-
-    // Take the first unselected sibling and append it
-    const nextSiblingId = siblingDeliveries[0].deliveryId;
-    setSelectedDeliveryIds((prevIds) => [...prevIds, nextSiblingId]);
+    setSelectedDeliveryIds((prevIds) => [
+      ...prevIds,
+      siblingDeliveries.deliveryId,
+    ]);
   };
 
   // EDIT VIEW
@@ -71,21 +75,13 @@ export default function CertificateSchedule() {
       .filter(Boolean);
 
     return (
-      <div>
-        {selectedDeliveries.map((selectedDelivery) => (
-          <div key={selectedDelivery.deliveryId}>
-            <h2 className="font-bold px-4 pt-2">
-              Section {selectedDelivery.section}
-            </h2>
-            <EditDelivery
-              selectedDelivery={selectedDelivery}
-              onSave={handleSaveEdit}
-              onCancel={handleCancelEdit}
-              onAddSiblingDelivery={handleAddSiblingDelivery}
-            />
-            {/* Add Delivery Button */}
-          </div>
-        ))}
+      <div className="p-4">
+        <EditDelivery
+          deliveries={selectedDeliveries}
+          onSave={handleSaveEdit}
+          onCancel={handleCancelEdit}
+          onAddSiblingDelivery={handleAddSiblingDelivery}
+        />
       </div>
     );
   }
@@ -133,8 +129,10 @@ export default function CertificateSchedule() {
           Edit Course
         </button>
       </div>
+
       {/* Certificate Table */}
       <CertificatesTable certificatesData={certificatesData} />
+
       {/* Delivery Picker Modal */}
       {isPickerOpen && (
         <DeliveryPicker
