@@ -57,7 +57,7 @@ export default function InstructorSection({
   // Handler function to remove an instructor
   const handleRemoveInstructor = (instructor) => {
     const confirmRemove = window.confirm(
-      `Are you sure you want to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}?`
+      `Are you sure you want to remove ${instructor.instructor_name} ${instructor.instructor_lastName}?`
     );
     if (confirmRemove) {
       onRemoveInstructor(instructor);
@@ -69,16 +69,16 @@ export default function InstructorSection({
     // Check if instructor is already added
     // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
     const isAlreadyAdded = addedInstructors.some(
-      (i) => i.Instructor_ID === instructor.Instructor_ID
+      (i) => i.instructor_id === instructor.instructor_id
     );
 
     // Filter by searching name
     const name =
-      instructor.Instructor_Name + " " + instructor.Instructor_LastName;
+      instructor.instructor_name + " " + instructor.instructor_lastName;
     const matchesName = name.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Filter by searching ID
-    const matchesID = instructor.Instructor_ID.toString().includes(searchTerm);
+    const matchesID = instructor.instructor_id.toString().includes(searchTerm);
     return (matchesID || matchesName) && !isAlreadyAdded;
   });
 
@@ -86,11 +86,11 @@ export default function InstructorSection({
   const hoursPerSection = (semester, courseId) => {
     const courses = addedCoursesBySemester?.[semester] || [];
     const course = courses.find(
-      (c) => String(c.Course_ID) === String(courseId)
+      (c) => String(c.course_id) === String(courseId)
     );
     return {
-      classHrs: course?.Class_hrs || 0,
-      onlineHrs: course?.Online_hrs || 0,
+      classHrs: course?.class_hrs || 0,
+      onlineHrs: course?.online_hrs || 0,
     };
   };
 
@@ -117,8 +117,8 @@ export default function InstructorSection({
     // base hours for this instructor
     const base =
       addedInstructors.find(
-        (i) => String(i.Instructor_ID) === String(instructorId)
-      )?.Total_Hours || 0;
+        (i) => String(i.instructor_id) === String(instructorId)
+      )?.total_hours || 0;
 
     // add up assigned hours from all semesters
     let assigned = 0;
@@ -191,42 +191,42 @@ export default function InstructorSection({
               <tbody className="divide-y divide-black">
                 {addedInstructors.map((instructor) => (
                   <tr
-                    key={instructor.Instructor_ID}
+                    key={instructor.instructor_id}
                     ref={(el) => {
-                      if (el) rowRefs.current.set(instructor.Instructor_ID, el);
-                      else rowRefs.current.delete(instructor.Instructor_ID);
+                      if (el) rowRefs.current.set(instructor.instructor_id, el);
+                      else rowRefs.current.delete(instructor.instructor_id);
                     }}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
-                    title={`Click to remove ${instructor.Instructor_Name} ${instructor.Instructor_LastName}`}
+                    title={`Click to remove ${instructor.instructor_name} ${instructor.instructor_lastName}`}
                   >
                     <td className="px-3 py-2 text-sm">
-                      {instructor.Contract_Type}
+                      {instructor.contract_type}
                     </td>
                     {/* Winter Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {`${sumHours(instructor.Instructor_ID, "winter")}h`}
+                      {`${sumHours(instructor.instructor_id, "winter")}`}
                     </td>
                     {/* Spring/Summer Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {`${sumHours(instructor.Instructor_ID, "springSummer")}h`}
+                      {`${sumHours(instructor.instructor_id, "springSummer")}`}
                     </td>
                     {/* Fall Hours */}
                     <td className="px-3 py-2 text-sm">
-                      {`${sumHours(instructor.Instructor_ID, "fall")}h`}
+                      {`${sumHours(instructor.instructor_id, "fall")}`}
                     </td>
                     <td
                       className={`px-3 py-2 text-sm ${getUtilizationColor({
                         ...instructor,
-                        Total_Hours: sumTotal(instructor.Instructor_ID),
+                        total_hours: sumTotal(instructor.instructor_id),
                       })}`}
                     >
-                      {`${sumTotal(instructor.Instructor_ID)}h`}
+                      {`${sumTotal(instructor.instructor_id)}h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
-                      {instructor.Instructor_Name +
+                      {instructor.instructor_name +
                         " " +
-                        instructor.Instructor_LastName}
+                        instructor.instructor_lastName}
                     </td>
                   </tr>
                 ))}
@@ -295,29 +295,29 @@ export default function InstructorSection({
                   ) : (
                     filteredInstructors.map((instructor) => (
                       <tr
-                        key={instructor.Instructor_ID}
+                        key={instructor.instructor_id}
                         onClick={() => {
                           handleAddInstructor(instructor);
                         }}
                         className="cursor-pointer hover:bg-gray-100"
                       >
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {instructor.Instructor_ID}
+                          {instructor.instructor_id}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {instructor.Instructor_Name}{" "}
-                          {instructor.Instructor_LastName}
+                          {instructor.instructor_name}{" "}
+                          {instructor.instructor_lastName}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {instructor.Contract_Type}
+                          {instructor.contract_type}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {`${instructor.Semester_Hours} h`}
+                          {`${instructor.semester_hours} h`}
                         </td>
                         <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span className={getUtilizationColor(instructor)}>
-                            {`${instructor.Total_Hours}/${
-                              instructor.Contract_Type === "Casual"
+                            {`${instructor.total_hours}/${
+                              instructor.contract_type === "Casual"
                                 ? "800"
                                 : "615"
                             } h`}
@@ -326,12 +326,12 @@ export default function InstructorSection({
                         <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
                           <span
                             className={`${
-                              instructor.Instructor_Status === "Active"
+                              instructor.instructor_status === "Active"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             } rounded-sm p-2`}
                           >
-                            {instructor.Instructor_Status}
+                            {instructor.instructor_status}
                           </span>
                         </td>
                       </tr>

@@ -4,8 +4,59 @@ import dummydata from "./dummydata.json";
 
 export default function ScheduleManager() {
   const [submittedSchedulesData, setSubmittedSchedulesData] = useState(dummydata);
-  const [sortOption, setSortOption] = useState({key: null, direction: "ascending"});
-  const [searchParam, setSearchParam] = useState("");
+  const [sortOption, setSortOption] = useState("");
+  const [searchParams, setSearchParams] = useState("");
+
+  // Sorting the schedules
+  const sortData = (data, option) => {
+    if (!option) return data;
+    else {
+      switch (option) {
+        case "newest":
+        //   return [...data].sort((a, b) => new Date(b.dateSubmitted) - new Date(a.dateSubmitted));
+        // case "oldest":
+        //   return [...data].sort((a, b) => new Date(a.dateSubmitted) - new Date(b.dateSubmitted));
+        case "title-a":
+          return [...data].sort((a, b) => a.title.localeCompare(b.title));
+        case "title-z":
+          return [...data].sort((a, b) => b.title.localeCompare(a.title));
+        case "program":
+          return [...data].sort((a, b) => a.programType.localeCompare(b.programType));
+        case "status":
+          return [...data].sort((a, b) => a.status.localeCompare(b.status));
+        case "timeslots":
+          return [...data].sort((a, b) => a.timeslots.localeCompare(b.timeslots));
+        default:
+          return submittedSchedulesData;
+      }
+    }
+  }
+
+  // Searching
+  const search = (data, params) => {
+    if (!params) return submittedSchedulesData;
+    else {
+      const lowercasedParams = params.toLowerCase();
+      return data.filter(item =>
+        item.title.toLowerCase().includes(lowercasedParams) ||
+        item.programType.toLowerCase().includes(lowercasedParams) ||
+        item.status.toLowerCase().includes(lowercasedParams) ||
+        item.timeslots.toLowerCase().includes(lowercasedParams)
+        // item.tags.toLowerCase().includes(lowercasedParams)
+        // item.dateSubmitted.toLowerCase().includes(lowercasedParams)
+      );
+    }   
+  }
+
+  // Handle sort
+  const handleSortChange = (e) => {
+    setSortOption(e.target.value);
+  }
+
+  // Handle search
+  const handleSearchChange = (e) => {
+    setSearchParams(e.target.value);
+  }
 
   // Get colour for chips based on program type, status, timeslots
 
@@ -46,6 +97,15 @@ export default function ScheduleManager() {
     }
   };
 
+  // Display sorted/searched data
+  let displayedData = submittedSchedulesData;
+  if (searchParams) {
+    displayedData = search(submittedSchedulesData, searchParams);
+  }
+  if (sortOption) {
+    displayedData = sortData(displayedData, sortOption);
+  }
+
   return (
     /*Main Content Container*/
     <div className="p-8">
@@ -53,8 +113,7 @@ export default function ScheduleManager() {
       <div className="flex flex-row items-center justify-center gap-10 pb-8">
         {/* Filter/Sort Container */}
         <div className="text-lg text-bold flex items-center gap-1">Sort by
-          <select className="px-3 py-2 mx-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-xs text-gray-500">
-            <label>Sort by:</label>
+          <select className="px-3 py-2 mx-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-xs text-gray-500" onChange={handleSortChange} value={sortOption}>
             <option disabled selected defaultValue="Select an option" className="text-gray-400">Select an option</option>
             <option value="newest" className="text-primary">Date Submitted, newest</option>
             <option value="oldest" className="text-primary">Date Submitted, oldest</option>
@@ -70,7 +129,7 @@ export default function ScheduleManager() {
           <input
             type="text"
             placeholder="Enter search criteria (e.g. keyword, status, tags...)"
-            className="px-3 py-2 ml-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-3xl"
+            className="px-3 py-2 ml-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-3xl" value={searchParams} onChange={handleSearchChange}
           />
           </div>
       </div>
@@ -90,7 +149,7 @@ export default function ScheduleManager() {
                 </tr>
               </thead>
               <tbody>
-                {submittedSchedulesData.map((schedule, index) => (
+                {displayedData.map((schedule, index) => (
                   <tr key={index} className="grid grid-cols-7 gap-8 py-3 border-b pl-6">
                     <td className="mt-1">{schedule.dateSubmitted}</td>
                     <td className="mt-1">{schedule.title}</td>
