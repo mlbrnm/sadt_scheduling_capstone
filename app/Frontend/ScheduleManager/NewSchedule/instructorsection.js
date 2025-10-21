@@ -239,11 +239,14 @@ export default function InstructorSection({
       {/* Modal for selecting instructors */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50"
+          className="fixed inset-0 flex items-center justify-center z-50"
           onClick={() => setIsModalOpen(false)}
         >
+          {/* Background Overlay */}
+          <div className="absolute inset-0 bg-gray-800 opacity-50" />
+          {/* Modal Content */}
           <div
-            className="bg-gray-100 p-4 rounded-md"
+            className="relative bg-gray-100 p-4 rounded-md"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-end">
