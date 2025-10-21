@@ -1,7 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import mockInstructors from "./mockinstructors.json"; // MOCK DATA - REMOVE LATER
-import mockCourses from "./mockcourses.json"; // MOCK DATA - REMOVE LATER
 import ScheduleControls from "./schedulecontrols";
 import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
