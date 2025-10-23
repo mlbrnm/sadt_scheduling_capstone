@@ -5,6 +5,7 @@ export default function EditDelivery({
   onSave,
   onCancel,
   onAddSiblingDelivery,
+  onAddSection,
 }) {
   /**
  * deliveries prop:
@@ -106,111 +107,155 @@ export default function EditDelivery({
     onSave(updated);
   };
 
+  // Group drafts by section
+  const draftsBySection = drafts.reduce((acc, draft) => {
+    const key = draft.section || "UNASSIGNED";
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(draft);
+    return acc;
+  }, {});
+
+  const sections = Object.keys(draftsBySection).sort();
+
   // BACKEND DECIDE ON DATE FORMAT SO WE CAN CHANGE INPUT FROM TEXT TO DATE!!!
   // NEED TO FIGURE OUT HOW TO DO 24-HOUR TIME INPUT AS WELL!!!
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-4">
+      {/* Header */}
       <div>
         <span className="text-lg font-semibold">
-          Section {drafts[0]?.section} - {drafts[0]?.course_name} (
-          {drafts[0]?.course_code})
+          {drafts[0]?.course_name} ({drafts[0]?.course_code})
         </span>
       </div>
-      {drafts.map((draft, index) => (
-        <div key={draft.deliveryId} className="bg-white p-4">
-          <div>
-            <div className="flex flex-row gap-4 mb-4">
-              {/* Start Date */}
-              <div>
-                <label className="text-sm font-medium mb-1">Start Date</label>
-                <input
-                  type="text" // Using type="text" for now use "type=date"
-                  className="border border-gray-300 rounded p-1 w-full"
-                  value={draft.start_date}
-                  onChange={(e) =>
-                    updateField(index, "start_date", e.target.value)
-                  }
-                  placeholder="MM/DD/YYYY"
-                />
-              </div>
-              {/* End Date */}
-              <div>
-                <label className="text-sm font-medium mb-1">End Date</label>
-                <input
-                  type="text" // USING type="text" FOR NOW, USE "type=date"!!!
-                  className="border border-gray-300 rounded p-1 w-full"
-                  value={draft.end_date}
-                  onChange={(e) =>
-                    updateField(index, "end_date", e.target.value)
-                  }
-                  placeholder="MM/DD/YYYY"
-                />
-              </div>
-              {/* Start Time */}
-              <div>
-                <label className="text-sm font-medium mb-1">Start Time</label>
-                <input
-                  type="time"
-                  className="border border-gray-300 rounded p-1 w-full"
-                  value={draft.start_time}
-                  onChange={(e) =>
-                    updateField(index, "start_time", e.target.value)
-                  }
-                />
-              </div>
-              {/* End Time */}
-              <div>
-                <label className="text-sm font-medium mb-1">End Time</label>
-                <input
-                  type="time"
-                  className="border border-gray-300 rounded p-1 w-full"
-                  value={draft.end_time}
-                  onChange={(e) =>
-                    updateField(index, "end_time", e.target.value)
-                  }
-                />
-              </div>
-              {/* Days Selection */}
-              <div>
-                <label className="text-sm font-medium mb-1 block">Days</label>
-                <div className="flex flex-wrap gap-4">
-                  {[
-                    ["m", "Mon"],
-                    ["t", "Tue"],
-                    ["w", "Wed"],
-                    ["th", "Thu"],
-                    ["f", "Fri"],
-                    ["s", "Sat"],
-                  ].map(([key, label]) => (
-                    <label key={key} className="inline-flex items-center gap-2">
+      {/* Delivery + Section */}
+      {sections.map((section) => (
+        <div key={section} className="rounded-lg border border-gray-200">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-t-lg">
+            <div className="font-semibold">Section {section}</div>
+            <button
+              className="px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+              onClick={() =>
+                onAddSiblingDelivery && onAddSiblingDelivery(section)
+              }
+            >
+              Add delivery (Section {section})
+            </button>
+          </div>
+
+          <div className="divide-y divide-gray-300">
+            {draftsBySection[section].map((draft) => {
+              const index = drafts.findIndex(
+                (d) => d.deliveryId === draft.deliveryId
+              );
+              return (
+                <div key={draft.deliveryId} className="bg-white p-4">
+                  <div className="flex flex-row gap-4 mb-4">
+                    {/* Start Date */}
+                    <div>
+                      <label className="text-sm font-medium mb-1">
+                        Start Date
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={!!draft.days[key]}
-                        onChange={() => handleToggleDay(index, key)}
+                        type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
+                        className="border border-gray-300 rounded p-1 w-full"
+                        value={draft.start_date}
+                        onChange={(e) =>
+                          updateField(index, "start_date", e.target.value)
+                        }
+                        placeholder="MM/DD/YYYY"
                       />
-                      <span>{label}</span>
-                    </label>
-                  ))}
+                    </div>
+                    {/* End Date */}
+                    <div>
+                      <label className="text-sm font-medium mb-1">
+                        End Date
+                      </label>
+                      <input
+                        type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
+                        className="border border-gray-300 rounded p-1 w-full"
+                        value={draft.end_date}
+                        onChange={(e) =>
+                          updateField(index, "end_date", e.target.value)
+                        }
+                        placeholder="MM/DD/YYYY"
+                      />
+                    </div>
+                    {/* Start Time */}
+                    <div>
+                      <label className="text-sm font-medium mb-1">
+                        Start Time
+                      </label>
+                      <input
+                        type="time"
+                        className="border border-gray-300 rounded p-1 w-full"
+                        value={draft.start_time}
+                        onChange={(e) =>
+                          updateField(index, "start_time", e.target.value)
+                        }
+                      />
+                    </div>
+                    {/* End Time */}
+                    <div>
+                      <label className="text-sm font-medium mb-1">
+                        End Time
+                      </label>
+                      <input
+                        type="time"
+                        className="border border-gray-300 rounded p-1 w-full"
+                        value={draft.end_time}
+                        onChange={(e) =>
+                          updateField(index, "end_time", e.target.value)
+                        }
+                      />
+                    </div>
+                    {/* Days Selection */}
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">
+                        Days
+                      </label>
+                      <div className="flex flex-wrap gap-4">
+                        {[
+                          ["m", "Mon"],
+                          ["t", "Tue"],
+                          ["w", "Wed"],
+                          ["th", "Thu"],
+                          ["f", "Fri"],
+                          ["s", "Sat"],
+                        ].map(([key, label]) => (
+                          <label
+                            key={key}
+                            className="inline-flex items-center gap-2"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!draft.days[key]}
+                              onChange={() => handleToggleDay(index, key)}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       ))}
-      {/* Add Delivery Button */}
-      <div className="mt-4">
+
+      {/* Add Section Button */}
+      <div className="mt-2">
         <button
           className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-          onClick={onAddSiblingDelivery}
+          onClick={() => onAddSection && onAddSection()}
         >
-          Add Delivery to Edit
+          Add Section
         </button>
       </div>
-      <div className="mt-4">
-        <button className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
-          Add Section to Edit
-        </button>
-      </div>
+
       {/* Save & Cancel Buttons */}
       <div className="mt-6 flex gap-3 justify-end">
         <button

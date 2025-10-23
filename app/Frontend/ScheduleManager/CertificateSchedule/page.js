@@ -41,9 +41,9 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds([]); // REMOVE?!
   };
 
-  // Add another existing delivery for the certificate from the same section
+  // Handler to add another existing delivery for the certificate from the same section
   // Using .find to get ONE sibling delivery at a time, can use .filter to get ALL if needed (haven't decided on how to handle this at the moment!!)
-  const handleAddSiblingDelivery = () => {
+  const handleAddSiblingDelivery = (section) => {
     if (selectedDeliveryIds.length === 0) return;
 
     // Use the FIRST selected delivery as the anchor for course_section
@@ -51,22 +51,92 @@ export default function CertificateSchedule() {
     const anchorRow = certificatesData.find((r) => r.deliveryId === anchorId);
     if (!anchorRow) return;
 
-    // Find sibling deliveries in the SAME Section (course_section), not already selected
-    const siblingDeliveries = certificatesData.find(
+    // Determine target section
+    const targetSection = section || anchorRow.section;
+
+    const key = cohortKey(anchorRow);
+    const cohortDeliveries = certificatesData.filter(
       (r) =>
-        r.course_section === anchorRow.course_section &&
+        r.course_code === key.course_code &&
+        r.term === key.term &&
+        r.program === key.program &&
+        r.semester_code === key.semester_code
+    );
+
+    // Find a sibling delivery in the SAME section not already selected
+    const siblingDelivery = cohortDeliveries.find(
+      (r) =>
+        r.section === targetSection &&
         !selectedDeliveryIds.includes(r.deliveryId)
     );
 
-    if (!siblingDeliveries) {
-      // No more siblings exist in data to add
-      alert("No other deliveries exist for this section.");
+    if (!siblingDelivery) {
+      alert(`No other deliveries exist for Section ${targetSection}.`);
       return;
     }
     setSelectedDeliveryIds((prevIds) => [
       ...prevIds,
-      siblingDeliveries.deliveryId,
+      siblingDelivery.deliveryId,
     ]);
+  };
+
+  // Helper to create a cohort key for a delivery for lookup
+  const cohortKey = (row) => ({
+    course_code: row.course_code,
+    term: row.term,
+    program: row.program,
+    semester_code: row.semester_code,
+  });
+
+  // Handler to add another section's delivery from the same cohort
+  const handleAddSection = () => {
+    if (selectedDeliveryIds.length === 0) return;
+
+    // Use the FIRST selected delivery as the anchor for cohort
+    const anchorId = selectedDeliveryIds[0];
+    const anchorRow = certificatesData.find((r) => r.deliveryId === anchorId);
+    if (!anchorRow) return;
+
+    const key = cohortKey(anchorRow);
+    // Find all deliveries in the SAME cohort (course_code, term, program, semester_code)
+    const cohortDeliveries = certificatesData.filter(
+      (r) =>
+        r.course_code === key.course_code &&
+        r.term === key.term &&
+        r.program === key.program &&
+        r.semester_code === key.semester_code
+    );
+    if (cohortDeliveries.length === 0) return;
+
+    const selectedDeliveries = selectedDeliveryIds
+      .map((id) => certificatesData.find((r) => r.deliveryId === id))
+      .filter(Boolean);
+
+    const selectedSections = new Set(selectedDeliveries.map((d) => d.section));
+
+    // Add distinct sections available in the cohort, sorted alphabetically
+    const allSections = Array.from(
+      new Set(cohortDeliveries.map((d) => d.section))
+    ).sort();
+
+    // Find the next section not already selected
+    const nextSection = allSections.find(
+      (section) => !selectedSections.has(section)
+    );
+    if (!nextSection) {
+      alert("All sections are already added.");
+      return;
+    }
+    // Find a delivery from the cohort with the next section
+    const deliveryToAdd = cohortDeliveries.find(
+      (d) =>
+        d.section === nextSection && !selectedDeliveryIds.includes(d.deliveryId)
+    );
+    if (!deliveryToAdd) {
+      alert("No delivery found for the next section.");
+      return;
+    }
+    setSelectedDeliveryIds((prevIds) => [...prevIds, deliveryToAdd.deliveryId]);
   };
 
   // EDIT VIEW
@@ -82,6 +152,7 @@ export default function CertificateSchedule() {
           onSave={handleSaveEdit}
           onCancel={handleCancelEdit}
           onAddSiblingDelivery={handleAddSiblingDelivery}
+          onAddSection={handleAddSection}
         />
       </div>
     );
