@@ -203,25 +203,25 @@ export default function EditDelivery({
           className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
           onClick={onAddSiblingDelivery}
         >
-          Add Delivery
+          Add Delivery to Edit
         </button>
       </div>
       <div className="mt-4">
         <button className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
-          Add Section
+          Add Section to Edit
         </button>
       </div>
       {/* Save & Cancel Buttons */}
       <div className="mt-6 flex gap-3 justify-end">
         <button
           onClick={onCancel}
-          className="px-3 py-2 rounded-md bg-white hover:bg-gray-100"
+          className="px-3 py-2 rounded-md bg-white hover:bg-gray-100 cursor-pointer"
         >
           Cancel
         </button>
         <button
           onClick={handleSaveEdit}
-          className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+          className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
         >
           Save
         </button>

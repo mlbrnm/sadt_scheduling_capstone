@@ -127,7 +127,7 @@ export default function CertificateSchedule() {
           onClick={handleOpenPicker}
           className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center"
         >
-          Edit Course
+          Edit Certificate
         </button>
       </div>
 
