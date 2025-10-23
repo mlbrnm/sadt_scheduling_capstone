@@ -42,6 +42,7 @@ export default function CertificateSchedule() {
   };
 
   // Add another existing delivery for the certificate from the same section
+  // Using .find to get ONE sibling delivery at a time, can use .filter to get ALL if needed (haven't decided on how to handle this at the moment!!)
   const handleAddSiblingDelivery = () => {
     if (selectedDeliveryIds.length === 0) return;
 

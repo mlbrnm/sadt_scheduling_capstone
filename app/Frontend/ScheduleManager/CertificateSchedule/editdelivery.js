@@ -6,6 +6,19 @@ export default function EditDelivery({
   onCancel,
   onAddSiblingDelivery,
 }) {
+  /**
+ * deliveries prop:
+ * - Array of original delivery objects from CertificateSchedule
+ * - Days represented as 'X' or ''
+ * - Used to initialize drafts
+
+ * drafts state:
+ * - Same shape as deliveries, but:
+ *   - days -> object { m, t, w, th, f, s } as booleans
+ *   - editable fields for dates/times
+ * - Updated as user edits
+ * - Converted back to delivery shape on Save
+ */
   const [drafts, setDrafts] = useState([]);
 
   // Convert flags to boolean days
@@ -52,6 +65,7 @@ export default function EditDelivery({
     });
   }, [deliveries]);
 
+  // Update a specific field (start/end dates and time) in a draft
   const updateField = (deliveryIndex, propertyName, newValue) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -63,6 +77,7 @@ export default function EditDelivery({
     });
   };
 
+  // Toggle day selection in a draft delivery
   const handleToggleDay = (index, day) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -78,6 +93,7 @@ export default function EditDelivery({
   };
 
   const handleSaveEdit = () => {
+    // Convert drafts back to delivery shape with 'X' from day booleans
     const updated = drafts.map((d) => ({
       ...d,
       m: d.days.m ? "X" : "",
@@ -90,6 +106,8 @@ export default function EditDelivery({
     onSave(updated);
   };
 
+  // BACKEND DECIDE ON DATE FORMAT SO WE CAN CHANGE INPUT FROM TEXT TO DATE!!!
+  // NEED TO FIGURE OUT HOW TO DO 24-HOUR TIME INPUT AS WELL!!!
   return (
     <div className="p-4">
       <div>
