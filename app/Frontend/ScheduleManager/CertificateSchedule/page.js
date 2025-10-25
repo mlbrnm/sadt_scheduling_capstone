@@ -31,43 +31,52 @@ export default function CertificateSchedule() {
   };
 
   const handleSaveEdit = (updatedDeliveries) => {
-    const updatedCertificates = certificatesData.map((r) => {
+    const updatedCertificates = certificatesData.map((row) => {
       const match = updatedDeliveries.find(
-        (u) => u.deliveryId === r.deliveryId
+        (delivery) => delivery.deliveryId === row.deliveryId
       );
-      return match ? match : r;
+      return match ? match : row;
     });
     setCertificatesData(updatedCertificates);
-    setSelectedDeliveryIds([]); // REMOVE?!
+    setSelectedDeliveryIds([]);
   };
 
+  // Helper to create a certificate group key for a delivery for lookup
+  const certificateGroupKey = (row) => ({
+    course_code: row.course_code,
+    term: row.term,
+    program: row.program,
+    semester_code: row.semester_code,
+  });
+
   // Handler to add another existing delivery for the certificate from the same section
-  // Using .find to get ONE sibling delivery at a time, can use .filter to get ALL if needed (haven't decided on how to handle this at the moment!!)
   const handleAddSiblingDelivery = (section) => {
     if (selectedDeliveryIds.length === 0) return;
 
-    // Use the FIRST selected delivery as the anchor for course_section
+    // Use the FIRST selected delivery as the anchor
     const anchorId = selectedDeliveryIds[0];
-    const anchorRow = certificatesData.find((r) => r.deliveryId === anchorId);
+    const anchorRow = certificatesData.find(
+      (row) => row.deliveryId === anchorId
+    );
     if (!anchorRow) return;
 
     // Determine target section
     const targetSection = section || anchorRow.section;
 
-    const key = cohortKey(anchorRow);
-    const cohortDeliveries = certificatesData.filter(
-      (r) =>
-        r.course_code === key.course_code &&
-        r.term === key.term &&
-        r.program === key.program &&
-        r.semester_code === key.semester_code
+    const key = certificateGroupKey(anchorRow);
+    const certificateGroupDeliveries = certificatesData.filter(
+      (row) =>
+        row.course_code === key.course_code &&
+        row.term === key.term &&
+        row.program === key.program &&
+        row.semester_code === key.semester_code
     );
 
     // Find a sibling delivery in the SAME section not already selected
-    const siblingDelivery = cohortDeliveries.find(
-      (r) =>
-        r.section === targetSection &&
-        !selectedDeliveryIds.includes(r.deliveryId)
+    const siblingDelivery = certificateGroupDeliveries.find(
+      (row) =>
+        row.section === targetSection &&
+        !selectedDeliveryIds.includes(row.deliveryId)
     );
 
     if (!siblingDelivery) {
@@ -80,43 +89,40 @@ export default function CertificateSchedule() {
     ]);
   };
 
-  // Helper to create a cohort key for a delivery for lookup
-  const cohortKey = (row) => ({
-    course_code: row.course_code,
-    term: row.term,
-    program: row.program,
-    semester_code: row.semester_code,
-  });
-
   // Handler to add another section's delivery from the same cohort
   const handleAddSection = () => {
     if (selectedDeliveryIds.length === 0) return;
 
-    // Use the FIRST selected delivery as the anchor for cohort
+    // Use the FIRST selected delivery as the anchor
     const anchorId = selectedDeliveryIds[0];
-    const anchorRow = certificatesData.find((r) => r.deliveryId === anchorId);
+    const anchorRow = certificatesData.find(
+      (row) => row.deliveryId === anchorId
+    );
     if (!anchorRow) return;
 
-    const key = cohortKey(anchorRow);
-    // Find all deliveries in the SAME cohort (course_code, term, program, semester_code)
-    const cohortDeliveries = certificatesData.filter(
-      (r) =>
-        r.course_code === key.course_code &&
-        r.term === key.term &&
-        r.program === key.program &&
-        r.semester_code === key.semester_code
+    const key = certificateGroupKey(anchorRow);
+    // Find all deliveries in the SAME certificate group (course_code, term, program, semester_code)
+    const certificateGroupDeliveries = certificatesData.filter(
+      (row) =>
+        row.course_code === key.course_code &&
+        row.term === key.term &&
+        row.program === key.program &&
+        row.semester_code === key.semester_code
     );
-    if (cohortDeliveries.length === 0) return;
+    if (certificateGroupDeliveries.length === 0) return;
 
+    // Get currently selected deliveries in this certificate group
     const selectedDeliveries = selectedDeliveryIds
-      .map((id) => certificatesData.find((r) => r.deliveryId === id))
+      .map((id) => certificatesData.find((row) => row.deliveryId === id))
       .filter(Boolean);
 
-    const selectedSections = new Set(selectedDeliveries.map((d) => d.section));
+    const selectedSections = new Set(
+      selectedDeliveries.map((delivery) => delivery.section)
+    );
 
-    // Add distinct sections available in the cohort, sorted alphabetically
+    // Add distinct sections available in the certificate group, sorted alphabetically
     const allSections = Array.from(
-      new Set(cohortDeliveries.map((d) => d.section))
+      new Set(certificateGroupDeliveries.map((delivery) => delivery.section))
     ).sort();
 
     // Find the next section not already selected
@@ -127,10 +133,11 @@ export default function CertificateSchedule() {
       alert("All sections are already added.");
       return;
     }
-    // Find a delivery from the cohort with the next section
-    const deliveryToAdd = cohortDeliveries.find(
-      (d) =>
-        d.section === nextSection && !selectedDeliveryIds.includes(d.deliveryId)
+    // Find a delivery from the certificate group with the next section
+    const deliveryToAdd = certificateGroupDeliveries.find(
+      (delivery) =>
+        delivery.section === nextSection &&
+        !selectedDeliveryIds.includes(delivery.deliveryId)
     );
     if (!deliveryToAdd) {
       alert("No delivery found for the next section.");
@@ -142,7 +149,7 @@ export default function CertificateSchedule() {
   // EDIT VIEW
   if (selectedDeliveryIds.length > 0) {
     const selectedDeliveries = selectedDeliveryIds
-      .map((id) => certificatesData.find((r) => r.deliveryId === id))
+      .map((id) => certificatesData.find((row) => row.deliveryId === id))
       .filter(Boolean);
 
     return (
