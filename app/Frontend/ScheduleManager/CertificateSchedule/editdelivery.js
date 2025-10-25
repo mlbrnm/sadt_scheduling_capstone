@@ -140,7 +140,7 @@ export default function EditDelivery({
                 onAddSiblingDelivery && onAddSiblingDelivery(section)
               }
             >
-              Add delivery (Section {section})
+              Add delivery
             </button>
           </div>
 
@@ -153,13 +153,13 @@ export default function EditDelivery({
                 <div key={draft.deliveryId} className="bg-white p-4">
                   <div className="flex flex-row gap-4 mb-4">
                     {/* Start Date */}
-                    <div>
+                    <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
                         Start Date
                       </label>
                       <input
                         type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
-                        className="border border-gray-300 rounded p-1 w-full"
+                        className="border border-gray-300 rounded p-1 w-32"
                         value={draft.start_date}
                         onChange={(e) =>
                           updateField(index, "start_date", e.target.value)
@@ -168,13 +168,13 @@ export default function EditDelivery({
                       />
                     </div>
                     {/* End Date */}
-                    <div>
+                    <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
                         End Date
                       </label>
                       <input
                         type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
-                        className="border border-gray-300 rounded p-1 w-full"
+                        className="border border-gray-300 rounded p-1 w-32"
                         value={draft.end_date}
                         onChange={(e) =>
                           updateField(index, "end_date", e.target.value)
@@ -183,13 +183,13 @@ export default function EditDelivery({
                       />
                     </div>
                     {/* Start Time */}
-                    <div>
+                    <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
                         Start Time
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-full"
+                        className="border border-gray-300 rounded p-1 w-32"
                         value={draft.start_time}
                         onChange={(e) =>
                           updateField(index, "start_time", e.target.value)
@@ -197,13 +197,13 @@ export default function EditDelivery({
                       />
                     </div>
                     {/* End Time */}
-                    <div>
+                    <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
                         End Time
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-full"
+                        className="border border-gray-300 rounded p-1 w-32"
                         value={draft.end_time}
                         onChange={(e) =>
                           updateField(index, "end_time", e.target.value)
