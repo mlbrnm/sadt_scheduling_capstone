@@ -80,7 +80,9 @@ export default function CertificateSchedule() {
     );
 
     if (!siblingDelivery) {
-      alert(`No other deliveries exist for Section ${targetSection}.`);
+      alert(
+        `No other deliveries exist for Section ${targetSection} of ${anchorRow.course_name} (${anchorRow.course_section}).`
+      );
       return;
     }
     setSelectedDeliveryIds((prevIds) => [
@@ -130,7 +132,9 @@ export default function CertificateSchedule() {
       (section) => !selectedSections.has(section)
     );
     if (!nextSection) {
-      alert("All sections are already added.");
+      alert(
+        `All sections are already added for ${anchorRow.course_name} (${anchorRow.course_code}).`
+      );
       return;
     }
     // Find a delivery from the certificate group with the next section
