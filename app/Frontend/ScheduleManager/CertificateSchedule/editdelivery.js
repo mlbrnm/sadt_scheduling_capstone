@@ -123,6 +123,12 @@ export default function EditDelivery({
 
   const sections = Object.keys(draftsBySection).sort();
 
+  const handleAddInstructor = (instructor) => {
+    // Logic to add instructor to the delivery draft
+    console.log("Adding instructor:", instructor);
+    setIsInstructorPickerOpen(false);
+  };
+
   // BACKEND DECIDE ON DATE FORMAT SO WE CAN CHANGE INPUT FROM TEXT TO DATE!!!
   // NEED TO FIGURE OUT HOW TO DO 24-HOUR TIME INPUT AS WELL!!!
   return (
@@ -244,7 +250,10 @@ export default function EditDelivery({
                     </div>
                     {/* Add Instructor Button */}
                     <div className="mt-6">
-                      <button className="cursor-pointer hover:text-blue-600">
+                      <button
+                        className="cursor-pointer hover:text-blue-600"
+                        onClick={() => setIsInstructorPickerOpen(true)}
+                      >
                         + Add Instructor
                       </button>
                     </div>
@@ -281,9 +290,15 @@ export default function EditDelivery({
           Save
         </button>
       </div>
-      
+
       {/* Instructor Picker Modal */}
-      {isInstructorPickerOpen && <InstructorPicker instructors={instructors} />}
+      {isInstructorPickerOpen && (
+        <InstructorPicker
+          instructors={instructors}
+          onAddInstructor={handleAddInstructor}
+          onClose={() => setIsInstructorPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
