@@ -1,11 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
+import InstructorPicker from "./instructorpicker";
 export default function EditDelivery({
   deliveries,
   onSave,
   onCancel,
   onAddSiblingDelivery,
   onAddSection,
+  instructors,
 }) {
   /**
  * deliveries prop:
@@ -21,6 +23,7 @@ export default function EditDelivery({
  * - Converted back to delivery shape on Save
  */
   const [drafts, setDrafts] = useState([]);
+  const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
 
   // Convert flags to boolean days
   const flagsToDays = (delivery) => ({
@@ -239,6 +242,12 @@ export default function EditDelivery({
                         ))}
                       </div>
                     </div>
+                    {/* Add Instructor Button */}
+                    <div className="mt-6">
+                      <button className="cursor-pointer hover:text-blue-600">
+                        + Add Instructor
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -272,6 +281,9 @@ export default function EditDelivery({
           Save
         </button>
       </div>
+      
+      {/* Instructor Picker Modal */}
+      {isInstructorPickerOpen && <InstructorPicker instructors={instructors} />}
     </div>
   );
 }

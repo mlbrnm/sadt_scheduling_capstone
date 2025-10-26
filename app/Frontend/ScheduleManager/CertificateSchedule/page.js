@@ -1,29 +1,53 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
+import mockInstructors from "./mockinstructors.json"; // MOCK DATA - REMOVE LATER
 import CertificatesTable from "./certificatestable";
 import DeliveryPicker from "./deliverypicker";
 import EditDelivery from "./editdelivery";
 
 export default function CertificateSchedule() {
   // ADD deliveryId INDEX IS FINE FOR NOW!!!
-  const [certificatesData, setCertificatesData] = useState(
-    mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // Currently holds Mock data for certificates - REPLACE WITH API CALL
-  );
+  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates - REPLACE WITH API CALL
+  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isDeliveryPickerOpen, setIsDeliveryPickerOpen] = useState(false);
   // Dropdowns state STATIC HARDCODED FOR NOW!!!
   const [year, setYear] = useState("2026");
   const [semester, setSemester] = useState("Winter");
   const [program, setProgram] = useState("ISS");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // "Fetching" mock data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // REPLACE WITH API CALL
+        // const response = await fetch("");
+        // const instructorData = await response.json();
+        setInstructorsData(mockInstructors);
+        setCertificatesData(
+          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx }))
+        );
+      } catch (error) {
+        setError("Failed to fetch data.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleOpenPicker = () => {
-    setIsPickerOpen(true);
+    setIsDeliveryPickerOpen(true);
   };
 
   const handleSelectDelivery = (deliveryId) => {
     setSelectedDeliveryIds([deliveryId]);
-    setIsPickerOpen(false);
+    setIsDeliveryPickerOpen(false);
   };
 
   const handleCancelEdit = () => {
@@ -164,6 +188,7 @@ export default function CertificateSchedule() {
           onCancel={handleCancelEdit}
           onAddSiblingDelivery={handleAddSiblingDelivery}
           onAddSection={handleAddSection}
+          instructors={instructorsData}
         />
       </div>
     );
@@ -217,11 +242,11 @@ export default function CertificateSchedule() {
       <CertificatesTable certificatesData={certificatesData} />
 
       {/* Delivery Picker Modal */}
-      {isPickerOpen && (
+      {isDeliveryPickerOpen && (
         <DeliveryPicker
           certificatesData={certificatesData}
           onSelectDelivery={handleSelectDelivery}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={() => setIsDeliveryPickerOpen(false)}
         />
       )}
     </div>
