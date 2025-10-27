@@ -7,7 +7,6 @@ import DeliveryPicker from "./deliverypicker";
 import EditDelivery from "./editdelivery";
 
 export default function CertificateSchedule() {
-  // ADD deliveryId INDEX IS FINE FOR NOW!!!
   const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates - REPLACE WITH API CALL
   const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
@@ -30,7 +29,7 @@ export default function CertificateSchedule() {
         // const instructorData = await response.json();
         setInstructorsData(mockInstructors);
         setCertificatesData(
-          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx }))
+          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // ADD deliveryId INDEX IS FINE FOR NOW!!!
         );
       } catch (error) {
         setError("Failed to fetch data.");
