@@ -75,7 +75,8 @@ def register_admin_routes(app):
             if not uploaded_by:
                 return jsonify({"error": "Missing user email"}), 400
             
-            # upload to Supabase storage
+            # upload to Supabase storage and database
+            # Note: save_uploaded_file() handles both storage AND database upload
             storage_result = save_uploaded_file(
                 file, 
                 uploaded_by, 
@@ -83,9 +84,7 @@ def register_admin_routes(app):
                 table_name = table_name,
                 bucket_name="uploads")
             
-
-            # upload to database
-            upload_table(file, table_name, uploaded_by)
+            # Fetch the newly uploaded data
             data = fetch_table_data(table_name)
 
 

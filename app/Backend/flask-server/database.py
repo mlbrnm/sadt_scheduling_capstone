@@ -78,6 +78,8 @@ TABLE_COLUMN_MAPPINGS = {
         "Credential": "credential", 
         "Req_Elec": "req_elec", 
         "Delivery_Method": "delivery_method", 
+        "Online hrs": "online_hrs",
+        "Class hrs": "class_hrs",
         "AC_Name - Loading": "ac_name_loading", 
         "School": "school",
         "Exam_OTR": "exam_otr", 
@@ -105,8 +107,6 @@ TABLE_COLUMN_MAPPINGS = {
         "Action Plan": "action_plan",
         "Notes/Plan": "notes_plan",
         "Full Name": "full_name",
-        "FTE": "fte",
-        "Time off": "time_off",
     },
     "programs": {
         "Group": "group",
@@ -119,6 +119,8 @@ TABLE_COLUMN_MAPPINGS = {
         "Intakes": "intakes",
         "Duration": "duration",
         "Starting Date": "starting_date",
+        "Delivery": "delivery",
+        "Status": "status",
     }
 }
 
@@ -176,7 +178,6 @@ def formatted_data(df, table_name):
         # Replace NaN and infinities with None (JSON-safe)
         df['years_as_temp'] = df['years_as_temp'].replace([np.nan, np.inf, -np.inf], None)
 
-
     # Drop rows where the primary key is missing
     if primary_key and primary_key in df.columns:
         df = df[df[primary_key].notnull()]
@@ -185,8 +186,28 @@ def formatted_data(df, table_name):
 
     # UUID is created if table is missing primary key altogether (like program table)
     if primary_key and primary_key not in df.columns:
-        df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))] # _ is a throwaway variable (we don't need it's value)
+        df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))]
         # primary key created for each row of dataframe and converted to string 
+
+    # Convert float to int for online_hrs and class_hrs
+    if table_name == "courses":
+        for col in ['online_hrs', 'class_hrs']:
+            if col in df.columns:
+                # Convert to numeric, coercing invalid entries to NaN
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                # Convert column to nullable integer type ('Int64')
+                # This handles np.nan by converting it to pd.NA
+                # It also converts 3.0 (float) to 3 (int)
+                try:
+                    df[col] = df[col].astype('Int64') 
+                except (TypeError, ValueError):
+                    # Fallback if casting fails
+                    pass 
+
+    # Final cleanup to ensure no NaN, pd.NA, or infinity values remain
+    df = df.replace({np.nan: None, np.inf: None, -np.inf: None, pd.NA: None})
+    df = df.where(pd.notnull(df), None)
 
     return df
 
