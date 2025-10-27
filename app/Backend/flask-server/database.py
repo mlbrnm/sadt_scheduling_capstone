@@ -396,17 +396,20 @@ def restore_file_from_url(file_url, table_name, uploaded_by):
 
     upload_table(file_like, table_name, uploaded_by)
 
-def get_user_name(id):
+def get_user_info(id):
     try:
         print("Looking for user id:", id)
-        response = supabase_client.table("users").select("first_name, last_name").eq("id", id).single().execute()
+        response = supabase_client.table("users").select("first_name, last_name, role").eq("id", id).single().execute()
         print("Supabase response:", response)
 
         if response.data:
-            return f"{response.data['first_name']} {response.data['last_name']}"
+            user_data = response.data
+            full_name = f"{user_data['first_name']} {user_data['last_name']}"
+            role = user_data.get("role")
+            return {"full_name": full_name, "role": role}
         else:
-            return "You shouldn't be here"
+            return "None"
     
     except Exception as e:
-        print("Error fetching user name:", e)
-        return "User not found"
+        print("Error fetching user info", e)
+        return None
