@@ -94,6 +94,8 @@ export default function UploadData() {
     intakes: "Intakes",
     duration: "Duration",
     starting_date: "Starting Date",
+    delivery: "Delivery",
+    status: "Status",
     uploaded_at: "Uploaded At",
     uploaded_by: "Uploaded By",
 

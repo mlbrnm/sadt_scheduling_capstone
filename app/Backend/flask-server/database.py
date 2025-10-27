@@ -107,6 +107,8 @@ TABLE_COLUMN_MAPPINGS = {
         "Intakes": "intakes",
         "Duration": "duration",
         "Starting Date": "starting_date",
+        "Delivery": "delivery",
+        "Status": "status"
     }
 }
 
