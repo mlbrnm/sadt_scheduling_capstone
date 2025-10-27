@@ -88,6 +88,7 @@ export default function CertificateSchedule() {
     const targetSection = section || anchorRow.section;
 
     const key = certificateGroupKey(anchorRow);
+    // Find all deliveries (for ALL Sections) in the SAME certificate group (course_code, term, program, semester_code)
     const certificateGroupDeliveries = certificatesData.filter(
       (row) =>
         row.course_code === key.course_code &&
@@ -115,7 +116,7 @@ export default function CertificateSchedule() {
     ]);
   };
 
-  // Handler to add another section's delivery from the same cohort
+  // Handler to add another section's delivery from the same group (course_code, term, program, semester_code)
   const handleAddSection = () => {
     if (selectedDeliveryIds.length === 0) return;
 
@@ -127,7 +128,7 @@ export default function CertificateSchedule() {
     if (!anchorRow) return;
 
     const key = certificateGroupKey(anchorRow);
-    // Find all deliveries in the SAME certificate group (course_code, term, program, semester_code)
+    // Find all deliveries (for ALL Sections) in the SAME certificate group (course_code, term, program, semester_code)
     const certificateGroupDeliveries = certificatesData.filter(
       (row) =>
         row.course_code === key.course_code &&
@@ -137,16 +138,17 @@ export default function CertificateSchedule() {
     );
     if (certificateGroupDeliveries.length === 0) return;
 
-    // Get currently selected deliveries in this certificate group
+    // Find the actual selected delivery objects from selected IDs
+    // USED AI Q: In Next.js how to get unique values in an array? (USING SET TO FILTER OUT DUPLICATES)
     const selectedDeliveries = selectedDeliveryIds
       .map((id) => certificatesData.find((row) => row.deliveryId === id))
       .filter(Boolean);
-
+    // Find which sections are already selected
     const selectedSections = new Set(
       selectedDeliveries.map((delivery) => delivery.section)
     );
 
-    // Add distinct sections available in the certificate group, sorted alphabetically
+    // Add ALL distinct sections available in the certificate group, sorted alphabetically
     const allSections = Array.from(
       new Set(certificateGroupDeliveries.map((delivery) => delivery.section))
     ).sort();
@@ -155,13 +157,15 @@ export default function CertificateSchedule() {
     const nextSection = allSections.find(
       (section) => !selectedSections.has(section)
     );
+
     if (!nextSection) {
       alert(
         `All sections are already added for ${anchorRow.course_name} (${anchorRow.course_code}).`
       );
       return;
     }
-    // Find a delivery from the certificate group with the next section
+
+    // Find a delivery from the next section not already selected
     const deliveryToAdd = certificateGroupDeliveries.find(
       (delivery) =>
         delivery.section === nextSection &&
@@ -176,6 +180,7 @@ export default function CertificateSchedule() {
 
   // EDIT VIEW
   if (selectedDeliveryIds.length > 0) {
+    // Find the actual selected delivery objects from selected IDs to send to EditDelivery
     const selectedDeliveries = selectedDeliveryIds
       .map((id) => certificatesData.find((row) => row.deliveryId === id))
       .filter(Boolean);

@@ -10,18 +10,17 @@ export default function EditDelivery({
   instructors,
 }) {
   /**
- * deliveries prop:
- * - Array of original delivery objects from CertificateSchedule
- * - Days represented as 'X' or ''
- * - Used to initialize drafts
-
- * drafts state:
- * - Same shape as deliveries, but:
- *   - days -> object { m, t, w, th, f, s } as booleans
- *   - editable fields for dates/times
- * - Updated as user edits
- * - Converted back to delivery shape on Save
- */
+   * NOTES FOR BACKEND
+   * deliveries prop:
+   * - Array of original delivery objects from CertificateSchedule
+   * - Used to initialize drafts
+   * drafts state:
+   * - Same shape as deliveries, but:
+   *   - days -> object { m, t, w, th, f, s } as booleans
+   *   - editable fields for dates/times
+   * - Updated as user edits
+   * - Converted back to delivery shape on Save
+   */
   const [drafts, setDrafts] = useState([]);
   const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
 
@@ -40,27 +39,27 @@ export default function EditDelivery({
     setDrafts((prevDrafts) => {
       // if editor just opened
       if (prevDrafts.length === 0) {
-        return deliveries.map((d) => ({
-          ...d,
-          start_date: d.start_date || "",
-          end_date: d.end_date || "",
-          start_time: d.start_time || "",
-          end_time: d.end_time || "",
-          days: flagsToDays(d),
+        return deliveries.map((delivery) => ({
+          ...delivery,
+          start_date: delivery.start_date || "",
+          end_date: delivery.end_date || "",
+          start_time: delivery.start_time || "",
+          end_time: delivery.end_time || "",
+          days: flagsToDays(delivery),
         }));
       }
       // Append newly added deliveries
       if (deliveries.length > prevDrafts.length) {
         const newDrafts = [...prevDrafts];
         for (let i = prevDrafts.length; i < deliveries.length; i++) {
-          const d = deliveries[i];
+          const delivery = deliveries[i];
           newDrafts.push({
-            ...d,
-            start_date: d.start_date || "",
-            end_date: d.end_date || "",
-            start_time: d.start_time || "",
-            end_time: d.end_time || "",
-            days: flagsToDays(d),
+            ...delivery,
+            start_date: delivery.start_date || "",
+            end_date: delivery.end_date || "",
+            start_time: delivery.start_time || "",
+            end_time: delivery.end_time || "",
+            days: flagsToDays(delivery),
           });
         }
         return newDrafts;
@@ -81,7 +80,7 @@ export default function EditDelivery({
     });
   };
 
-  // Toggle day selection in a draft delivery
+  // Toggle day selection in a delivery draft
   const handleToggleDay = (index, day) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -123,8 +122,10 @@ export default function EditDelivery({
 
   const sections = Object.keys(draftsBySection).sort();
 
+  // Handle adding instructor from InstructorPicker
+  // NOT IMPLEMENTED!!!
   const handleAddInstructor = (instructor) => {
-    // Logic to add instructor to the delivery draft
+    // ADD LOGIC TO ADD INSTRUCTOR TO DELIVERY DRAFT!!!
     console.log("Adding instructor:", instructor);
     setIsInstructorPickerOpen(false);
   };
@@ -146,9 +147,7 @@ export default function EditDelivery({
             <div className="font-semibold">Section {section}</div>
             <button
               className="px-3 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
-              onClick={() =>
-                onAddSiblingDelivery && onAddSiblingDelivery(section)
-              }
+              onClick={() => onAddSiblingDelivery?.(section)}
             >
               Add delivery
             </button>
