@@ -7,8 +7,6 @@ CREATE TABLE IF NOT EXISTS courses (
     "group" character varying(50) null,
     credits numeric(4, 2) null,
     contact_hours integer null,
-    class_hrs integer null,
-    online_hrs integer null,
     program_type character varying(100) null,
     credential character varying(100) null,
     req_elec character varying(50) null,
@@ -22,7 +20,9 @@ CREATE TABLE IF NOT EXISTS courses (
     spring_summer character varying(1) null,
     notes text null,
     uploaded_by character varying(255) null,
-    uploaded_at character varying(50) null
+    uploaded_at character varying(50) null,
+    class_hrs integer null,
+    online_hrs integer null,
 );
 
 -- Enable Row-Level Security
