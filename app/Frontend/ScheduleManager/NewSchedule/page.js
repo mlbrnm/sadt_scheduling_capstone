@@ -50,7 +50,7 @@ export default function NewSchedule() {
   const [instructorData, setInstructorData] = useState([]);
   const [courseData, setCourseData] = useState([]);
   const [assignments, setAssignments] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [error, setError] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
