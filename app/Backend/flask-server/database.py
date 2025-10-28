@@ -66,6 +66,8 @@ TABLE_COLUMN_MAPPINGS = {
         "Credential": "credential", 
         "Req_Elec": "req_elec", 
         "Delivery_Method": "delivery_method", 
+        "Online hrs": "online_hrs",
+        "Class hrs": "class_hrs",
         "AC_Name - Loading": "ac_name_loading", 
         "School": "school",
         "Exam_OTR": "exam_otr", 
@@ -74,6 +76,7 @@ TABLE_COLUMN_MAPPINGS = {
         "Winter": "winter", 
         "Spring_Summer": "spring_summer", 
         "Notes": "notes",
+        "Contact Hours": "contact_hours",
     },
     "instructors": {
         "Instructor_ID": "instructor_id",
@@ -107,6 +110,8 @@ TABLE_COLUMN_MAPPINGS = {
         "Intakes": "intakes",
         "Duration": "duration",
         "Starting Date": "starting_date",
+        "Delivery": "delivery",
+        "Status": "status"
     }
 }
 
@@ -157,27 +162,29 @@ def formatted_data(df, table_name):
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
-    # Timestamp and datetime values are converted to y-m-d format
-    df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
-    # map() applies the lambda function to all the elements of the dataframe 
-    # the lambda function converts the value to strftime("%Y-%m-%d") if it is eitherpd.Timestamp or datetime
-    # if it isnt either, it is not changed
+#CAN MAYBE TAKE THIS OUT BY USING BELOW FUNCTION
+    # # Timestamp and datetime values are converted to y-m-d format
+    # df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
+    # # map() applies the lambda function to all the elements of the dataframe 
+    # # the lambda function converts the value to strftime("%Y-%m-%d") if it is eitherpd.Timestamp or datetime
+    # # if it isnt either, it is not changed
+
+    def clean_data(x):
+        if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x):
+            return x.strftime("%Y-%m-%d")
+        elif isinstance(x, float) and x.is_integer():
+            return int(x)
+        elif isinstance(x, str) and x.replace('.', '', 1).isdigit():
+            return int(float(x))
+        else:
+            return x
+    
+    df = df.applymap(clean_data)
 
     # Replace invalid numeric values
     df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
     df = df.where(pd.notnull(df), None)
     # this acts as a type of safety net using True/False condition (if False then replaced with None)
-
-    if table_name == "instructors" and 'years_as_temp' in df.columns:
-        # Convert to numeric, coercing invalid entries to NaN
-        df['years_as_temp'] = pd.to_numeric(df['years_as_temp'], errors='coerce')
-        
-        # Round to 2 decimal places
-        df['years_as_temp'] = df['years_as_temp'].round(2)
-        
-        # Replace NaN and infinities with None (JSON-safe)
-        df['years_as_temp'] = df['years_as_temp'].replace([np.nan, np.inf, -np.inf], None)
-
 
     # Drop rows where the primary key is missing
     if primary_key and primary_key in df.columns:
@@ -288,7 +295,7 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         clear_table_data(table_name)
 
         column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
-        column_order = upload_file(file, table_name, column_standardization, user_email)
+        column_order = upload_file(file, table_name, column_standardization, user_email) #THIS IS WHERE ERROR HAPPENS - go check upload file function
         print("Column order:", column_order)  # DEBUG
 
         supabase.table("uploaded_files").insert({
@@ -396,17 +403,20 @@ def restore_file_from_url(file_url, table_name, uploaded_by):
 
     upload_table(file_like, table_name, uploaded_by)
 
-def get_user_name(id):
+def get_user_info(id):
     try:
         print("Looking for user id:", id)
-        response = supabase_client.table("users").select("first_name, last_name").eq("id", id).single().execute()
+        response = supabase_client.table("users").select("first_name, last_name, role").eq("id", id).single().execute()
         print("Supabase response:", response)
 
         if response.data:
-            return f"{response.data['first_name']} {response.data['last_name']}"
+            user_data = response.data
+            full_name = f"{user_data['first_name']} {user_data['last_name']}"
+            role = user_data.get("role")
+            return {"full_name": full_name, "role": role}
         else:
-            return "You shouldn't be here"
+            return "None"
     
     except Exception as e:
-        print("Error fetching user name:", e)
-        return "User not found"
+        print("Error fetching user info", e)
+        return None
