@@ -87,11 +87,11 @@ def register_admin_routes(app):
             # Fetch the newly uploaded data
             data = fetch_table_data(table_name)
 
-
             return jsonify({
                 "status": f"{table_name.capitalize()} uploaded successfully",
                 "data": data,
-                "file_storage": storage_result
+                "file_storage": storage_result,
+                "unmatched_courses": storage_result.get("unmatched_courses", [])
             }), 200
 
         except Exception as e:
