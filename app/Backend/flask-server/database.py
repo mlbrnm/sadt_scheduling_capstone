@@ -27,8 +27,6 @@ from datetime import datetime
 
 import uuid
 
-import pandas as pd
-
 import requests
 
 from io import BytesIO
@@ -112,6 +110,39 @@ TABLE_COLUMN_MAPPINGS = {
         "Starting Date": "starting_date",
         "Delivery": "delivery",
         "Status": "status"
+    },
+    "otr_submissions": {
+        "Term": "term",
+        "Block Dept": "block_dept",
+        "Block": "block",
+        "Course Dept": "course_dept",
+        "Course": "course",
+        "Title": "title",
+        "Component": "component",
+        "Schedule Type": "schedule_type",
+        "Status": "status",
+        "Delivery": "delivery",
+        "Meet Type": "meet_type",
+        "Start Date": "start_date",
+        "End Date": "end_date",
+        "Forced Day": "forced_day",
+        "Forced Start Time": "forced_start_time",
+        "Forced Duration": "forced_duration",
+        "Pattern": "pattern",
+        "Pattern Day": "pattern_day",
+        "Pattern Start Time": "pattern_start_time",
+        "Pattern Duration": "pattern_duration",
+        "Instructor ID": "instructor_id",
+        "Name": "name",
+        "Surname": "surname",
+        "Room Type Requested": "room_type_requested",
+        "Pavilion Requested": "pavilion_requested",
+        "Room Number": "room_number",
+        "Room Type Assigned": "room_type_assigned",
+        "Room Description": "room_description",
+        "Component Disabled": "component_disabled",
+        "Section Disabled": "section_disabled",
+        "Course Disabled": "course_disabled"
     }
 }
 
@@ -121,6 +152,7 @@ TABLE_VALID_COLUMNS = {
     "courses": set(TABLE_COLUMN_MAPPINGS["courses"].values()),
     "instructors": set(TABLE_COLUMN_MAPPINGS["instructors"].values()),
     "programs": set(TABLE_COLUMN_MAPPINGS["programs"].values()),
+    "otr_submissions": set(TABLE_COLUMN_MAPPINGS["otr_submissions"].values()),
 }
 
 # certain data not needed to be displayed back to user 
@@ -135,6 +167,7 @@ TABLE_PRIMARY_KEYS = {
     "courses" : "course_id",
     "instructors" : "instructor_id",
     "programs": "program_id",
+    "otr_submissions": "otr_submission_id",
 }
 
 # CONNECTION TEST FUNCTION (will only work if courses table actually has data in it)
@@ -149,6 +182,18 @@ def test_connection():
 
     except Exception as e:
         print("Supabase connection failed:", e)
+
+# def read_file_safely(file):
+#     filename = file if isinstance(file, str) else file.filename
+#     extension = os.path.splitext(filename)[1].lower()
+
+#     if extension in [".xlsx", ".xls"]:
+#         return pd.read_excel(file)
+    
+#     encodings = ["utf-8", "cp1252", "latin-1"]
+#     for enc in encodings:
+#         try:
+#             if hasattr(file, "seek"):
 
 
 # data is formatted for JSON format and database upload 

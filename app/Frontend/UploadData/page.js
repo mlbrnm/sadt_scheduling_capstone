@@ -68,7 +68,7 @@ export default function UploadData() {
 
   const userEmail = session?.user?.email;
 
-  const dataTypes = ["Programs", "Courses", "Instructors"];
+  const dataTypes = ["Programs", "Courses", "Instructors", "OTR Loading Sheet"];
 
   //Created with the help of AI (making sure bases were covered)
   const validateFile = (file) => {
@@ -146,6 +146,39 @@ export default function UploadData() {
     notes_plan: "Notes/Plan",
     full_name: "Full Name",
     fte: "FTE",
+
+    //OTR Loading Sheet header mapping
+    term: "Term",
+    block_dept: "Block Dept",
+    block: "Block",
+    course_dept: "Course Dept",
+    course: "Course",
+    title: "Title",
+    component: "Component",
+    schedule_type: "Schedule Type",
+    status: "Status",
+    delivery: "Delivery",
+    meet_type: "Meet Type",
+    start_date: "Start Date",
+    end_date: "End Date",
+    forced_day: "Forced Day",
+    forced_start_time: "Forced Start Time",
+    forced_duration: "Forced Duration",
+    pattern: "Pattern",
+    pattern_day: "Pattern Day",
+    pattern_start_time: "Pattern Start Time",
+    pattern_duration: "Pattern Duration",
+    instructor_id: "Instructor ID",
+    name: "Name",
+    surname: "Surname",
+    room_type_requested: "Room Type Requested",
+    pavilion_requested: "Pavilion Requested",
+    room_number: "Room Number",
+    room_type_assigned: "Room Type Assigned",
+    room_description: "Room Description",
+    component_disabled: "Component Disabled",
+    section_disabled: "Section Disabled",
+    course_disabled: "Course Disabled",
   };
 
   //headers will either be one from the headersMap or if not there, just what is found in the returned data
@@ -215,6 +248,7 @@ export default function UploadData() {
     Programs: "programs",
     Courses: "courses",
     Instructors: "instructors",
+    "OTR Loading Sheet": "otr_submissions",
   };
 
   //created with help of AI - helped properly track user's email
@@ -342,34 +376,6 @@ export default function UploadData() {
       setIsLoading(false);
     }
   };
-
-  //   // Fake timeout
-  //   await new Promise((resolve) => setTimeout(resolve, 500)); //!!!REMOVE!!!!
-  //   // Mock data - !!!REMOVE AFTER!!!
-  //   return [
-  //     {
-  //       id: "1",
-  //       fileName: `${selectedDataType.toLowerCase()}_20230815.xlsx`,
-  //       uploadTime: "August 6, 2025, 10:30 AM",
-  //       uploadedBy: "Vanessa Diaz",
-  //       dataType: selectedDataType,
-  //       size: "245 KB",
-  //     },
-  //     {
-  //       id: "2",
-  //       fileName: `${selectedDataType.toLowerCase()}_20230801.xlsx`,
-  //       uploadTime: "August 1, 2025, 2:15 PM",
-  //       uploadedBy: "Vanessa Diaz",
-  //       dataType: selectedDataType,
-  //       size: "238 KB",
-  //     },
-  //   ];
-  // } catch (error) {
-  //   setError("Failed to load previous versions.");
-  //   return [];
-  // } finally {
-  //   setIsLoading(false);
-  // }
 
   const handleRestoreButtonClick = async () => {
     const versions = await fetchPreviousVersions();

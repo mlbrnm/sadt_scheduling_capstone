@@ -1,4 +1,4 @@
-CREATE TABLE OTR_submissions (
+CREATE TABLE otr_submissions (
     otr_submission_id SERIAL PRIMARY KEY, 
     term VARCHAR(50),
     block_dept VARCHAR(50),
