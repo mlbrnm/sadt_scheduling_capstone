@@ -1,5 +1,3 @@
-"use client";
-
 export default function ScheduleControls({
   metaData,
   setNewScheduleDraft,
@@ -35,6 +33,7 @@ export default function ScheduleControls({
               type="checkbox"
               checked={metaData.activeSemesters.winter}
               onChange={() => handleSemesterToggle("winter")}
+              className="cursor-pointer"
             />
             <label className="ml-2">Winter</label>
           </div>
@@ -44,6 +43,7 @@ export default function ScheduleControls({
               type="checkbox"
               checked={metaData.activeSemesters.springSummer}
               onChange={() => handleSemesterToggle("springSummer")}
+              className="cursor-pointer"
             />
             <label className="ml-2">Spring/Summer</label>
           </div>
@@ -53,6 +53,7 @@ export default function ScheduleControls({
               type="checkbox"
               checked={metaData.activeSemesters.fall}
               onChange={() => handleSemesterToggle("fall")}
+              className="cursor-pointer"
             />
             <label className="ml-2">Fall</label>
           </div>
@@ -73,6 +74,13 @@ export default function ScheduleControls({
             Clear
           </button>
         </div>
+      </div>
+      {/* Legend */}
+      <div>
+        <p className="text-xs text-gray-500 ml-2">
+          <span>Legend:</span> Left Click = Assign Both. Alt+Click = Assign
+          Class Only. Shift+Click = Assign Online Only.
+        </p>
       </div>
     </div>
   );

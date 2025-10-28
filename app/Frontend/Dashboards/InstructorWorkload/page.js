@@ -3,6 +3,16 @@ import { useState } from "react";
 import mockdata from "./mockdata.json";
 import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
+const tableHeaders = [
+  "ID",
+  "Name",
+  "Contract",
+  "Semester Hours",
+  "Total Hours",
+  "Status",
+];
+const mockSemesters = ["Fall 2025", "Spring 2025", "Summer 2025"];
+
 export default function InstructorWorkload() {
   const [searchInstructor, setSearchInstructor] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -11,38 +21,29 @@ export default function InstructorWorkload() {
     useState(mockdata);
   const [selectedSemester, setSelectedSemester] = useState("Fall 2025");
 
-  const tableHeaders = [
-    "ID",
-    "Name",
-    "Contract",
-    "Semester Hours",
-    "Total Hours",
-    "Status",
-  ];
-  const mockSemesters = ["Fall 2025", "Spring 2025", "Summer 2025"];
-
   // Filter the list of instructors
   const filteredInstructors = instructorWorkloadData.filter((instructor) => {
     // Filter by searching name
     const name =
-      instructor.Instructor_Name + " " + instructor.Instructor_LastName;
+      instructor.instructor_name + " " + instructor.instructor_lastName;
     const matchesName = name
       .toLowerCase()
       .includes(searchInstructor.toLowerCase());
 
     // Filter by searching ID
-    const matchesID =
-      instructor.Instructor_ID.toString().includes(searchInstructor);
+    const matchesID = instructor.instructor_id
+      .toString()
+      .includes(searchInstructor);
 
     // Filter by status
     const matchesStatus =
-      statusFilter === "All" || instructor.Instructor_Status === statusFilter;
+      statusFilter === "All" || instructor.instructor_status === statusFilter;
 
     // Filter by hours
     let matchesHours = true;
     if (hoursFilter === "hasRemaining") {
-      const yearlyMax = instructor.Contract_Type === "CS" ? 800 : 615;
-      matchesHours = instructor.Total_Hours < yearlyMax;
+      const yearlyMax = instructor.contract_type === "Casual" ? 800 : 615;
+      matchesHours = instructor.total_hours < yearlyMax;
     }
 
     return (matchesID || matchesName) && matchesStatus && matchesHours;
@@ -52,20 +53,23 @@ export default function InstructorWorkload() {
   const totalInstructors = instructorWorkloadData.length;
   const underUtilized = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.Total_Hours < (instructor.Contract_Type === "CS" ? 480 : 369)
+      instructor.total_hours <
+      (instructor.contract_type === "Casual" ? 480 : 369)
   ).length;
   const overUtilized = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.Total_Hours >=
-        (instructor.Contract_Type === "CS" ? 480 : 369) &&
-      instructor.Total_Hours < (instructor.Contract_Type === "CS" ? 800 : 615)
+      instructor.total_hours >=
+        (instructor.contract_type === "Casual" ? 480 : 369) &&
+      instructor.total_hours <
+        (instructor.contract_type === "Casual" ? 800 : 615)
   ).length;
   const overMaxHours = instructorWorkloadData.filter(
     (instructor) =>
-      instructor.Total_Hours >= (instructor.Contract_Type === "CS" ? 800 : 615)
+      instructor.total_hours >=
+      (instructor.contract_type === "Casual" ? 800 : 615)
   ).length;
-  const onBreak = instructorWorkloadData.filter(
-    (instructor) => instructor.Instructor_Status === "On Break"
+  const onLeave = instructorWorkloadData.filter(
+    (instructor) => instructor.instructor_status === "On Leave"
   ).length;
 
   return (
@@ -73,7 +77,7 @@ export default function InstructorWorkload() {
       {/* Filter + Main Content Container */}
       <div className="flex flex-row">
         {/* Filter Container */}
-        <div className="flex flex-col gap-2 p-4 bg-white rounded-lg w-60 h-100 mt-29 mr-4">
+        <div className="flex flex-col gap-2 p-4 bg-white rounded-lg w-60 h-60 mt-29 mr-4">
           {/* Status filter */}
           <fieldset>
             <legend className="text-sm font-bold text-gray-700 mb-1">
@@ -98,18 +102,18 @@ export default function InstructorWorkload() {
               </div>
               <div className="flex items-center">
                 <input
-                  id="status-available"
+                  id="status-active"
                   name="status-filter"
                   type="radio"
-                  checked={statusFilter === "Available"}
-                  onChange={() => setStatusFilter("Available")}
+                  checked={statusFilter === "Active"}
+                  onChange={() => setStatusFilter("Active")}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                 />
                 <label
-                  htmlFor="status-available"
+                  htmlFor="status-active"
                   className="ml-2 block text-sm text-gray-700"
                 >
-                  Show Available Instructors
+                  Show Active Instructors
                 </label>
               </div>
             </div>
@@ -154,14 +158,6 @@ export default function InstructorWorkload() {
               </div>
             </div>
           </fieldset>
-          {/* Contract legend */}
-          <div className="flex flex-col text-sm text-gray-600">
-            <p className="font-bold">Contract Types:</p>
-            <p>FT = Permanent</p>
-            <p>PT = Temp Salaried</p>
-            <p>CS = Contract</p>
-            <p>AD = Adjunct</p>
-          </div>
         </div>
 
         {/* Main Content Container */}
@@ -201,7 +197,7 @@ export default function InstructorWorkload() {
             <span>Under Utilized: {underUtilized}</span>
             <span>Over Utilized: {overUtilized}</span>
             <span>Over Max Hours: {overMaxHours}</span>
-            <span>On Break: {onBreak}</span>
+            <span>On Leave: {onLeave}</span>
           </div>
 
           {/* Instructor Table */}
@@ -222,36 +218,36 @@ export default function InstructorWorkload() {
               </thead>
               <tbody className="bg-white divide-y divide-black">
                 {filteredInstructors.map((instructor) => (
-                  <tr key={instructor.Instructor_ID}>
+                  <tr key={instructor.instructor_id}>
                     <td className="px-6 py-4 text-sm">
-                      {instructor.Instructor_ID}
+                      {instructor.instructor_id}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {instructor.Instructor_Name}{" "}
-                      {instructor.Instructor_LastName}
+                      {instructor.instructor_name}{" "}
+                      {instructor.instructor_lastName}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {instructor.Contract_Type}
+                      {instructor.contract_type}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {`${instructor.Semester_Hours} h`}
+                      {`${instructor.semester_hours} h`}
                     </td>
                     <td className="px-6 py-1 text-sm font-semibold rounded-full">
                       <span className={getUtilizationColor(instructor)}>
-                        {`${instructor.Total_Hours}/${
-                          instructor.Contract_Type === "CS" ? "800" : "615"
+                        {`${instructor.total_hours}/${
+                          instructor.contract_type === "Casual" ? "800" : "615"
                         } h`}
                       </span>
                     </td>
                     <td className="px-2 py-1 text-sm font-semibold rounded-full">
                       <span
                         className={`${
-                          instructor.Instructor_Status === "Available"
+                          instructor.instructor_status === "Active"
                             ? "bg-green-100 text-green-800"
                             : "bg-yellow-100 text-yellow-800"
                         } rounded-sm p-2`}
                       >
-                        {instructor.Instructor_Status}
+                        {instructor.instructor_status}
                       </span>
                     </td>
                   </tr>

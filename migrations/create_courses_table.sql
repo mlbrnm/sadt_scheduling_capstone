@@ -7,23 +7,22 @@ CREATE TABLE IF NOT EXISTS courses (
     "group" character varying(50) null,
     credits numeric(4, 2) null,
     contact_hours integer null,
-    modality character varying(50) null,
     program_type character varying(100) null,
     credential character varying(100) null,
     req_elec character varying(50) null,
     delivery_method character varying(100) null,
-    ac_name character varying(255) null,
+    ac_name_loading character varying(255) null,
     school character varying(255) null,
     exam_otr character varying(50) null,
     semester character varying(10) null,
     fall character varying(1) null,
     winter character varying(1) null,
     spring_summer character varying(1) null,
-    "order" real null,
-    duration_days real null,
     notes text null,
     uploaded_by character varying(255) null,
-    uploaded_at character varying(50) null
+    uploaded_at character varying(50) null,
+    class_hrs integer null,
+    online_hrs integer null,
 );
 
 -- Enable Row-Level Security

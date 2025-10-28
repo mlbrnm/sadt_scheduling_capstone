@@ -1,0 +1,72 @@
+[
+  {
+    "dateSubmitted": "2025-07-15",
+    "title": "SD Winter '26",
+    "programType": "Diploma",
+    "status": "Submitted",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-07-10",
+    "title": "SD Fall '25",
+    "programType": "Diploma",
+    "status": "In Review",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-07-01",
+    "title": "Infosec Analyst Fall '25",
+    "programType": "Certificate",
+    "status": "Rejected",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-06-26",
+    "title": "ITS Fall '25",
+    "programType": "Diploma",
+    "status": "In Review",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-06-19",
+    "title": "WebDev Fall'25",
+    "programType": "Certificate",
+    "status": "Submitted",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-04-15",
+    "title": "SD BTech Fall '25",
+    "programType": "Bachelors",
+    "status": "Approved",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-03-17",
+    "title": "ISS Fall '25",
+    "programType": "Diploma",
+    "status": "Submitted",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2025-03-14",
+    "title": "NSS Fall '25",
+    "programType": "Diploma",
+    "status": "Submitted",
+    "timeslots": "Empty - Upload Now"
+  }, 
+  {
+    "dateSubmitted": "2025-02-15",
+    "title": "SD Spring '25",
+    "programType": "Diploma",
+    "status": "Approved",
+    "timeslots": "Empty - Upload Now"
+  },
+  {
+    "dateSubmitted": "2024-12-01",
+    "title": "Cybersec BTech Fall '25",
+    "programType": "Bachelors",
+    "status": "Submitted",
+    "timeslots": "Empty - Upload Now"
+  }
+]
