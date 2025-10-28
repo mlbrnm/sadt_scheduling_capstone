@@ -6,6 +6,7 @@ import ScheduleControls from "./schedulecontrols";
 import InstructorSection from "./instructorsection";
 import CourseSection from "./coursesection";
 import AssignmentGrid from "./assignmentgrid";
+import ACProgramCourses from "../../_Components/ACProgramCourses";
 
 /* 
 assignments: {
@@ -54,6 +55,7 @@ export default function NewSchedule() {
   const [error, setError] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [saveStatus, setSaveStatus] = useState(null); // { type: 'success' | 'error', message: string }
+  const [scheduleAcademicChairId, setScheduleAcademicChairId] = useState(null);
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
@@ -120,6 +122,19 @@ export default function NewSchedule() {
     const loadSchedule = async () => {
       setLoadingSchedule(true);
       try {
+        // Fetch schedule metadata from Supabase to get academic_chair_id
+        const { data: scheduleMetadata, error: scheduleError } = await supabase
+          .from("schedules")
+          .select("academic_chair_id")
+          .eq("id", scheduleId)
+          .single();
+
+        if (scheduleError) {
+          console.error("Error fetching schedule metadata:", scheduleError);
+        } else if (scheduleMetadata) {
+          setScheduleAcademicChairId(scheduleMetadata.academic_chair_id);
+        }
+
         const response = await fetch(
           `http://localhost:5000/schedules/${scheduleId}/json`
         );
@@ -554,6 +569,13 @@ export default function NewSchedule() {
           onClear={handleClear}
         />
       </div>
+
+      {/* Programs & Courses for this Schedule's Academic Chair */}
+      {scheduleAcademicChairId && (
+        <div className="mb-4">
+          <ACProgramCourses academicChairId={scheduleAcademicChairId} />
+        </div>
+      )}
 
       <div className="flex flex-col">
         {/* Main Area - Grid Layout */}
