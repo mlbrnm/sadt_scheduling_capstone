@@ -4,9 +4,10 @@ import { supabase } from "../supabaseClient";
 
 export default function Home() {
   const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
-    const fetchUserName = async () => {
+    const fetchUserInfo = async () => {
       const {
         data: { user },
         error,
@@ -14,15 +15,16 @@ export default function Home() {
       console.log("Supabase user:", user, "Error:", error);
       if (!user) return;
 
-      const response = await fetch("http://localhost:5000/user/name", {
+      const response = await fetch("http://localhost:5000/user/info", {
         headers: {
           "X-User-Id": user.id,
         },
       });
       const data = await response.json();
       setUserName(data.full_name || "");
+      setUserRole(data.role || "");
     };
-    fetchUserName();
+    fetchUserInfo();
   }, []);
 
   return (

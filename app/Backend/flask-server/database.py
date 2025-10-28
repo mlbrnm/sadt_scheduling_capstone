@@ -76,6 +76,7 @@ TABLE_COLUMN_MAPPINGS = {
         "Winter": "winter", 
         "Spring_Summer": "spring_summer", 
         "Notes": "notes",
+        "Contact Hours": "contact_hours",
     },
     "instructors": {
         "Instructor_ID": "instructor_id",
@@ -159,11 +160,24 @@ def formatted_data(df, table_name):
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
-    # Timestamp and datetime values are converted to y-m-d format
-    df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
-    # map() applies the lambda function to all the elements of the dataframe 
-    # the lambda function converts the value to strftime("%Y-%m-%d") if it is eitherpd.Timestamp or datetime
-    # if it isnt either, it is not changed
+#CAN MAYBE TAKE THIS OUT BY USING BELOW FUNCTION
+    # # Timestamp and datetime values are converted to y-m-d format
+    # df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
+    # # map() applies the lambda function to all the elements of the dataframe 
+    # # the lambda function converts the value to strftime("%Y-%m-%d") if it is eitherpd.Timestamp or datetime
+    # # if it isnt either, it is not changed
+
+    def clean_data(x):
+        if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x):
+            return x.strftime("%Y-%m-%d")
+        elif isinstance(x, float) and x.is_integer():
+            return int(x)
+        elif isinstance(x, str) and x.replace('.', '', 1).isdigit():
+            return int(float(x))
+        else:
+            return x
+    
+    df = df.applymap(clean_data)
 
     # Replace invalid numeric values
     df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
@@ -398,7 +412,7 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         clear_table_data(table_name)
 
         column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
-        column_order = upload_file(file, table_name, column_standardization, user_email)
+        column_order = upload_file(file, table_name, column_standardization, user_email) #THIS IS WHERE ERROR HAPPENS - go check upload file function
         print("Column order:", column_order)  # DEBUG
 
         supabase.table("uploaded_files").insert({
@@ -513,3 +527,21 @@ def restore_file_from_url(file_url, table_name, uploaded_by):
     file_like.filename = file_url.split("/")[-1] # gives the filename an attribute
 
     upload_table(file_like, table_name, uploaded_by)
+
+def get_user_info(id):
+    try:
+        print("Looking for user id:", id)
+        response = supabase_client.table("users").select("first_name, last_name, role").eq("id", id).single().execute()
+        print("Supabase response:", response)
+
+        if response.data:
+            user_data = response.data
+            full_name = f"{user_data['first_name']} {user_data['last_name']}"
+            role = user_data.get("role")
+            return {"full_name": full_name, "role": role}
+        else:
+            return "None"
+    
+    except Exception as e:
+        print("Error fetching user info", e)
+        return None
