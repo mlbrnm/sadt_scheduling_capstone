@@ -69,9 +69,15 @@ export default function ACProgramCourses({ academicChairId }) {
     }));
   };
 
-  // Get courses for a specific program
+  // Get courses for a specific program, sorted alphabetically by course name
   const getCoursesForProgram = (programId) => {
-    return courses.filter((course) => course.program_id === programId);
+    return courses
+      .filter((course) => course.program_id === programId)
+      .sort((a, b) => {
+        const nameA = (a.course_name || "").toLowerCase();
+        const nameB = (b.course_name || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
   };
 
   if (!academicChairId) {
@@ -170,29 +176,27 @@ export default function ACProgramCourses({ academicChairId }) {
                 </svg>
               </button>
 
-              {/* Courses List */}
+              {/* Courses List - Grid Layout */}
               {isExpanded && (
                 <div className="bg-white p-3">
                   {programCourses.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                       {programCourses.map((course) => (
                         <div
                           key={course.course_id}
-                          className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-gray-200"
+                          className="p-2 bg-gray-50 rounded border border-gray-200"
                         >
-                          <div className="flex-1">
-                            <div className="font-medium text-sm text-gray-900">
-                              {course.course_code}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {course.course_name}
-                            </div>
-                            {course.credits && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                Credits: {course.credits}
-                              </div>
-                            )}
+                          <div className="font-medium text-sm text-gray-900">
+                            {course.course_code}
                           </div>
+                          <div className="text-xs text-gray-600 line-clamp-2">
+                            {course.course_name}
+                          </div>
+                          {course.credits && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Credits: {course.credits}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
