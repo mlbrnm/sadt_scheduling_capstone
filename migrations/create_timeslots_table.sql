@@ -9,6 +9,8 @@ CREATE TABLE timeslots (
     pattern_start_time TIME,
     pattern_duration INT       
 );
+ALTER TABLE public.timeslots ENABLE ROW LEVEL SECURITY;
+
 -- Allow any authenticated user to read timeslots
 CREATE POLICY "Allow authenticated users to read timeslots"
 ON public.timeslots

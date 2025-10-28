@@ -1,4 +1,4 @@
-CREATE TABLE OTR_Submissions (
+CREATE TABLE OTR_submissions (
     otr_submission_id SERIAL PRIMARY KEY, 
     term VARCHAR(50),
     block_dept VARCHAR(50),
@@ -34,6 +34,8 @@ CREATE TABLE OTR_Submissions (
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     source_file VARCHAR(255)
 );
+ALTER TABLE public.OTR_submissions ENABLE ROW LEVEL SECURITY;
+
 -- Allow any authenticated user to read OTR submissions
 CREATE POLICY "Allow authenticated users to read OTR submissions"
 ON public.OTR_Submissions

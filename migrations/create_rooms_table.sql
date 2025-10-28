@@ -6,6 +6,8 @@ CREATE TABLE rooms (
     room_type_assigned VARCHAR(50),
     room_description VARCHAR(255)
 );
+ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
+
 -- Allow any authenticated user to read rooms
 CREATE POLICY "Allow authenticated users to read rooms" 
 ON public.rooms
