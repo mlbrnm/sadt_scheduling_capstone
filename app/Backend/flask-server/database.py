@@ -298,6 +298,68 @@ def backup_table(table_name):
     except Exception as e:
         print("Backup failed: ", e)
 
+def link_courses_to_programs():
+    """
+    Links courses to programs by matching course.program_major to program.acronym.
+    Returns a list of courses that couldn't be matched to any program.
+    """
+    try:
+        # Fetch all programs
+        programs_response = supabase_client.table("programs").select("program_id, acronym, program").execute()
+        programs = programs_response.data or []
+        
+        # Fetch all courses
+        courses_response = supabase_client.table("courses").select("course_id, course_code, course_name, program_major").execute()
+        courses = courses_response.data or []
+        
+        if not programs:
+            print("Warning: No programs found in database. Cannot link courses.")
+            return [{"course_id": c["course_id"], "course_code": c.get("course_code"), "course_name": c.get("course_name"), "program_major": c.get("program_major")} for c in courses if c.get("program_major")]
+        
+        # Create a mapping of acronym (uppercase) to program_id
+        acronym_to_program_id = {}
+        for program in programs:
+            if program.get("acronym"):
+                acronym_to_program_id[program["acronym"].upper().strip()] = program["program_id"]
+        
+        unmatched_courses = []
+        matched_count = 0
+        
+        # Match each course to a program
+        for course in courses:
+            program_major = course.get("program_major")
+            
+            if not program_major:
+                # Skip courses without a program_major value
+                continue
+            
+            # Try to match by acronym (case-insensitive)
+            program_major_upper = program_major.upper().strip()
+            matched_program_id = acronym_to_program_id.get(program_major_upper)
+            
+            if matched_program_id:
+                # Update the course with the matched program_id
+                supabase_client.table("courses").update({
+                    "program_id": matched_program_id
+                }).eq("course_id", course["course_id"]).execute()
+                matched_count += 1
+            else:
+                # Add to unmatched list
+                unmatched_courses.append({
+                    "course_id": course["course_id"],
+                    "course_code": course.get("course_code", ""),
+                    "course_name": course.get("course_name", ""),
+                    "program_major": program_major
+                })
+        
+        print(f"Course linking complete: {matched_count} matched, {len(unmatched_courses)} unmatched")
+        return unmatched_courses
+        
+    except Exception as e:
+        print(f"Error linking courses to programs: {e}")
+        return []
+
+
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
     try:
         print("Starting save_uploaded_file()...")  # DEBUG
@@ -348,12 +410,20 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         }).execute()
 
         print("File metadata inserted successfully")  # DEBUG
+        
+        # Link courses to programs after uploading courses or programs
+        unmatched_courses = []
+        if table_name in ["courses", "programs"]:
+            print(f"Linking courses to programs after {table_name} upload...")
+            unmatched_courses = link_courses_to_programs()
+        
         return {
             "version": next_version,
             "storage_path": storage_path,
             "original_name": file.filename,
             "table_name": table_name,
-            "column_order": column_order
+            "column_order": column_order,
+            "unmatched_courses": unmatched_courses
         }
 
     except Exception as e:
