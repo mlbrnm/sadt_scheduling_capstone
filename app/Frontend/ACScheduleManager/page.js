@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../supabaseClient";
+import ACProgramCourses from "../_Components/ACProgramCourses";
 
 export default function ACScheduleManage() {
   const [schedules, setSchedules] = useState([]);
@@ -311,6 +312,11 @@ export default function ACScheduleManage() {
                     </span>
                   )}
                 </div>
+              </div>
+
+              {/* Programs & Courses Detail */}
+              <div className="mb-4">
+                <ACProgramCourses academicChairId={schedule.academic_chair_id} />
               </div>
 
               {/* Status Indicators */}

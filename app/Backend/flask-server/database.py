@@ -94,8 +94,6 @@ TABLE_COLUMN_MAPPINGS = {
         "Action Plan": "action_plan",
         "Notes/Plan": "notes_plan",
         "Full Name": "full_name",
-        "FTE": "fte",
-        "Time off": "time_off",
     },
     "programs": {
         "Group": "group",
@@ -109,40 +107,7 @@ TABLE_COLUMN_MAPPINGS = {
         "Duration": "duration",
         "Starting Date": "starting_date",
         "Delivery": "delivery",
-        "Status": "status"
-    },
-    "otr_submissions": {
-        "Term": "term",
-        "Block Dept": "block_dept",
-        "Block": "block",
-        "Course Dept": "course_dept",
-        "Course": "course",
-        "Title": "title",
-        "Component": "component",
-        "Schedule Type": "schedule_type",
         "Status": "status",
-        "Delivery": "delivery",
-        "Meet Type": "meet_type",
-        "Start Date": "start_date",
-        "End Date": "end_date",
-        "Forced Day": "forced_day",
-        "Forced Start Time": "forced_start_time",
-        "Forced Duration": "forced_duration",
-        "Pattern": "pattern",
-        "Pattern Day": "pattern_day",
-        "Pattern Start Time": "pattern_start_time",
-        "Pattern Duration": "pattern_duration",
-        "Instructor ID": "instructor_id",
-        "Name": "name",
-        "Surname": "surname",
-        "Room Type Requested": "room_type_requested",
-        "Pavilion Requested": "pavilion_requested",
-        "Room Number": "room_number",
-        "Room Type Assigned": "room_type_assigned",
-        "Room Description": "room_description",
-        "Component Disabled": "component_disabled",
-        "Section Disabled": "section_disabled",
-        "Course Disabled": "course_disabled"
     }
 }
 
@@ -231,6 +196,16 @@ def formatted_data(df, table_name):
     df = df.where(pd.notnull(df), None)
     # this acts as a type of safety net using True/False condition (if False then replaced with None)
 
+    if table_name == "instructors" and 'years_as_temp' in df.columns:
+        # Convert to numeric, coercing invalid entries to NaN
+        df['years_as_temp'] = pd.to_numeric(df['years_as_temp'], errors='coerce')
+        
+        # Round to 2 decimal places
+        df['years_as_temp'] = df['years_as_temp'].round(2)
+        
+        # Replace NaN and infinities with None (JSON-safe)
+        df['years_as_temp'] = df['years_as_temp'].replace([np.nan, np.inf, -np.inf], None)
+
     # Drop rows where the primary key is missing
     if primary_key and primary_key in df.columns:
         df = df[df[primary_key].notnull()]
@@ -239,8 +214,28 @@ def formatted_data(df, table_name):
 
     # UUID is created if table is missing primary key altogether (like program table)
     if primary_key and primary_key not in df.columns:
-        df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))] # _ is a throwaway variable (we don't need it's value)
+        df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))]
         # primary key created for each row of dataframe and converted to string 
+
+    # Convert float to int for online_hrs and class_hrs
+    if table_name == "courses":
+        for col in ['online_hrs', 'class_hrs']:
+            if col in df.columns:
+                # Convert to numeric, coercing invalid entries to NaN
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                # Convert column to nullable integer type ('Int64')
+                # This handles np.nan by converting it to pd.NA
+                # It also converts 3.0 (float) to 3 (int)
+                try:
+                    df[col] = df[col].astype('Int64') 
+                except (TypeError, ValueError):
+                    # Fallback if casting fails
+                    pass 
+
+    # Final cleanup to ensure no NaN, pd.NA, or infinity values remain
+    df = df.replace({np.nan: None, np.inf: None, -np.inf: None, pd.NA: None})
+    df = df.where(pd.notnull(df), None)
 
     return df
 
@@ -304,6 +299,95 @@ def upload_file(file_or_path, table_name, column_standardization, uploaded_by):
     return column_order
 
 
+
+# Don't think we will need this functionality anymore
+def backup_table(table_name):
+    backup_table_name = f"{table_name}_backup"
+    version_id = str(uuid.uuid4())
+
+    try:
+        response = supabase_client.table(table_name).select("*").execute()
+        data = response.data
+
+        if not data:
+            print(f"No data found in {table_name}, skipping backup.")
+            return
+        
+        backup_data = []
+        for row in data:
+            backup_row = row.copy()
+            backup_row["backup_id"] = str(uuid.uuid4())
+            backup_row["version_id"] = version_id
+            backup_data.append(backup_row)
+
+        supabase_client.table(backup_table_name).insert(backup_data).execute()
+        print(f"Backup successful: {len(backup_data)} rows saved with version_id {version_id}")
+    
+    except Exception as e:
+        print("Backup failed: ", e)
+
+def link_courses_to_programs():
+    """
+    Links courses to programs by matching course.program_major to program.acronym.
+    Returns a list of courses that couldn't be matched to any program.
+    """
+    try:
+        # Fetch all programs
+        programs_response = supabase_client.table("programs").select("program_id, acronym, program").execute()
+        programs = programs_response.data or []
+        
+        # Fetch all courses
+        courses_response = supabase_client.table("courses").select("course_id, course_code, course_name, program_major").execute()
+        courses = courses_response.data or []
+        
+        if not programs:
+            print("Warning: No programs found in database. Cannot link courses.")
+            return [{"course_id": c["course_id"], "course_code": c.get("course_code"), "course_name": c.get("course_name"), "program_major": c.get("program_major")} for c in courses if c.get("program_major")]
+        
+        # Create a mapping of acronym (uppercase) to program_id
+        acronym_to_program_id = {}
+        for program in programs:
+            if program.get("acronym"):
+                acronym_to_program_id[program["acronym"].upper().strip()] = program["program_id"]
+        
+        unmatched_courses = []
+        matched_count = 0
+        
+        # Match each course to a program
+        for course in courses:
+            program_major = course.get("program_major")
+            
+            if not program_major:
+                # Skip courses without a program_major value
+                continue
+            
+            # Try to match by acronym (case-insensitive)
+            program_major_upper = program_major.upper().strip()
+            matched_program_id = acronym_to_program_id.get(program_major_upper)
+            
+            if matched_program_id:
+                # Update the course with the matched program_id
+                supabase_client.table("courses").update({
+                    "program_id": matched_program_id
+                }).eq("course_id", course["course_id"]).execute()
+                matched_count += 1
+            else:
+                # Add to unmatched list
+                unmatched_courses.append({
+                    "course_id": course["course_id"],
+                    "course_code": course.get("course_code", ""),
+                    "course_name": course.get("course_name", ""),
+                    "program_major": program_major
+                })
+        
+        print(f"Course linking complete: {matched_count} matched, {len(unmatched_courses)} unmatched")
+        return unmatched_courses
+        
+    except Exception as e:
+        print(f"Error linking courses to programs: {e}")
+        return []
+
+
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
     try:
         print("Starting save_uploaded_file()...")  # DEBUG
@@ -354,12 +438,20 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         }).execute()
 
         print("File metadata inserted successfully")  # DEBUG
+        
+        # Link courses to programs after uploading courses or programs
+        unmatched_courses = []
+        if table_name in ["courses", "programs"]:
+            print(f"Linking courses to programs after {table_name} upload...")
+            unmatched_courses = link_courses_to_programs()
+        
         return {
             "version": next_version,
             "storage_path": storage_path,
             "original_name": file.filename,
             "table_name": table_name,
-            "column_order": column_order
+            "column_order": column_order,
+            "unmatched_courses": unmatched_courses
         }
 
     except Exception as e:
