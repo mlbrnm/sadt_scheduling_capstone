@@ -276,7 +276,7 @@ export default function EditDelivery({
                       </div>
                     </div>
                     {/* Add Instructor Button OR Instructor */}
-                    <div className="flex flex-col bg-gray-100 rounded w-max px-2">
+                    <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
                         Instructor:
                       </label>
