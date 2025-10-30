@@ -50,7 +50,6 @@ export default function EditDelivery({
           days: flagsToDays(delivery),
           assigned_instructor_id: delivery.assigned_instructor_id ?? null,
           assigned_instructor_name: delivery.assigned_instructor_name ?? null,
-          assigned_instructor_hours: delivery.assigned_instructor_hours ?? null,
         }));
       }
       // Append newly added deliveries
@@ -67,8 +66,6 @@ export default function EditDelivery({
             days: flagsToDays(delivery),
             assigned_instructor_id: delivery.assigned_instructor_id ?? null,
             assigned_instructor_name: delivery.assigned_instructor_name ?? null,
-            assigned_instructor_hours:
-              delivery.assigned_instructor_hours ?? null,
           });
         }
         return newDrafts;
@@ -120,7 +117,6 @@ export default function EditDelivery({
         assigned_instructor_name: instructor
           ? `${instructor.instructor_name} ${instructor.instructor_lastName}`
           : null,
-        assigned_instructor_hours: instructor?.total_hours ?? null,
       };
       return updatedDrafts;
     });
@@ -146,9 +142,26 @@ export default function EditDelivery({
       s: d.days.s ? "X" : "",
       assigned_instructor_id: d.assigned_instructor_id ?? null,
       assigned_instructor_name: d.assigned_instructor_name ?? null,
-      assigned_instructor_hours: d.assigned_instructor_hours ?? null,
     }));
     onSave(updated);
+  };
+
+  // Calculate preview total hours for an instructor including assigned drafts
+  const getPreviewTotalHours = (instructorId) => {
+    if (!instructorId) return null;
+
+    // Find instructor in original list to get their base hours
+    const base =
+      instructors.find(
+        (instructor) => instructor.instructor_id === instructorId
+      )?.total_hours || 0;
+
+    // Add hours for all drafts assigned to the same instructor
+    const extra = drafts
+      .filter((draft) => draft.assigned_instructor_id === instructorId)
+      .reduce((sum, draft) => sum + Number(draft.total_hrs_course || 0), 0);
+
+    return base + extra;
   };
 
   // Group drafts by section
@@ -292,7 +305,11 @@ export default function EditDelivery({
                           <span className="">
                             {draft.assigned_instructor_name}
                           </span>
-                          <span>{`${draft.assigned_instructor_hours}h`}</span>
+                          <span>
+                            {getPreviewTotalHours(draft.assigned_instructor_id)}
+                            h
+                          </span>
+
                           <button
                             className="text-sm font-semibold hover:text-blue-600 cursor-pointer"
                             onClick={() => openPickerForInstructor(index)}
