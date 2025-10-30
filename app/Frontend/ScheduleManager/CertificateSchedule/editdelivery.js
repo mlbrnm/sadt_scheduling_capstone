@@ -110,19 +110,26 @@ export default function EditDelivery({
     setIsInstructorPickerOpen(true);
   };
 
-  // Handle adding instructor from InstructorPicker
-  const handleAddInstructor = (instructor) => {
-    if (pickerForIndex === null) return;
+  // Helper to set or clear instructor on a row
+  const setInstructorFor = (rowIndex, instructor) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
-      updatedDrafts[pickerForIndex] = {
-        ...prevDrafts[pickerForIndex],
-        assigned_instructor_id: instructor.instructor_id,
-        assigned_instructor_name: `${instructor.instructor_name} ${instructor.instructor_lastName}`,
-        assigned_instructor_hours: instructor.total_hours,
+      updatedDrafts[rowIndex] = {
+        ...prevDrafts[rowIndex],
+        assigned_instructor_id: instructor?.instructor_id ?? null,
+        assigned_instructor_name: instructor
+          ? `${instructor.instructor_name} ${instructor.instructor_lastName}`
+          : null,
+        assigned_instructor_hours: instructor?.total_hours ?? null,
       };
       return updatedDrafts;
     });
+  };
+
+  // Handle adding instructor from InstructorPicker
+  const handleAddInstructor = (instructor) => {
+    if (pickerForIndex === null) return;
+    setInstructorFor(pickerForIndex, instructor);
     setIsInstructorPickerOpen(false);
     setPickerForIndex(null);
   };
@@ -294,9 +301,7 @@ export default function EditDelivery({
                           </button>
                           <button
                             className="text-sm font-semibold hover:text-red-600 cursor-pointer"
-                            onClick={() =>
-                              updateField(index, "assigned_instructor_id", null)
-                            }
+                            onClick={() => setInstructorFor(index, null)}
                           >
                             Remove
                           </button>
