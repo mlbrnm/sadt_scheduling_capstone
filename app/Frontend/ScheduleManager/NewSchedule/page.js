@@ -214,6 +214,101 @@ export default function NewSchedule() {
     loadSchedule();
   }, [scheduleId, isLoading, instructorData, courseData]);
 
+  // Pre-populate courses based on academic chair's programs and their intakes
+  useEffect(() => {
+    if (!scheduleAcademicChairId || !courseData.length || isLoading || loadingSchedule) {
+      return;
+    }
+
+    const prePopulateCourses = async () => {
+      try {
+        // Fetch all programs
+        const { data: allPrograms, error: programsError } = await supabase
+          .from("programs")
+          .select("*");
+
+        if (programsError) {
+          console.error("Error fetching programs:", programsError);
+          return;
+        }
+
+        // Filter programs where academic_chair field contains this academic chair ID
+        const filteredPrograms = allPrograms.filter((program) => {
+          const academicChairField = program.academic_chair || "";
+          return academicChairField.includes(scheduleAcademicChairId);
+        });
+
+        if (filteredPrograms.length === 0) {
+          return;
+        }
+
+        // Get all program IDs
+        const programIds = filteredPrograms.map((p) => p.program_id);
+
+        // Filter courses that belong to these programs
+        const programCourses = courseData.filter((course) =>
+          programIds.includes(course.program_id)
+        );
+
+        // Build a map of courses by semester based on program intakes
+        const coursesBySemester = {
+          winter: new Set(),
+          springSummer: new Set(),
+          fall: new Set(),
+        };
+
+        // For each program, check its intakes and add its courses to the appropriate semesters
+        filteredPrograms.forEach((program) => {
+          const intakes = program.intakes || "";
+          const programCoursesForThisProgram = programCourses.filter(
+            (course) => course.program_id === program.program_id
+          );
+
+          // Check which semesters are in the intakes field
+          const hasWinter = intakes.includes("Winter");
+          const hasSpring = intakes.includes("Spring");
+          const hasFall = intakes.includes("Fall");
+
+          // Add courses to the appropriate semesters
+          programCoursesForThisProgram.forEach((course) => {
+            if (hasWinter) {
+              coursesBySemester.winter.add(course.course_id);
+            }
+            if (hasSpring) {
+              coursesBySemester.springSummer.add(course.course_id);
+            }
+            if (hasFall) {
+              coursesBySemester.fall.add(course.course_id);
+            }
+          });
+        });
+
+        // Convert Sets to arrays of course objects
+        const addedCoursesBySemester = {
+          winter: courseData.filter((course) =>
+            coursesBySemester.winter.has(course.course_id)
+          ),
+          springSummer: courseData.filter((course) =>
+            coursesBySemester.springSummer.has(course.course_id)
+          ),
+          fall: courseData.filter((course) =>
+            coursesBySemester.fall.has(course.course_id)
+          ),
+        };
+
+        // Update the draft with pre-populated courses
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          addedCoursesBySemester,
+        }));
+      } catch (error) {
+        console.error("Error pre-populating courses:", error);
+      }
+    };
+
+    prePopulateCourses();
+  }, [scheduleAcademicChairId, courseData, isLoading, loadingSchedule]);
+
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
     setNewScheduleDraft((prevDraft) => ({
