@@ -214,13 +214,13 @@ export default function NewSchedule() {
     loadSchedule();
   }, [scheduleId, isLoading, instructorData, courseData]);
 
-  // Pre-populate courses based on academic chair's programs and their intakes
+  // Pre-populate instructors and courses based on academic chair's programs
   useEffect(() => {
-    if (!scheduleAcademicChairId || !courseData.length || isLoading || loadingSchedule) {
+    if (!scheduleAcademicChairId || !courseData.length || !instructorData.length || isLoading || loadingSchedule) {
       return;
     }
 
-    const prePopulateCourses = async () => {
+    const prePopulateInstructorsAndCourses = async () => {
       try {
         // Fetch all programs
         const { data: allPrograms, error: programsError } = await supabase
@@ -242,8 +242,15 @@ export default function NewSchedule() {
           return;
         }
 
-        // Get all program IDs
+        // Get all program IDs and acronyms
         const programIds = filteredPrograms.map((p) => p.program_id);
+        const programAcronyms = filteredPrograms.map((p) => p.acronym).filter(Boolean);
+
+        // Filter instructors whose primary_program matches any program acronym
+        const matchingInstructors = instructorData.filter((instructor) => {
+          const primaryProgram = instructor.primary_program || "";
+          return programAcronyms.some((acronym) => primaryProgram === acronym);
+        });
 
         // Filter courses that belong to these programs
         const programCourses = courseData.filter((course) =>
