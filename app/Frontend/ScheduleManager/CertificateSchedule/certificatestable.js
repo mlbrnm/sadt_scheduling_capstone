@@ -1,12 +1,8 @@
+// removed Term, ID Record, Program, Program Type, Course Code (replaced with Course Section), Status Section columns
 const certificateHeaders = [
-  "Term",
-  "ID Record",
-  "Program",
-  "Program Type",
-  "Course Code",
+  "Course Section",
   "Course Name",
   "Section",
-  "Status Section",
   "Delivery Mode",
   "Start Date",
   "End Date",
@@ -26,7 +22,6 @@ const certificateHeaders = [
   "Exam Booking",
   "Total Hours Course",
   "Semester Code",
-  "Course Section",
 ];
 
 export default function CertificatesTable({ certificatesData }) {
@@ -49,16 +44,11 @@ export default function CertificatesTable({ certificatesData }) {
         <tbody className="bg-white divide-y divide-black">
           {certificatesData.map((certificate, index) => (
             <tr key={index}>
-              <td className="px-6 py-2 text-sm">{certificate.term}</td>
-              <td className="px-6 py-2 text-sm">{certificate.id_record}</td>
-              <td className="px-6 py-2 text-sm">{certificate.program}</td>
-              <td className="px-6 py-2 text-sm">{certificate.program_type}</td>
-              <td className="px-6 py-2 text-sm">{certificate.course_code}</td>
+              <td className="px-6 py-2 text-sm">
+                {certificate.course_section}
+              </td>
               <td className="px-6 py-2 text-sm">{certificate.course_name}</td>
               <td className="px-6 py-2 text-sm">{certificate.section}</td>
-              <td className="px-6 py-2 text-sm">
-                {certificate.status_section}
-              </td>
               <td className="px-6 py-2 text-sm">{certificate.delivery_mode}</td>
               <td className="px-6 py-2 text-sm">{certificate.start_date}</td>
               <td className="px-6 py-2 text-sm">{certificate.end_date}</td>
@@ -94,9 +84,6 @@ export default function CertificatesTable({ certificatesData }) {
                 {certificate.total_hrs_course}
               </td>
               <td className="px-6 py-2 text-sm">{certificate.semester_code}</td>
-              <td className="px-6 py-2 text-sm">
-                {certificate.course_section}
-              </td>
             </tr>
           ))}
         </tbody>
