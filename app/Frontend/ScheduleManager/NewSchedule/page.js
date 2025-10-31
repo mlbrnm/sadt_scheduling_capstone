@@ -376,48 +376,24 @@ export default function NewSchedule() {
     });
   };
 
-  // Clean up assignments if instructors or courses are removed, otherwise assignments retain stale data
-  // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
+  // Clean up assignments only when instructors are removed (preserve course assignments even when hidden)
   useEffect(() => {
     setAssignments((prev) => {
       const validInstructorIds = new Set(
         newScheduleDraft.addedInstructors.map((i) => String(i.instructor_id))
       );
-      const validCourseIdsBySemester = {
-        winter: new Set(
-          newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
-            String(c.course_id)
-          )
-        ),
-        springSummer: new Set(
-          newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
-            String(c.course_id)
-          )
-        ),
-        fall: new Set(
-          newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
-            String(c.course_id)
-          )
-        ),
-      };
-      // Create a new assignments object with only valid keys
+      // Create a new assignments object with only valid instructor keys
       const updatedAssignments = {};
-      // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
+      // Loop through previous assignments and keep only those with valid instructors
       for (const [key, value] of Object.entries(prev)) {
-        const [iId, cId, sem] = key.split("-");
-        if (
-          validInstructorIds.has(iId) &&
-          validCourseIdsBySemester[sem]?.has(cId)
-        ) {
+        const [iId] = key.split("-");
+        if (validInstructorIds.has(iId)) {
           updatedAssignments[key] = value;
         }
       }
       return updatedAssignments;
     });
-  }, [
-    newScheduleDraft.addedInstructors,
-    newScheduleDraft.addedCoursesBySemester,
-  ]);
+  }, [newScheduleDraft.addedInstructors]);
 
   // Handlers for Save and Clear buttons
   const handleSave = async () => {
