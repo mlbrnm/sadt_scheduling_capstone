@@ -320,18 +320,27 @@ export default function NewSchedule() {
             });
           });
 
+          // Merge instructors - add matching instructors if not already present
+          const mergedInstructors = [...prev.addedInstructors];
+          matchingInstructors.forEach((instructor) => {
+            if (!mergedInstructors.some(i => i.instructor_id === instructor.instructor_id)) {
+              mergedInstructors.push(instructor);
+            }
+          });
+
           return {
             ...prev,
+            addedInstructors: mergedInstructors,
             addedCoursesBySemester: mergedCoursesBySemester,
           };
         });
       } catch (error) {
-        console.error("Error pre-populating courses:", error);
+        console.error("Error pre-populating instructors and courses:", error);
       }
     };
 
-    prePopulateCourses();
-  }, [scheduleAcademicChairId, courseData, isLoading, loadingSchedule]);
+    prePopulateInstructorsAndCourses();
+  }, [scheduleAcademicChairId, courseData, instructorData, isLoading, loadingSchedule]);
 
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
