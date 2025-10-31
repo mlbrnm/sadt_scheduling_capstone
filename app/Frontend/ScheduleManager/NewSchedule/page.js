@@ -284,7 +284,7 @@ export default function NewSchedule() {
         });
 
         // Convert Sets to arrays of course objects
-        const addedCoursesBySemester = {
+        const newCoursesBySemester = {
           winter: courseData.filter((course) =>
             coursesBySemester.winter.has(course.course_id)
           ),
@@ -296,11 +296,28 @@ export default function NewSchedule() {
           ),
         };
 
-        // Update the draft with pre-populated courses
-        setNewScheduleDraft((prev) => ({
-          ...prev,
-          addedCoursesBySemester,
-        }));
+        // Merge with existing courses (in case schedule was loaded first)
+        setNewScheduleDraft((prev) => {
+          const mergedCoursesBySemester = {
+            winter: [...prev.addedCoursesBySemester.winter],
+            springSummer: [...prev.addedCoursesBySemester.springSummer],
+            fall: [...prev.addedCoursesBySemester.fall],
+          };
+
+          // Add new courses to each semester if not already present
+          semester_list.forEach((semester) => {
+            newCoursesBySemester[semester].forEach((course) => {
+              if (!mergedCoursesBySemester[semester].some(c => c.course_id === course.course_id)) {
+                mergedCoursesBySemester[semester].push(course);
+              }
+            });
+          });
+
+          return {
+            ...prev,
+            addedCoursesBySemester: mergedCoursesBySemester,
+          };
+        });
       } catch (error) {
         console.error("Error pre-populating courses:", error);
       }
