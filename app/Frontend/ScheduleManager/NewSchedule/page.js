@@ -145,12 +145,12 @@ export default function NewSchedule() {
 
         const data = await response.json();
 
-        // Update metadata
+        // Update metadata - always default all semesters to active on page load
         setNewScheduleDraft((prev) => ({
           ...prev,
           metaData: {
             year: data.metaData.year,
-            activeSemesters: data.metaData.activeSemesters,
+            activeSemesters: { winter: true, springSummer: true, fall: true },
           },
         }));
 
