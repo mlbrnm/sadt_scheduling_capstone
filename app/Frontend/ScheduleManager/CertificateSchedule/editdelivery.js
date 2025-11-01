@@ -23,7 +23,7 @@ export default function EditDelivery({
    * - Converted back to delivery shape on Save
    */
   const [drafts, setDrafts] = useState([]);
-  const [pickerForIndex, setPickerForIndex] = useState(null);
+  const [pickerForIndex, setPickerForIndex] = useState(null); // which row is currently picking instructor
   const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
 
   // Convert flags to boolean days
@@ -74,7 +74,7 @@ export default function EditDelivery({
     });
   }, [deliveries]);
 
-  // Update a specific field (start/end dates and time) in a draft
+  // Helper to update a specific field (start/end dates and time) in a draft
   const updateField = (deliveryIndex, propertyName, newValue) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -107,7 +107,7 @@ export default function EditDelivery({
     setIsInstructorPickerOpen(true);
   };
 
-  // Helper to set or clear instructor on a row
+  // Helper to set or clear instructor on a row in drafts
   const setInstructorFor = (rowIndex, instructor) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -130,6 +130,7 @@ export default function EditDelivery({
     setPickerForIndex(null);
   };
 
+  // Handle saving edits
   const handleSaveEdit = () => {
     // Convert drafts back to delivery shape with 'X' from day booleans
     const updated = drafts.map((d) => ({
@@ -146,20 +147,57 @@ export default function EditDelivery({
     onSave(updated);
   };
 
-  // Calculate preview total hours for an instructor including assigned drafts
+  // Helper to convert HH:MM to minutes
+  const convertToMinutes = (time) => {
+    if (!time || typeof time !== "string") return null;
+    const [hours, minutes] = time.split(":").map((number) => Number(number));
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  };
+
+  // Calculate hours per delivery based on start/end time
+  const getHoursPerDelivery = (draft) => {
+    const startMinutes = convertToMinutes(draft.start_time);
+    const endMinutes = convertToMinutes(draft.end_time);
+    if (
+      startMinutes != null &&
+      endMinutes != null &&
+      endMinutes > startMinutes
+    ) {
+      return (endMinutes - startMinutes) / 60;
+    }
+    return Number(draft.hours_class) || 0; // fallback to original hours_class if time is invalid
+  };
+
+  // Helper to calculate how many days are selected
+  const countSelectedDays = (days) => {
+    const dayKeys = ["m", "t", "w", "th", "f", "s"];
+    return dayKeys.reduce((count, key) => count + (days[key] ? 1 : 0), 0);
+  };
+
+  // Helper to calculate total hours for a draft
+  const calculateTotalHours = (draft) => {
+    const hoursPerDelivery = getHoursPerDelivery(draft);
+    const numOfSelectedDays = countSelectedDays(draft.days);
+    const weeks = Number(draft.weeks) || 15;
+    return hoursPerDelivery * numOfSelectedDays * weeks;
+  };
+
+  // Calculate preview total hours for an instructor
   const getPreviewTotalHours = (instructorId) => {
     if (!instructorId) return null;
 
     // Find instructor in original list to get their base hours
-    const base =
+    const base = Number(
       instructors.find(
         (instructor) => instructor.instructor_id === instructorId
-      )?.total_hours || 0;
+      )?.total_hours || 0
+    );
 
     // Add hours for all drafts assigned to the same instructor
     const extra = drafts
       .filter((draft) => draft.assigned_instructor_id === instructorId)
-      .reduce((sum, draft) => sum + Number(draft.total_hrs_course || 0), 0);
+      .reduce((sum, draft) => sum + calculateTotalHours(draft), 0);
 
     return base + extra;
   };
@@ -311,14 +349,16 @@ export default function EditDelivery({
                           </span>
 
                           <button
-                            className="text-sm font-semibold hover:text-blue-600 cursor-pointer"
+                            className="text-sm font-semibold hover:text-blue-500 cursor-pointer"
                             onClick={() => openPickerForInstructor(index)}
+                            title="Change Instructor"
                           >
                             Change
                           </button>
                           <button
-                            className="text-sm font-semibold hover:text-red-600 cursor-pointer"
+                            className="text-sm font-semibold hover:text-red-500 cursor-pointer"
                             onClick={() => setInstructorFor(index, null)}
+                            title="Remove Instructor"
                           >
                             Remove
                           </button>
