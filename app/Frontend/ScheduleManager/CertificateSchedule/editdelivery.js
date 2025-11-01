@@ -51,6 +51,8 @@ export default function EditDelivery({
           days: flagsToDays(delivery),
           assigned_instructor_id: delivery.assigned_instructor_id ?? null,
           assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+          assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+          prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
         }));
       }
       // Append newly added deliveries
@@ -67,6 +69,9 @@ export default function EditDelivery({
             days: flagsToDays(delivery),
             assigned_instructor_id: delivery.assigned_instructor_id ?? null,
             assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+            assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+            prev_assigned_instructor_id:
+              delivery.assigned_instructor_id ?? null,
           });
         }
         return newDrafts;
@@ -159,12 +164,20 @@ export default function EditDelivery({
       )?.total_hours || 0
     );
 
-    // Add hours for all drafts assigned to the same instructor
-    const extra = drafts
+    // Add snapshot hours that previously belonged to this instructor
+    const snapshotSum = drafts
+      .filter((draft) => draft.prev_assigned_instructor_id === instructorId)
+      .reduce(
+        (sum, draft) => sum + Number(draft.assigned_instructor_hours || 0),
+        0
+      );
+
+    // Add planned hours for drafts currently assigned to this instructor
+    const plannedSum = drafts
       .filter((draft) => draft.assigned_instructor_id === instructorId)
       .reduce((sum, draft) => sum + calculateTotalHours(draft), 0);
 
-    return base + extra;
+    return base - snapshotSum + plannedSum;
   };
 
   // Group drafts by section
