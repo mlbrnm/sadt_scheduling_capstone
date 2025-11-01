@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import InstructorPicker from "./instructorpicker";
+import { calculateTotalHours } from "./hoursUtil";
 
 export default function EditDelivery({
   deliveries,
@@ -145,42 +146,6 @@ export default function EditDelivery({
       assigned_instructor_name: d.assigned_instructor_name ?? null,
     }));
     onSave(updated);
-  };
-
-  // Helper to convert HH:MM to minutes
-  const convertToMinutes = (time) => {
-    if (!time || typeof time !== "string") return null;
-    const [hours, minutes] = time.split(":").map((number) => Number(number));
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
-    return hours * 60 + minutes;
-  };
-
-  // Calculate hours per delivery based on start/end time
-  const getHoursPerDelivery = (draft) => {
-    const startMinutes = convertToMinutes(draft.start_time);
-    const endMinutes = convertToMinutes(draft.end_time);
-    if (
-      startMinutes != null &&
-      endMinutes != null &&
-      endMinutes > startMinutes
-    ) {
-      return (endMinutes - startMinutes) / 60;
-    }
-    return Number(draft.hours_class) || 0; // fallback to original hours_class if time is invalid
-  };
-
-  // Helper to calculate how many days are selected
-  const countSelectedDays = (days) => {
-    const dayKeys = ["m", "t", "w", "th", "f", "s"];
-    return dayKeys.reduce((count, key) => count + (days[key] ? 1 : 0), 0);
-  };
-
-  // Helper to calculate total hours for a draft
-  const calculateTotalHours = (draft) => {
-    const hoursPerDelivery = getHoursPerDelivery(draft);
-    const numOfSelectedDays = countSelectedDays(draft.days);
-    const weeks = Number(draft.weeks) || 15;
-    return hoursPerDelivery * numOfSelectedDays * weeks;
   };
 
   // Calculate preview total hours for an instructor
@@ -344,7 +309,7 @@ export default function EditDelivery({
                             {draft.assigned_instructor_name}
                           </span>
                           <span>
-                            {getPreviewTotalHours(draft.assigned_instructor_id)}
+                            {getPreviewTotalHours(draft.assigned_instructor_id)}{" "}
                             h
                           </span>
 
