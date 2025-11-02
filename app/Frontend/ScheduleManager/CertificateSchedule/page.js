@@ -303,6 +303,8 @@ export default function CertificateSchedule() {
             onChange={(e) => setSemester(e.target.value)}
           >
             <option value="Winter">Winter</option>
+            <option value="Spr/Sum">Spr/Sum</option>
+            <option value="Fall">Fall</option>
           </select>
         </label>
         <label className="flex flex-col">
@@ -312,7 +314,9 @@ export default function CertificateSchedule() {
             value={program}
             onChange={(e) => setProgram(e.target.value)}
           >
-            <option value="ISS">ISS</option>
+            <option value="Information System Security">
+              Information System Security
+            </option>
           </select>
         </label>
         {/* Edit Course Button */}
@@ -320,7 +324,7 @@ export default function CertificateSchedule() {
           onClick={handleOpenPicker}
           className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center"
         >
-          Edit Certificate
+          Edit Delivery
         </button>
       </div>
 
