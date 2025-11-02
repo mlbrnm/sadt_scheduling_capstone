@@ -147,6 +147,19 @@ def generate_time_slots(courses, course_durations):
         time_slots[course] = (total_start_minutes, total_end_minutes)
         print(course, ":", minutes_to_time(total_start_minutes), "-", minutes_to_time(total_end_minutes))
     return time_slots
+# def generate_time_slots():
+#     time_slots{}
+
+#     for section in sections:
+#         course_id = section["course_id"]
+#         section_id = section["section_id"]
+
+#         #get the course duraton in hours and convert to minutes
+#         duration_minutes = 
+
+#         #Generate a random start time between 8:00am and 6:00pm (in minutes)
+#         #8:00am = 480 minutes, 6:00pm = 1080 minutes
+#         start_time_minutes = random.randint(480,1080)
 
 
 def find_compatible_courses(instructor, all_courses, time_slots, assignments, solver, course_duration_hours):
