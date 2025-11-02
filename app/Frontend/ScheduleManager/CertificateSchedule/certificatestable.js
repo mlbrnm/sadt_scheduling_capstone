@@ -4,6 +4,7 @@ const certificateHeaders = [
   "Course Name",
   "Section",
   "Delivery Mode",
+  "Instructor",
   "Start Date",
   "End Date",
   "Start Time",
@@ -50,6 +51,15 @@ export default function CertificatesTable({ certificatesData }) {
               <td className="px-4 py-2 text-sm">{certificate.course_name}</td>
               <td className="px-4 py-2 text-sm">{certificate.section}</td>
               <td className="px-4 py-2 text-sm">{certificate.delivery_mode}</td>
+              <td className="px-4 py-2 text-sm">
+                {certificate.assigned_instructor_id ? (
+                  <span className="truncate">
+                    {certificate.assigned_instructor_name}
+                  </span>
+                ) : (
+                  <span className="text-sm">Unassigned</span>
+                )}
+              </td>
               <td className="px-4 py-2 text-sm">{certificate.start_date}</td>
               <td className="px-4 py-2 text-sm">{certificate.end_date}</td>
               <td className="px-4 py-2 text-sm">{certificate.start_time}</td>

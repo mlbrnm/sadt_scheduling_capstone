@@ -330,7 +330,7 @@ export default function EditDelivery({
                             onClick={() => openPickerForInstructor(index)}
                             title="Change Instructor"
                           >
-                            Change
+                            Replace
                           </button>
                           <button
                             className="text-sm font-semibold hover:text-red-500 cursor-pointer"
