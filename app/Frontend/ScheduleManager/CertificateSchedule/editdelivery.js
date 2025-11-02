@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import InstructorPicker from "./instructorpicker";
 import { calculateTotalHours } from "./hoursUtil";
+import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 export default function EditDelivery({
   deliveries,
@@ -215,12 +216,15 @@ export default function EditDelivery({
               Add delivery
             </button>
           </div>
-
+          {/* Section */}
           <div className="divide-y divide-gray-300">
             {draftsBySection[section].map((draft) => {
               const index = drafts.findIndex(
                 (d) => d.deliveryId === draft.deliveryId
               );
+              const previewHours = draft.assigned_instructor_id
+                ? getPreviewTotalHours(draft.assigned_instructor_id)
+                : null;
               return (
                 <div key={draft.deliveryId} className="bg-white p-4">
                   <div className="flex flex-row gap-4 mb-4">
@@ -312,18 +316,28 @@ export default function EditDelivery({
                     </div>
                     {/* Add Instructor Button OR Instructor */}
                     <div className="flex flex-col">
-                      <label className="text-sm font-medium mb-1">
-                        Instructor:
-                      </label>
+                      <label className="text-sm font-medium">Instructor:</label>
                       {draft.assigned_instructor_id ? (
                         <div className="flex items-center space-x-2">
                           <span className="">
                             {draft.assigned_instructor_name}
                           </span>
-                          <span>
-                            {getPreviewTotalHours(draft.assigned_instructor_id)}{" "}
-                            h
-                          </span>
+                          {previewHours !== null && (
+                            <span
+                              className={`px-1 py-1 rounded ${getUtilizationColor(
+                                {
+                                  contract_type: instructors.find(
+                                    (i) =>
+                                      i.instructor_id ===
+                                      draft.assigned_instructor_id
+                                  )?.contract_type,
+                                  total_hours: previewHours,
+                                }
+                              )}`}
+                            >
+                              {previewHours}h
+                            </span>
+                          )}
 
                           <button
                             className="text-sm font-semibold hover:text-blue-500 cursor-pointer"
@@ -343,7 +357,7 @@ export default function EditDelivery({
                       ) : (
                         <div className="">
                           <button
-                            className="cursor-pointer hover:text-blue-600"
+                            className="cursor-pointer hover:text-blue-600 mt-1"
                             onClick={() => openPickerForInstructor(index)}
                           >
                             + Add Instructor
