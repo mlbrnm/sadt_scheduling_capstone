@@ -837,6 +837,12 @@ export default function NewSchedule() {
           setNewScheduleDraft={setNewScheduleDraft}
           onSave={handleSave}
           onClear={handleClear}
+          hideFullyAssignedCourses={hideFullyAssignedCourses}
+          setHideFullyAssignedCourses={setHideFullyAssignedCourses}
+          hideFullyAssignedInstructors={hideFullyAssignedInstructors}
+          setHideFullyAssignedInstructors={setHideFullyAssignedInstructors}
+          instructorSortMode={instructorSortMode}
+          setInstructorSortMode={setInstructorSortMode}
         />
       </div>
 
@@ -875,9 +881,7 @@ export default function NewSchedule() {
                       onRemoveCourse={(course, sem) =>
                         handleRemoveCourseFromSemester(sem, course)
                       }
-                      addedCourses={
-                        newScheduleDraft.addedCoursesBySemester[semester]
-                      }
+                      addedCourses={filteredCoursesBySemester[semester]}
                     />
                   </div>
                 ))}
@@ -891,7 +895,7 @@ export default function NewSchedule() {
               instructors={instructorData}
               onAddInstructor={handleAddInstructor}
               onRemoveInstructor={handleRemoveInstructor}
-              addedInstructors={newScheduleDraft.addedInstructors}
+              addedInstructors={sortedAndFilteredInstructors}
               assignments={assignments}
               addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
               onRowResize={handleRowResize}
@@ -903,8 +907,8 @@ export default function NewSchedule() {
           <div className="col-start-2 row-start-2 min-w-0">
             <div ref={bottomScrollerRef} className="overflow-x-hidden w-full">
               <AssignmentGrid
-                addedInstructors={newScheduleDraft.addedInstructors}
-                addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
+                addedInstructors={sortedAndFilteredInstructors}
+                addedCoursesBySemester={filteredCoursesBySemester}
                 assignments={assignments}
                 onToggleSection={toggleSection}
                 activeSemesters={newScheduleDraft.metaData.activeSemesters}
