@@ -59,6 +59,10 @@ export default function NewSchedule() {
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
+  // Filter and sort state
+  const [hideFullyAssignedCourses, setHideFullyAssignedCourses] = useState(true);
+  const [hideFullyAssignedInstructors, setHideFullyAssignedInstructors] = useState(true);
+  const [instructorSortMode, setInstructorSortMode] = useState("alphabetical"); // "alphabetical" | "currentSemesterHours" | "totalHours"
 
   // Handlers to update measured heights
   const handleRowResize = (instructorId, h) => {
@@ -597,6 +601,168 @@ export default function NewSchedule() {
     setRowHeights({});
     setHeaderHeight(null);
   };
+
+  // Helper functions for filtering and sorting
+
+  // Helper function to get per-week hours for a course
+  const hoursPerSection = (semester, courseId) => {
+    const courses = newScheduleDraft.addedCoursesBySemester?.[semester] || [];
+    const course = courses.find((c) => String(c.course_id) === String(courseId));
+    return {
+      classHrs: course?.class_hrs || 0,
+      onlineHrs: course?.online_hrs || 0,
+    };
+  };
+
+  // Helper function to sum per-week hours for an instructor in a semester
+  const sumHours = (instructorId, semester) => {
+    let sum = 0;
+    const iId = String(instructorId);
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const parts = key.split("-");
+      if (parts.length < 3) continue;
+      const [iid, ...rest] = parts;
+      const sem = rest[rest.length - 1];
+      const cid = rest.slice(0, -1).join("-");
+      
+      if (iid !== iId || sem !== semester) continue;
+
+      const { classHrs, onlineHrs } = hoursPerSection(sem, cid);
+      const sections = value?.sections || {};
+      for (const sec of Object.values(sections)) {
+        if (sec.class) sum += classHrs;
+        if (sec.online) sum += onlineHrs;
+      }
+    }
+    return sum;
+  };
+
+  // Helper function to calculate semester hours for an instructor in a semester
+  const calculateSemesterHours = (instructorId, semester) => {
+    return sumHours(instructorId, semester) * 15;
+  };
+
+  // Helper function to sum total assigned hours for an instructor across all semesters
+  const sumTotal = (instructorId) => {
+    let total = 0;
+    for (const sem of ["winter", "springSummer", "fall"]) {
+      total += calculateSemesterHours(instructorId, sem);
+    }
+    return total;
+  };
+
+  // Helper function to check if a course is fully assigned in a semester
+  const isCourseFullyAssigned = (courseId, semester) => {
+    const cId = String(courseId);
+    
+    // Get all sections for this course in this semester from assignments
+    const courseSections = {};
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const parts = key.split("-");
+      if (parts.length < 3) continue;
+      const [, ...rest] = parts;
+      const sem = rest[rest.length - 1];
+      const assignedCourseId = rest.slice(0, -1).join("-");
+      
+      if (assignedCourseId !== cId || sem !== semester) continue;
+
+      const sections = value?.sections || {};
+      for (const [sectionLetter, sectionData] of Object.entries(sections)) {
+        if (!courseSections[sectionLetter]) {
+          courseSections[sectionLetter] = { class: false, online: false };
+        }
+        if (sectionData.class) courseSections[sectionLetter].class = true;
+        if (sectionData.online) courseSections[sectionLetter].online = true;
+      }
+    }
+
+    // If no sections assigned at all, course is not fully assigned
+    if (Object.keys(courseSections).length === 0) return false;
+
+    // Check if all sections have both class and online assigned
+    for (const sectionData of Object.values(courseSections)) {
+      if (!sectionData.class || !sectionData.online) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Helper function to check if an instructor is fully assigned (90%+ of CCH limit)
+  const isInstructorFullyAssigned = (instructor) => {
+    const totalHours = sumTotal(instructor.instructor_id);
+    const cchLimit = instructor.contract_type === "Casual" ? 800 : 615;
+    return totalHours >= cchLimit * 0.9;
+  };
+
+  // Filter courses based on hideFullyAssignedCourses setting
+  const getFilteredCoursesBySemester = () => {
+    const filtered = { winter: [], springSummer: [], fall: [] };
+    
+    for (const semester of semester_list) {
+      const courses = newScheduleDraft.addedCoursesBySemester[semester] || [];
+      filtered[semester] = courses.filter((course) => {
+        if (!hideFullyAssignedCourses) return true;
+        return !isCourseFullyAssigned(course.course_id, semester);
+      });
+    }
+    
+    return filtered;
+  };
+
+  // Sort and filter instructors
+  const getSortedAndFilteredInstructors = () => {
+    let instructors = [...newScheduleDraft.addedInstructors];
+
+    // Apply filtering
+    if (hideFullyAssignedInstructors) {
+      instructors = instructors.filter((instructor) => !isInstructorFullyAssigned(instructor));
+    }
+
+    // Apply sorting
+    if (instructorSortMode === "alphabetical") {
+      instructors.sort((a, b) => {
+        const nameA = a.full_name || `${a.instructor_name} ${a.instructor_lastName}`;
+        const nameB = b.full_name || `${b.instructor_name} ${b.instructor_lastName}`;
+        return nameA.localeCompare(nameB);
+      });
+    } else if (instructorSortMode === "currentSemesterHours") {
+      // Determine current semester based on active semesters
+      const { winter, springSummer, fall } = newScheduleDraft.metaData.activeSemesters;
+      const allActive = winter && springSummer && fall;
+      const currentSemester = allActive
+        ? null // Use total hours when all are active
+        : winter
+        ? "winter"
+        : springSummer
+        ? "springSummer"
+        : fall
+        ? "fall"
+        : null;
+
+      instructors.sort((a, b) => {
+        const hoursA = currentSemester
+          ? sumHours(a.instructor_id, currentSemester)
+          : sumTotal(a.instructor_id);
+        const hoursB = currentSemester
+          ? sumHours(b.instructor_id, currentSemester)
+          : sumTotal(b.instructor_id);
+        return hoursA - hoursB;
+      });
+    } else if (instructorSortMode === "totalHours") {
+      instructors.sort((a, b) => {
+        const hoursA = sumTotal(a.instructor_id);
+        const hoursB = sumTotal(b.instructor_id);
+        return hoursA - hoursB;
+      });
+    }
+
+    return instructors;
+  };
+
+  const filteredCoursesBySemester = getFilteredCoursesBySemester();
+  const sortedAndFilteredInstructors = getSortedAndFilteredInstructors();
 
   // Determine which semesters are active for rendering CourseSection and AssignmentGrid
   const visibleSemesters = semester_list.filter(
