@@ -3,6 +3,12 @@ export default function ScheduleControls({
   setNewScheduleDraft,
   onSave,
   onClear,
+  hideFullyAssignedCourses,
+  setHideFullyAssignedCourses,
+  hideFullyAssignedInstructors,
+  setHideFullyAssignedInstructors,
+  instructorSortMode,
+  setInstructorSortMode,
 }) {
   // Handler to select a specific semester tab
   const handleSemesterTabClick = (semester) => {
@@ -63,58 +69,109 @@ export default function ScheduleControls({
   );
 
   return (
-    <div className="flex justify-between items-center p-2">
-      {/* Left Side: Year and Semester Tabs */}
-      <div className="flex items-center space-x-6">
-        {/* Year Display */}
-        <div className="text-lg font-semibold">Year: {metaData.year}</div>
+    <div className="space-y-2 p-2">
+      {/* First Row: Year, Semester Tabs, and Buttons */}
+      <div className="flex justify-between items-center">
+        {/* Left Side: Year and Semester Tabs */}
+        <div className="flex items-center space-x-6">
+          {/* Year Display */}
+          <div className="text-lg font-semibold">Year: {metaData.year}</div>
 
-        {/* Semester Tabs */}
-        <div className="flex space-x-1">
-          <TabButton
-            label="Winter"
-            value="winter"
-            isActive={activeTab === "winter"}
-          />
-          <TabButton
-            label="Spring/Summer"
-            value="springSummer"
-            isActive={activeTab === "springSummer"}
-          />
-          <TabButton
-            label="Fall"
-            value="fall"
-            isActive={activeTab === "fall"}
-          />
-          <TabButton
-            label="Show All"
-            value="all"
-            isActive={activeTab === "all"}
-          />
+          {/* Semester Tabs */}
+          <div className="flex space-x-1">
+            <TabButton
+              label="Winter"
+              value="winter"
+              isActive={activeTab === "winter"}
+            />
+            <TabButton
+              label="Spring/Summer"
+              value="springSummer"
+              isActive={activeTab === "springSummer"}
+            />
+            <TabButton
+              label="Fall"
+              value="fall"
+              isActive={activeTab === "fall"}
+            />
+            <TabButton
+              label="Show All"
+              value="all"
+              isActive={activeTab === "all"}
+            />
+          </div>
+
+          {/* Right Side: Save and Clear Buttons */}
+          <div className="space-x-3">
+            <button
+              className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
+              onClick={onSave}
+            >
+              Save
+            </button>
+            <button
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer"
+              onClick={onClear}
+            >
+              Clear
+            </button>
+          </div>
         </div>
-
-        {/* Right Side: Save and Clear Buttons */}
-        <div className="space-x-3">
-          <button
-            className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
-            onClick={onSave}
-          >
-            Save
-          </button>
-          <button
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer"
-            onClick={onClear}
-          >
-            Clear
-          </button>
+        {/* Legend */}
+        <div>
+          <p className="text-xs text-gray-500 ml-2">
+            <span>Legend:</span> Left Click = Assign Both. Alt+Click = Assign
+            Class Only. Shift+Click = Assign Online Only.
+          </p>
         </div>
       </div>
-      {/* Legend */}
-      <div>
-        <p className="text-xs text-gray-500 ml-2">
-          <span>Legend:</span> Left Click = Assign Both. Alt+Click = Assign
-          Class Only. Shift+Click = Assign Online Only.
-        </p>
+
+      {/* Second Row: Filter and Sort Controls */}
+      <div className="flex items-center space-x-6 px-2">
+        {/* Filter Checkboxes */}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="hideCourses"
+              checked={hideFullyAssignedCourses}
+              onChange={(e) => setHideFullyAssignedCourses(e.target.checked)}
+              className="cursor-pointer w-4 h-4"
+            />
+            <label htmlFor="hideCourses" className="ml-2 text-sm cursor-pointer">
+              Hide Fully Assigned Courses
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="hideInstructors"
+              checked={hideFullyAssignedInstructors}
+              onChange={(e) => setHideFullyAssignedInstructors(e.target.checked)}
+              className="cursor-pointer w-4 h-4"
+            />
+            <label htmlFor="hideInstructors" className="ml-2 text-sm cursor-pointer">
+              Hide Fully Assigned Instructors
+            </label>
+          </div>
+        </div>
+
+        {/* Sort Dropdown */}
+        <div className="flex items-center space-x-2">
+          <label htmlFor="sortMode" className="text-sm font-medium">
+            Sort Instructors:
+          </label>
+          <select
+            id="sortMode"
+            value={instructorSortMode}
+            onChange={(e) => setInstructorSortMode(e.target.value)}
+            className="px-3 py-1 bg-white border border-gray-300 rounded-md cursor-pointer text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="alphabetical">Alphabetical</option>
+            <option value="currentSemesterHours">Current Semester Hours</option>
+            <option value="totalHours">Total Hours</option>
+          </select>
+        </div>
       </div>
     </div>
   );
