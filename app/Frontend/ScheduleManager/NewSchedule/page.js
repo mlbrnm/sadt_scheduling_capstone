@@ -655,6 +655,9 @@ export default function NewSchedule() {
   const isCourseFullyAssigned = (courseId, semester) => {
     const cId = String(courseId);
     
+    // Define expected sections (A, B, C, D, E, F) (placeholder, we still need to figure out section logic in the new paradigm)
+    const expectedSections = ['A', 'B', 'C', 'D', 'E', 'F'];
+    
     // Get all sections for this course in this semester from assignments
     const courseSections = {};
     for (const [key, value] of Object.entries(assignments || {})) {
@@ -676,16 +679,16 @@ export default function NewSchedule() {
       }
     }
 
-    // If no sections assigned at all, course is not fully assigned
-    if (Object.keys(courseSections).length === 0) return false;
-
-    // Check if all sections have both class and online assigned
-    for (const sectionData of Object.values(courseSections)) {
-      if (!sectionData.class || !sectionData.online) {
+    // Check if all expected sections exist and are fully assigned
+    for (const sectionLetter of expectedSections) {
+      const sectionData = courseSections[sectionLetter];
+      // If section doesn't exist or doesn't have both class and online, not fully assigned
+      if (!sectionData || !sectionData.class || !sectionData.online) {
         return false;
       }
     }
 
+    // All 6 sections are present and fully assigned
     return true;
   };
 
