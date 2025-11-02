@@ -12,7 +12,6 @@ export default function EditDelivery({
   instructors,
 }) {
   /**
-   * NOTES FOR BACKEND
    * deliveries prop:
    * - Array of original delivery objects from CertificateSchedule
    * - Used to initialize drafts
