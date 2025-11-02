@@ -4,59 +4,93 @@ export default function ScheduleControls({
   onSave,
   onClear,
 }) {
-  // Handler to toggle semester
-  const handleSemesterToggle = (semester) => {
-    setNewScheduleDraft((prevDraft) => ({
-      ...prevDraft,
-      metaData: {
-        ...prevDraft.metaData,
-        activeSemesters: {
-          ...prevDraft.metaData.activeSemesters,
-          [semester]: !prevDraft.metaData.activeSemesters[semester],
+  // Handler to select a specific semester tab
+  const handleSemesterTabClick = (semester) => {
+    if (semester === "all") {
+      // Show all semesters
+      setNewScheduleDraft((prevDraft) => ({
+        ...prevDraft,
+        metaData: {
+          ...prevDraft.metaData,
+          activeSemesters: {
+            winter: true,
+            springSummer: true,
+            fall: true,
+          },
         },
-      },
-    }));
+      }));
+    } else {
+      // Show only the selected semester
+      setNewScheduleDraft((prevDraft) => ({
+        ...prevDraft,
+        metaData: {
+          ...prevDraft.metaData,
+          activeSemesters: {
+            winter: semester === "winter",
+            springSummer: semester === "springSummer",
+            fall: semester === "fall",
+          },
+        },
+      }));
+    }
   };
+
+  // Determine which tab is currently active
+  const { winter, springSummer, fall } = metaData.activeSemesters;
+  const allActive = winter && springSummer && fall;
+  const activeTab = allActive
+    ? "all"
+    : winter
+    ? "winter"
+    : springSummer
+    ? "springSummer"
+    : fall
+    ? "fall"
+    : "all";
+
+  // Tab button component for consistent styling
+  const TabButton = ({ label, value, isActive }) => (
+    <button
+      onClick={() => handleSemesterTabClick(value)}
+      className={`px-4 py-2 font-medium rounded-t-md transition-colors ${
+        isActive
+          ? "bg-blue-600 text-white"
+          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="flex justify-between items-center p-2">
-      {/* Left Side: Year and Semester Toggles */}
+      {/* Left Side: Year and Semester Tabs */}
       <div className="flex items-center space-x-6">
         {/* Year Display */}
         <div className="text-lg font-semibold">Year: {metaData.year}</div>
 
-        {/* Semester Toggles */}
-        <div className="flex">
-          {/* Winter Toggle */}
-          <div className="mr-4">
-            <input
-              type="checkbox"
-              checked={metaData.activeSemesters.winter}
-              onChange={() => handleSemesterToggle("winter")}
-              className="cursor-pointer"
-            />
-            <label className="ml-2">Winter</label>
-          </div>
-          {/* Spring/Summer Toggle */}
-          <div className="mr-4">
-            <input
-              type="checkbox"
-              checked={metaData.activeSemesters.springSummer}
-              onChange={() => handleSemesterToggle("springSummer")}
-              className="cursor-pointer"
-            />
-            <label className="ml-2">Spring/Summer</label>
-          </div>
-          {/* Fall Toggle */}
-          <div className="mr-4">
-            <input
-              type="checkbox"
-              checked={metaData.activeSemesters.fall}
-              onChange={() => handleSemesterToggle("fall")}
-              className="cursor-pointer"
-            />
-            <label className="ml-2">Fall</label>
-          </div>
+        {/* Semester Tabs */}
+        <div className="flex space-x-1">
+          <TabButton
+            label="Winter"
+            value="winter"
+            isActive={activeTab === "winter"}
+          />
+          <TabButton
+            label="Spring/Summer"
+            value="springSummer"
+            isActive={activeTab === "springSummer"}
+          />
+          <TabButton
+            label="Fall"
+            value="fall"
+            isActive={activeTab === "fall"}
+          />
+          <TabButton
+            label="Show All"
+            value="all"
+            isActive={activeTab === "all"}
+          />
         </div>
 
         {/* Right Side: Save and Clear Buttons */}
