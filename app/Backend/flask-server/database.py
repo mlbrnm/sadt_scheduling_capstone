@@ -31,6 +31,8 @@ import requests
 
 from io import BytesIO
 
+import supabase
+
 
 load_dotenv() 
 # this function will load the variables from the .env file
@@ -117,7 +119,6 @@ TABLE_VALID_COLUMNS = {
     "courses": set(TABLE_COLUMN_MAPPINGS["courses"].values()),
     "instructors": set(TABLE_COLUMN_MAPPINGS["instructors"].values()),
     "programs": set(TABLE_COLUMN_MAPPINGS["programs"].values()),
-    "otr_submissions": set(TABLE_COLUMN_MAPPINGS["otr_submissions"].values()),
 }
 
 # certain data not needed to be displayed back to user 
@@ -132,7 +133,6 @@ TABLE_PRIMARY_KEYS = {
     "courses" : "course_id",
     "instructors" : "instructor_id",
     "programs": "program_id",
-    "otr_submissions": "otr_submission_id",
 }
 
 # CONNECTION TEST FUNCTION (will only work if courses table actually has data in it)
@@ -557,3 +557,35 @@ def get_user_info(id):
     except Exception as e:
         print("Error fetching user info", e)
         return None
+
+#this function should be used when courses are saved to the schedule_courses table
+def create_sections(scheduled_course):
+    num_sections = scheduled_course["num_sections"]
+    sections_to_insert = []
+
+    for i in range(1, num_sections + 1):
+        section_letter = chr(64 + i) #creates ASCII code number which corresponds to a letter and then chr converts that code num to the letter (ex. 65 = 'A')
+        sections_to_insert.append({
+            "schedule_id": scheduled_course["schedule_id"],
+            "course_id": scheduled_course["course_id"],
+            "term": scheduled_course["term"],
+            "section_letter": section_letter,
+            "delivery_mode": scheduled_course["delivery_mode"],
+            "timeslots": [],
+            "instructor_id": None
+        })
+    response = supabase_client.table("sections").insert(sections_to_insert).execute()
+    return response
+
+#Get all the sections and their info (will get some from courses table) for a specified term
+def get_section_info (term):
+    try:
+        query = (supabase_client.table("sections")
+                .select("id, course_id, instructor_id, term, section_letter, timeslots, created_at, uploaded_at, semester_id, courses(has_lab, sessions_per_week, lecture_duration, lab_duration)")
+                .eq("term", term))
+        response = query.execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error fetching section for term {term}: {e}")
+        return []
+

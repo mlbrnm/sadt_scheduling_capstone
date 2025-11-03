@@ -3,9 +3,9 @@ CREATE TABLE IF NOT EXISTS public.sections (
 create table public.sections (
   id uuid not null default gen_random_uuid (),
   schedule_id uuid not null,
-  instructor_id real not null,
+  instructor_id real null,
   course_id character varying(50) not null,
-  term character varying(50) not null,
+  term character varying(50) null,
   section_letter character varying(10) not null,
   delivery_mode character varying(50) not null,
   timeslots jsonb null default '[]'::jsonb,
