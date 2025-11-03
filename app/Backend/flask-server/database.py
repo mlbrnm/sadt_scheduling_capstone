@@ -577,6 +577,24 @@ def create_sections(scheduled_course):
     response = supabase_client.table("sections").insert(sections_to_insert).execute()
     return response
 
+#this function will return a dictionary of all the sections for a specific schedule
+def get_sections_by_schedule(supabase_client, schedule_id):
+    sections = (
+        supabase_client.table('sections').select('*').eq('schedule_id', schedule_id).execute().data
+        )
+    return sections
+
+#this function willl return all instructor course qualifications - a dictionary of who can teach which courses
+def get_instructor_course_qualifications(supabase_client):
+    qualifications = (
+        supabase_client.table('instructor_course_qualifications').select('*').execute().data
+    )
+    return qualifications
+
+#this function is a helper function meant to return a dictionary of all the sections for a specific schedule and a dictionary for which courses an instructor is able to teach
+def get_sections_and_instructor_qualifications(supabase_client, schedule_id):
+    return get_sections_by_schedule(supabase_client, schedule_id), get_instructor_course_qualifications(supabase_client)
+
 #Get all the sections and their info (will get some from courses table) for a specified term
 def get_section_info (term):
     try:
