@@ -1,5 +1,23 @@
 from ortools.sat.python import cp_model
 import random
+from supabase import create_client, Client 
+from dotenv import load_dotenv 
+import os 
+
+load_dotenv() 
+# this function will load the variables from the .env file
+
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+# used the  os.getenv function instead of os.environ function
+    # if value does not exist system won't crash, it will just return none 
+    # (environ will crash if value doesn't exist)
+
+
+supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+# : Client - type hint that says the variable supabase_client is an object instance 
+# of class Client (a class from the supabase package we imported)
+
 
 # Test Data
 instructors = ['instructor_1', 'instructor_2', 'instructor_3', 'instructor_4', 'instructor_5', 'instructor_6', 'instructor_7', 'instructor_8', 'instructor_9']
@@ -125,6 +143,73 @@ def minutes_to_time(minutes):
     hours = time_in_day // 60
     minutes = time_in_day % 60
     return f"{days[day]} {hours:02d}:{minutes:02d}"
+
+#this function should be used when courses are saved to the schedule_courses table
+def create_sections(scheduled_course):
+    num_sections = scheduled_course["num_sections"]
+    sections_to_insert = []
+
+    for i in range(1, num_sections + 1):
+        section_letter = chr(64 + i) #creates ASCII code number which corresponds to a letter and then chr converts that code num to the letter (ex. 65 = 'A')
+        sections_to_insert.append({
+            "schedule_id": scheduled_course["schedule_id"],
+            "course_id": scheduled_course["course_id"],
+            "term": scheduled_course["term"],
+            "section_letter": section_letter,
+            "delivery_mode": scheduled_course["delivery_mode"],
+            "timeslots": [],
+            "instructor_id": None
+        })
+    response = supabase_client.table("sections").insert(sections_to_insert).execute()
+    return response
+
+#this function will return a dictionary of all the sections for a specific schedule
+def get_sections_by_schedule(supabase_client, schedule_id):
+    sections = (
+        supabase_client.table('sections').select('*').eq('schedule_id', schedule_id).execute().data
+        )
+    return sections
+
+#this function willl return all instructor course qualifications - a dictionary of who can teach which courses
+def get_instructor_course_qualifications(supabase_client):
+    qualifications = (
+        supabase_client.table('instructor_course_qualifications').select('*').execute().data
+    )
+    return qualifications
+
+#this function is a helper function meant to return a dictionary of all the sections for a specific schedule and a dictionary for which courses an instructor is able to teach
+def get_sections_and_instructor_qualifications(supabase_client, schedule_id):
+    return get_sections_by_schedule(supabase_client, schedule_id), get_instructor_course_qualifications(supabase_client)
+
+
+#this function will return a dictionary of all the course sections that an instructor is eligible to teach
+def instructor_section_eligibility(sections, instructor_qualifications):
+    instructor_courses = {} #dictionary to hold courses and the instructors who can teach those courses
+
+    # map instructors to courses
+    for instructor in instructor_qualifications:
+        course_id = instructor['course_id']
+        instructor_id = instructor['instructor_id']
+
+        if course_id not in instructor_courses:
+            instructor_courses[course_id] = []
+        
+        instructor_courses[course_id].append(instructor_id)
+
+    section_eligibiity = {} # dictionary to map which instructors can teach each section
+
+    for section in section_eligibiity:
+        course_id = section['course_id']
+        section_id = section['id']
+
+        # list to hold the eligible instructors for the section in section_eligibility
+        eligible_instructors = instructor_courses.get(course_id, [])
+
+        # update the section_eligibility dictionary to map which instructors can teach which sections per section_id
+        section_eligibiity[section_id] = eligible_instructors
+    
+    return section_eligibiity
+    
 
 
 def generate_time_slots(courses, course_durations):

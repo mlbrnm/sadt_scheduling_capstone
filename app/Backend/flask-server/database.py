@@ -31,8 +31,6 @@ import requests
 
 from io import BytesIO
 
-import supabase
-
 
 load_dotenv() 
 # this function will load the variables from the .env file
@@ -558,42 +556,6 @@ def get_user_info(id):
         print("Error fetching user info", e)
         return None
 
-#this function should be used when courses are saved to the schedule_courses table
-def create_sections(scheduled_course):
-    num_sections = scheduled_course["num_sections"]
-    sections_to_insert = []
-
-    for i in range(1, num_sections + 1):
-        section_letter = chr(64 + i) #creates ASCII code number which corresponds to a letter and then chr converts that code num to the letter (ex. 65 = 'A')
-        sections_to_insert.append({
-            "schedule_id": scheduled_course["schedule_id"],
-            "course_id": scheduled_course["course_id"],
-            "term": scheduled_course["term"],
-            "section_letter": section_letter,
-            "delivery_mode": scheduled_course["delivery_mode"],
-            "timeslots": [],
-            "instructor_id": None
-        })
-    response = supabase_client.table("sections").insert(sections_to_insert).execute()
-    return response
-
-#this function will return a dictionary of all the sections for a specific schedule
-def get_sections_by_schedule(supabase_client, schedule_id):
-    sections = (
-        supabase_client.table('sections').select('*').eq('schedule_id', schedule_id).execute().data
-        )
-    return sections
-
-#this function willl return all instructor course qualifications - a dictionary of who can teach which courses
-def get_instructor_course_qualifications(supabase_client):
-    qualifications = (
-        supabase_client.table('instructor_course_qualifications').select('*').execute().data
-    )
-    return qualifications
-
-#this function is a helper function meant to return a dictionary of all the sections for a specific schedule and a dictionary for which courses an instructor is able to teach
-def get_sections_and_instructor_qualifications(supabase_client, schedule_id):
-    return get_sections_by_schedule(supabase_client, schedule_id), get_instructor_course_qualifications(supabase_client)
 
 #Get all the sections and their info (will get some from courses table) for a specified term
 def get_section_info (term):
