@@ -1,6 +1,6 @@
 -- Create table
 CREATE TABLE public.schedule_courses (
-    schedule_course_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scheduled_course_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     schedule_id UUID NOT NULL REFERENCES schedules(id) ON DELETE CASCADE,
     course_id VARCHAR(50) NOT NULL REFERENCES courses(course_id) ON DELETE CASCADE,
     num_sections INT NOT NULL CHECK (num_sections >= 1),

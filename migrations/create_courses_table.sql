@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS courses (
     uploaded_at character varying(50) null,
     class_hrs integer null,
     online_hrs integer null,
+    weekly_hours_required integer null,
+
 );
 
 -- Enable Row-Level Security
