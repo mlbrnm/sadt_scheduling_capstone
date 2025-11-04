@@ -852,7 +852,10 @@ export default function NewSchedule() {
       {/* Programs & Courses for this Schedule's Academic Chair */}
       {scheduleAcademicChairId && (
         <div className="mb-4">
-          <ACProgramCourses academicChairId={scheduleAcademicChairId} />
+          <ACProgramCourses 
+            academicChairId={scheduleAcademicChairId} 
+            assignments={assignments}
+          />
         </div>
       )}
 
