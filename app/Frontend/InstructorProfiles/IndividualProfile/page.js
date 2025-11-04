@@ -10,6 +10,7 @@ export default function IndivProfile() {
     const searchParams = useSearchParams();
     const instructorId = searchParams.get("id");
 
+
     // Fetch instructor data from database based on instructorId (pk)
     useEffect(() => {
         const fetchInstructorData = async () => {
@@ -51,17 +52,17 @@ export default function IndivProfile() {
     const getStatusColor = (status) => {
         switch (status) {
             case "Active":
-                return  "bg-[#86cb8a] px-4 py-1 w-20 text-center rounded border border-[#333333]";
+                return "chip-active px-4 py-1 w-20 text-center rounded border";
             case "Renew":
-                return "bg-[#f9d800] px-4 py-1 w-20 text-center rounded border border-[#333333]";
+                return "chip-renew px-4 py-1 w-20 text-center rounded border";
             case "Inactive":
-                return "bg-[#b49494] px-4 py-1 w-20 text-center rounded border border-[#333333]";
+                return "chip-inactive px-4 py-1 w-20 text-center rounded border";
             case "Expire":
-                return "bg-[#ae132a] px-4 py-1 w-20 text-center rounded border border-[#333333]";
+                return "chip-expire px-4 py-1 w-20 text-center rounded border";
             case "On Leave":
-                return "bg-[#74a8c9] px-4 py-1 w-20 text-center rounded border border-[#333333]";
+                return "chip-onleave px-4 py-1 w-20 text-center rounded border";
             default:
-                return "bg-[#bdbdbd] px-4 py-1 w-20 text-center rounded border border-[#333333]";
+                return "chip-blank px-4 py-1 w-20 text-center rounded border";
         }
     };
 
@@ -87,8 +88,8 @@ export default function IndivProfile() {
                         <span className="text-lg ml-6">CCH Target: {instructorData?.cch_target_ay2025 || "-"}</span>
                     </div>
                     <div className="text-lg mt-4 ml-2">
-                        <span className="text-lg">Reports To: {instructorData?.reports_to}</span>
-                        <span className="text-lg ml-6">End Date: {instructorData?.end_date || "-"}</span>
+                        <span className="text-lg">Reports To: {instructorData?.reporting_ac}</span>
+                        <span className="text-lg ml-6">End Date: {instructorData?.contract_end || "-"}</span>
                     </div>
                 </div>
                 <div className="mt-12 mx-12">
