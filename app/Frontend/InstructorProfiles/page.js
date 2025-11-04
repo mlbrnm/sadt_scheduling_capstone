@@ -2,7 +2,8 @@
 // search filtering logic, were developed with the assistance of
 "use client"; //confirm component runs on client side
 
-import { useState, useEffect } from "react"; //import state management hooks
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function InstructorProfiles() {
   //create the loading functional component for data loading from api
@@ -13,6 +14,7 @@ export default function InstructorProfiles() {
 
   //this will store the user's search to filter the table
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
 
   //this is an array of objects for which columns will be diplayed in the instructor table
   //created with hep of AI - redundant code creation
@@ -66,6 +68,10 @@ export default function InstructorProfiles() {
       .includes(searchQuery.toLowerCase())
   );
 
+  const viewProfile = (instructorId) => {
+    router.push(`/Frontend/InstructorProfiles/IndividualProfile?id=${instructorId}`);
+  };
+
   return (
     <div className="p-6">
       {/* Title and Search Bar */}
@@ -101,6 +107,7 @@ export default function InstructorProfiles() {
                       {col.header}
                     </th>
                   ))}
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase"></th>
                 </tr>
               </thead>
               <tbody>
@@ -114,6 +121,14 @@ export default function InstructorProfiles() {
                         {row[col.key] || "-"}
                       </td>
                     ))}
+                    <td className="py-3 px-6 border-b text-center text-sm">
+                      <button
+                        onClick={() => viewProfile(row.instructor_id)}
+                        className="text-blue-500 hover:underline"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
