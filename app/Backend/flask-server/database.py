@@ -27,8 +27,6 @@ from datetime import datetime
 
 import uuid
 
-import pandas as pd
-
 import requests
 
 from io import BytesIO
@@ -147,6 +145,18 @@ def test_connection():
 
     except Exception as e:
         print("Supabase connection failed:", e)
+
+# def read_file_safely(file):
+#     filename = file if isinstance(file, str) else file.filename
+#     extension = os.path.splitext(filename)[1].lower()
+
+#     if extension in [".xlsx", ".xls"]:
+#         return pd.read_excel(file)
+    
+#     encodings = ["utf-8", "cp1252", "latin-1"]
+#     for enc in encodings:
+#         try:
+#             if hasattr(file, "seek"):
 
 
 # data is formatted for JSON format and database upload 
@@ -545,3 +555,17 @@ def get_user_info(id):
     except Exception as e:
         print("Error fetching user info", e)
         return None
+
+
+#Get all the sections and their info (will get some from courses table) for a specified term
+def get_section_info (term):
+    try:
+        query = (supabase_client.table("sections")
+                .select("id, course_id, instructor_id, term, section_letter, timeslots, created_at, uploaded_at, semester_id, courses(has_lab, sessions_per_week, lecture_duration, lab_duration)")
+                .eq("term", term))
+        response = query.execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error fetching section for term {term}: {e}")
+        return []
+
