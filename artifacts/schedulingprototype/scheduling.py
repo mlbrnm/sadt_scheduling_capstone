@@ -158,7 +158,9 @@ def create_sections(scheduled_course):
             "section_letter": section_letter,
             "delivery_mode": scheduled_course["delivery_mode"],
             "timeslots": [],
-            "instructor_id": None
+            "instructor_id": None,
+            "weekly_hours_required": scheduled_course.get("weekly_hours_required"),
+            "sessions_per_week": scheduled_course.get("sessions_per_week")
         })
     response = supabase_client.table("sections").insert(sections_to_insert).execute()
     return response
@@ -210,26 +212,21 @@ def instructor_section_eligibility(sections, instructor_qualifications):
     
     return section_eligibiity
 
-def generate_time_slots(courses, course_durations):
-    time_slots = {}
-    
-    for course in courses:
-        duration_minutes = course_durations[course] * 60
-        
-        # Generate a random day (0-4 for Monday-Friday)
-        day = random.randint(0, 4)
-        
-        # Generate a random start time between 8:00 AM and 6:00 PM (in minutes)
-        # 8:00 AM = 480 minutes, 6:00 PM = 1080 minutes
-        start_time_minutes = random.randint(480, 1080)
-        
-        # Calculate total minutes from start of week
-        total_start_minutes = day * 1440 + start_time_minutes
-        total_end_minutes = total_start_minutes + duration_minutes
-        
-        time_slots[course] = (total_start_minutes, total_end_minutes)
-        print(course, ":", minutes_to_time(total_start_minutes), "-", minutes_to_time(total_end_minutes))
-    return time_slots
+# this function will generate timeslots for each course section taking into account: weeky_hours_required, sessions_per_week, instructor availability
+def generate_section_timeslots(sections, instructor_availability):
+    timeslots = {}
+
+    # CONSTANTS
+    DAY_START = 8 * 60 # *60 gets the minute value of the hour
+    DAY_END = 18 * 60
+    MINUTES_IN_DAY  =1440
+
+    for section in sections:
+        section_id = section["id"]
+        weekly_hours = section["weekly_hours_required"]
+        sessions_per_week = section
+
+
 # def generate_time_slots():
 #     time_slots{}
 
