@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS programs (
     intakes character varying(255) null,
     duration character varying(255) null,
     starting_date character varying(255) null,
+    delivery character varying(255) null,
+    status character varying(255) null,
     uploaded_at character varying(50) null,
     uploaded_by character varying(255) null
 );

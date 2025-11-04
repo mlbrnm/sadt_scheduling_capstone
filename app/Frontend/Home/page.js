@@ -1,14 +1,42 @@
 "use client";
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
 
 export default function Home() {
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      console.log("Supabase user:", user, "Error:", error);
+      if (!user) return;
+
+      const response = await fetch("http://localhost:5000/user/info", {
+        headers: {
+          "X-User-Id": user.id,
+        },
+      });
+      const data = await response.json();
+      setUserName(data.full_name || "");
+      setUserRole(data.role || "");
+    };
+    fetchUserInfo();
+  }, []);
+
   return (
     <div className="p-6 bg-gray-150">
       {/* Personalized Greeting Header */}
       <div className="text-center mb-6">
         <h1 className="text-5xl font-bold text-gray-800 mb-2">
-          Hello, Vanessa!
+          Hello, {userName}!
         </h1>
-        <p className="text-2xl font-bold text-red-600 m-6">Current Semester: Fall 2025</p>
+        <p className="text-2xl font-bold text-red-600 m-6">
+          Current Semester: Fall 2025
+        </p>
       </div>
 
       {/*Semester Tracker*/}

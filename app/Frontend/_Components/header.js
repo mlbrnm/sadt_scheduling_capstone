@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, act } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { supabase } from "../supabaseClient";
 export default function Header() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
 
@@ -16,7 +17,9 @@ export default function Header() {
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setUser(session?.user || null);
       setLoading(false);
     };
@@ -24,12 +27,12 @@ export default function Header() {
     getInitialSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user || null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user || null);
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -37,13 +40,16 @@ export default function Header() {
   // Close popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showProfilePopup && !event.target.closest('.profile-popup-container')) {
+      if (
+        showProfilePopup &&
+        !event.target.closest(".profile-popup-container")
+      ) {
         setShowProfilePopup(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showProfilePopup]);
 
   const handleProfileClick = () => {
@@ -56,12 +62,55 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      router.push('/');
+      router.push("/");
       setShowProfilePopup(false);
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
     }
   };
+
+  // DYNAMIC TAB FUNCTIONALITY
+  const adminTabs = [
+    //Should work on dynamic home tabs
+    //{ label: "Home", href: "/Frontend/Home" },
+    {
+      label: "Schedule Manager",
+      href: "/Frontend/ScheduleManager/NewSchedule", //THIS GOES RIGHT TO NEW SCHEDULE
+    },
+    { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
+    { label: "Upload Data", href: "/Frontend/UploadData" },
+    { label: "Instructor Profiles", href: "/Frontend/InstructorProfiles" },
+    { label: "Reports", href: "/Frontend/Reports" },
+    { label: "Forecasting", href: "/Frontend/Forecasting" },
+    { label: "Users", href: "/Frontend/Users" },
+  ];
+  const acTabs = [
+    //Should work on dynamic home tabs
+    //{ label: "Home", href: "/Frontend/Home" },
+    { label: "Schedule Manager", href: "/Frontend/ACScheduleManager" },
+    { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
+    { label: "Instructor Profiles", href: "/Frontend/InstructorProfiles" },
+  ];
+
+  //get user's role to determiine correct nav tabs
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!error && data?.role) {
+        setUserRole(data.role);
+      }
+    };
+    fetchUserRole();
+  }, [user]);
+
+  const tabs = userRole === "Admin" ? adminTabs : acTabs;
+
   return (
     <header className="background-headerfooter flex items-center text-white h-16">
       {/* Left: SAIT Logo */}
@@ -80,99 +129,21 @@ export default function Header() {
       {/* Middle: Navigation Links */}
       {/* !!!WE SHOULD PROBABLY MAP THIS!!!*/}
       <nav className="flex flex-1 justify-between items-stretch h-full">
-        <div className="flex-1 h-full relative">
-          {/* Need to add the dropdowns here for the different types of dashboards, cuz right now it's only linking to instructor workload!!*/}
-          <Link
-            href={"/Frontend/Dashboards/InstructorWorkload"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            Dashboards
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-        <div className="flex-1 h-full relative">
-          <Link
-            href={"/Frontend/UploadData"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            Upload Data
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
-        {/*Schedule Manager*/}
-        <div className="flex-1 h-full relative">
-          <Link
-            href={"/Frontend/ScheduleManager"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            
-            Schedule Manager
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
-        <div className="flex-1 h-full relative">
-          <Link
-            href={"/Frontend/InstructorProfiles"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            Instructor Profiles
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
-        <div className="flex-1 h-full relative">
-          <Link
-            href={"/Frontend/Reports"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            Reports
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
-        <div className="flex-1 h-full relative">
-          <Link
-            href={"/Frontend/Forecasting"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            Forecasting
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
-
-        <div className="flex-1 h-full relative">
-          <Link
-            href={"/Frontend/Users"}
-            className="
-            absolute inset-0 flex justify-center items-center
-            text-white hover:bg-[#00A3E0] transition-colors font-medium
-          "
-          >
-            Users
-          </Link>
-          <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
-        </div>
+        {tabs.map((tab, index) => (
+          <div key={index} className="flex-1 h-full relative">
+            <Link
+              href={tab.href}
+              className="absolute inset-0 flex justify-center items-center
+          text-white hover:bg-[#00A3E0] transition-colors font-medium"
+            >
+              {tab.label}
+            </Link>
+            {/* Vertical line divider */}
+            <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
+          </div>
+        ))}
       </nav>
+
       {/* Right: User Profile & Notifications/Alerts */}
       {!loading && user && (
         <div className="flex items-center h-full px-6 space-x-2 relative">
@@ -192,10 +163,10 @@ export default function Header() {
               />
             </svg>
           </button>
-          
+
           {/* User Profile Button with Popup */}
           <div className="profile-popup-container relative">
-            <button 
+            <button
               className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
               onClick={() => setShowProfilePopup(!showProfilePopup)}
             >

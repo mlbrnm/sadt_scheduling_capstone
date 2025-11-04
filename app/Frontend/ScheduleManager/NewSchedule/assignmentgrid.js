@@ -31,7 +31,7 @@ export default function AssignmentGrid({
   // Helper function to add sentinel course to end of addedCourses for "+ Add Course" button
   const coursesWithAdd = (semester) => [
     ...(addedCoursesBySemester[semester] || []),
-    { __isAdd: true, Course_ID: `__add-${semester}` },
+    { __isAdd: true, course_id: `__add-${semester}` },
   ];
 
   // Helper function to check if an instructor owns class or online of a course section
@@ -76,7 +76,7 @@ export default function AssignmentGrid({
           <div className="flex">
             {coursesWithAdd(semester).map((course) => (
               <div
-                key={course.Course_ID}
+                key={course.course_id}
                 className="w-36"
                 style={{ height: headerH }}
               >
@@ -104,19 +104,19 @@ export default function AssignmentGrid({
           {/* Instructor Rows */}
           {addedInstructors.map((instructor) => {
             const rowH =
-              ((rowHeights?.[instructor.Instructor_ID] ?? 36) | 0) + "px";
+              ((rowHeights?.[instructor.instructor_id] ?? 36) | 0) + "px";
             return (
               <div
-                key={instructor.Instructor_ID}
+                key={instructor.instructor_id}
                 className="flex items-stretch"
                 style={{ height: rowH }}
               >
                 {coursesWithAdd(semester).map((course) => {
-                  const classHrs = course.Class_hrs || 0;
-                  const onlineHrs = course.Online_hrs || 0;
+                  const classHrs = course.class_hrs || 0;
+                  const onlineHrs = course.online_hrs || 0;
                   const totalHrs = classHrs + onlineHrs;
                   return (
-                    <div key={course.Course_ID} className="w-36 h-full">
+                    <div key={course.course_id} className="w-36 h-full">
                       <div className="grid grid-cols-6 h-full">
                         {Array.from({ length: maxSections }, (_, i) => {
                           const section = String.fromCharCode(65 + i);
@@ -124,8 +124,8 @@ export default function AssignmentGrid({
                           const ownsClass =
                             !isAdd &&
                             owns(
-                              instructor.Instructor_ID,
-                              course.Course_ID,
+                              instructor.instructor_id,
+                              course.course_id,
                               section,
                               semester,
                               "class"
@@ -133,8 +133,8 @@ export default function AssignmentGrid({
                           const ownsOnline =
                             !isAdd &&
                             owns(
-                              instructor.Instructor_ID,
-                              course.Course_ID,
+                              instructor.instructor_id,
+                              course.course_id,
                               section,
                               semester,
                               "online"
@@ -175,7 +175,7 @@ export default function AssignmentGrid({
                                   : (e) => {
                                       if (e.altKey) {
                                         onToggleSection(
-                                          instructor.Instructor_ID,
+                                          instructor.instructor_id,
                                           course,
                                           section,
                                           semester,
@@ -183,7 +183,7 @@ export default function AssignmentGrid({
                                         );
                                       } else if (e.shiftKey) {
                                         onToggleSection(
-                                          instructor.Instructor_ID,
+                                          instructor.instructor_id,
                                           course,
                                           section,
                                           semester,
@@ -191,7 +191,7 @@ export default function AssignmentGrid({
                                         );
                                       } else {
                                         onToggleSection(
-                                          instructor.Instructor_ID,
+                                          instructor.instructor_id,
                                           course,
                                           section,
                                           semester,
@@ -205,7 +205,7 @@ export default function AssignmentGrid({
                                 setContextMenu({
                                   x: e.clientX,
                                   y: e.clientY,
-                                  instructorId: instructor.Instructor_ID,
+                                  instructorId: instructor.instructor_id,
                                   course,
                                   section,
                                   semester,
@@ -214,7 +214,7 @@ export default function AssignmentGrid({
                               title={
                                 isAdd
                                   ? ""
-                                  : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.Course_Code} to ${instructor.Instructor_Name} ${instructor.Instructor_LastName}.
+                                  : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.course_code} to ${instructor.instructor_name} ${instructor.instructor_lastName}.
                                   `
                               }
                             >
