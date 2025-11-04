@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function ACProgramCourses({ academicChairId }) {
+export default function ACProgramCourses({ academicChairId, assignments = {} }) {
   const [programs, setPrograms] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +80,78 @@ export default function ACProgramCourses({ academicChairId }) {
       });
   };
 
+  // Helper function to get relevant semesters for a program based on intakes
+  const getRelevantSemesters = (program) => {
+    const intakes = program.intakes || "";
+    const semesters = [];
+    
+    if (intakes.includes("Winter")) {
+      semesters.push({ key: "winter", label: "W" });
+    }
+    if (intakes.includes("Spring")) {
+      semesters.push({ key: "springSummer", label: "S" });
+    }
+    if (intakes.includes("Fall")) {
+      semesters.push({ key: "fall", label: "F" });
+    }
+    
+    return semesters;
+  };
+
+  // Helper function to get assignment status for a course in a specific semester
+  // Returns: 'unassigned' (grey), 'partial' (yellow), or 'complete' (green)
+  const getCourseAssignmentStatus = (courseId, semester) => {
+    const cId = String(courseId);
+    const expectedSections = ['A', 'B', 'C', 'D', 'E', 'F'];
+    
+    // Track which sections are fully assigned (both class and online)
+    const courseSections = {};
+    
+    for (const [key, value] of Object.entries(assignments)) {
+      const parts = key.split("-");
+      if (parts.length < 3) continue;
+      
+      const [, ...rest] = parts;
+      const sem = rest[rest.length - 1];
+      const assignedCourseId = rest.slice(0, -1).join("-");
+      
+      if (assignedCourseId !== cId || sem !== semester) continue;
+
+      const sections = value?.sections || {};
+      for (const [sectionLetter, sectionData] of Object.entries(sections)) {
+        if (!courseSections[sectionLetter]) {
+          courseSections[sectionLetter] = { class: false, online: false };
+        }
+        if (sectionData.class) courseSections[sectionLetter].class = true;
+        if (sectionData.online) courseSections[sectionLetter].online = true;
+      }
+    }
+
+    // Count how many sections are fully assigned (both class and online)
+    let fullyAssignedCount = 0;
+    let partiallyAssignedCount = 0;
+    
+    for (const sectionLetter of expectedSections) {
+      const sectionData = courseSections[sectionLetter];
+      if (sectionData) {
+        if (sectionData.class && sectionData.online) {
+          fullyAssignedCount++;
+        } else if (sectionData.class || sectionData.online) {
+          partiallyAssignedCount++;
+        }
+      }
+    }
+
+    // Determine status
+    if (fullyAssignedCount === 6) {
+      return 'complete'; // All 6 sections fully assigned
+    } else if (fullyAssignedCount > 0 || partiallyAssignedCount > 0) {
+      return 'partial'; // Some sections assigned
+    } else {
+      return 'unassigned'; // No sections assigned
+    }
+  };
+
   if (!academicChairId) {
     return null;
   }
@@ -133,9 +205,26 @@ export default function ACProgramCourses({ academicChairId }) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-700 mb-3">
-        Programs & Courses
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-700">
+          Programs & Courses
+        </h3>
+        {/* Legend */}
+        <div className="flex items-center gap-3 text-xs text-gray-600">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+            <span>No assignments</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+            <span>Partial (1-5 sections)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+            <span>Complete (6/6 sections)</span>
+          </div>
+        </div>
+      </div>
       <div className="space-y-2">
         {programs.map((program) => {
           const programCourses = getCoursesForProgram(program.program_id);
@@ -181,24 +270,56 @@ export default function ACProgramCourses({ academicChairId }) {
                 <div className="bg-white p-3">
                   {programCourses.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {programCourses.map((course) => (
-                        <div
-                          key={course.course_id}
-                          className="p-2 bg-gray-50 rounded border border-gray-200"
-                        >
-                          <div className="font-medium text-sm text-gray-900">
-                            {course.course_code}
-                          </div>
-                          <div className="text-xs text-gray-600 line-clamp-2">
-                            {course.course_name}
-                          </div>
-                          {course.credits && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Credits: {course.credits}
+                      {programCourses.map((course) => {
+                        const relevantSemesters = getRelevantSemesters(program);
+                        
+                        return (
+                          <div
+                            key={course.course_id}
+                            className="p-2 bg-gray-50 rounded border border-gray-200"
+                          >
+                            <div className="font-medium text-sm text-gray-900">
+                              {course.course_code}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            <div className="text-xs text-gray-600 line-clamp-2">
+                              {course.course_name}
+                            </div>
+                            {course.credits && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Credits: {course.credits}
+                              </div>
+                            )}
+                            {/* Assignment Status Dots */}
+                            {relevantSemesters.length > 0 && (
+                              <div className="flex items-center gap-1 mt-2">
+                                {relevantSemesters.map((semester) => {
+                                  const status = getCourseAssignmentStatus(
+                                    course.course_id,
+                                    semester.key
+                                  );
+                                  const dotColor =
+                                    status === 'complete'
+                                      ? 'bg-green-400'
+                                      : status === 'partial'
+                                      ? 'bg-yellow-400'
+                                      : 'bg-gray-400';
+                                  
+                                  return (
+                                    <div
+                                      key={semester.key}
+                                      className="flex items-center gap-0.5"
+                                      title={`${semester.label === 'W' ? 'Winter' : semester.label === 'S' ? 'Spring/Summer' : 'Fall'}: ${status === 'complete' ? 'Complete (6/6)' : status === 'partial' ? 'Partial (1-5)' : 'No assignments'}`}
+                                    >
+                                      <div className={`w-3 h-3 rounded-full ${dotColor}`}></div>
+                                      <span className="text-xs text-gray-500">{semester.label}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-sm text-gray-500 italic">

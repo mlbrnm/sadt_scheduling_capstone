@@ -5,6 +5,7 @@ import mockInstructors from "./mockinstructors.json"; // MOCK DATA - REMOVE LATE
 import CertificatesTable from "./certificatestable";
 import DeliveryPicker from "./deliverypicker";
 import EditDelivery from "./editdelivery";
+import { calculateTotalHoursFromRow } from "./hoursUtil";
 
 export default function CertificateSchedule() {
   const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates - REPLACE WITH API CALL
@@ -53,14 +54,95 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds([]);
   };
 
+  // Handler to save edited deliveries from EditDelivery component
+  // Computes hours changes by comparing before and after
   const handleSaveEdit = (updatedDeliveries) => {
+    // look up "before" rows
+    const beforeRows = {};
+    certificatesData.forEach((row) => {
+      beforeRows[row.deliveryId] = row;
+    });
+
+    // Hours changes by instructor_id
+    const hoursChangesByInstructor = {};
+    // Helper to add hours change
+    const addHoursChange = (instructorId, hoursChange) => {
+      if (!instructorId) return;
+      const key = String(instructorId);
+      const prev = Number(hoursChangesByInstructor[key]) || 0;
+      hoursChangesByInstructor[key] = prev + Number(hoursChange || 0);
+    };
+
+    // For each edited delivery, compare with before
+    updatedDeliveries.forEach((afterRow) => {
+      const beforeRow = beforeRows[afterRow.deliveryId];
+      if (!beforeRow) return;
+
+      const prevInstructor = beforeRow?.assigned_instructor_id ?? null;
+      const nextInstructor = afterRow.assigned_instructor_id ?? null;
+
+      // Use snapshot if available
+      const oldHours = prevInstructor
+        ? Number(
+            beforeRow.assigned_instructor_hours ??
+              calculateTotalHoursFromRow(beforeRow)
+          )
+        : 0;
+      const newHours = nextInstructor
+        ? calculateTotalHoursFromRow(afterRow)
+        : 0;
+
+      if (prevInstructor === nextInstructor) {
+        // Same instructor
+        // If an instructor is assigned, adjust by the difference in hours
+        if (prevInstructor) {
+          const hoursDifference = newHours - oldHours;
+          addHoursChange(prevInstructor, hoursDifference);
+        }
+        // If no instructor assigned, no hours change
+      } else {
+        // Different instructors
+        // Subtract old hours from previous instructor
+        if (prevInstructor) {
+          addHoursChange(prevInstructor, -oldHours);
+        }
+        // Add new hours to next instructor
+        if (nextInstructor) {
+          addHoursChange(nextInstructor, newHours);
+        }
+      }
+    });
+
     const updatedCertificates = certificatesData.map((row) => {
       const match = updatedDeliveries.find(
         (delivery) => delivery.deliveryId === row.deliveryId
       );
-      return match ? match : row;
+      if (!match) return row;
+
+      const nextInstructor = match.assigned_instructor_id ?? null;
+      const newSnapshot = nextInstructor
+        ? calculateTotalHoursFromRow(match)
+        : 0;
+
+      return {
+        ...row,
+        ...match,
+        // persist hours snapshot that were just applied on save
+        assigned_instructor_hours: newSnapshot,
+      };
     });
+
+    // Apply instructor hours changes to instructorsData
+    const updatedInstructors = instructorsData.map((instructor) => {
+      const instructorId = String(instructor.instructor_id);
+      const hoursChange = Number(hoursChangesByInstructor[instructorId] || 0);
+      if (!hoursChange) return instructor;
+      const currentHours = Number(instructor.total_hours) || 0;
+      return { ...instructor, total_hours: currentHours + hoursChange };
+    });
+
     setCertificatesData(updatedCertificates);
+    setInstructorsData(updatedInstructors);
     setSelectedDeliveryIds([]);
   };
 
@@ -221,6 +303,8 @@ export default function CertificateSchedule() {
             onChange={(e) => setSemester(e.target.value)}
           >
             <option value="Winter">Winter</option>
+            <option value="Spr/Sum">Spr/Sum</option>
+            <option value="Fall">Fall</option>
           </select>
         </label>
         <label className="flex flex-col">
@@ -230,7 +314,9 @@ export default function CertificateSchedule() {
             value={program}
             onChange={(e) => setProgram(e.target.value)}
           >
-            <option value="ISS">ISS</option>
+            <option value="Information System Security">
+              Information System Security
+            </option>
           </select>
         </label>
         {/* Edit Course Button */}
@@ -238,7 +324,7 @@ export default function CertificateSchedule() {
           onClick={handleOpenPicker}
           className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center"
         >
-          Edit Certificate
+          Edit Delivery
         </button>
       </div>
 
