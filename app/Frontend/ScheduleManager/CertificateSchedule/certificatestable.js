@@ -1,13 +1,10 @@
+// removed Term, ID Record, Program, Program Type, Course Code (replaced with Course Section), Status Section columns
 const certificateHeaders = [
-  "Term",
-  "ID Record",
-  "Program",
-  "Program Type",
-  "Course Code",
+  "Course Section",
   "Course Name",
   "Section",
-  "Status Section",
   "Delivery Mode",
+  "Instructor",
   "Start Date",
   "End Date",
   "Start Time",
@@ -26,7 +23,6 @@ const certificateHeaders = [
   "Exam Booking",
   "Total Hours Course",
   "Semester Code",
-  "Course Section",
 ];
 
 export default function CertificatesTable({ certificatesData }) {
@@ -39,7 +35,7 @@ export default function CertificatesTable({ certificatesData }) {
               <th
                 key={header}
                 scope="col"
-                className="px-6 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
+                className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase"
               >
                 {header}
               </th>
@@ -49,54 +45,57 @@ export default function CertificatesTable({ certificatesData }) {
         <tbody className="bg-white divide-y divide-black">
           {certificatesData.map((certificate, index) => (
             <tr key={index}>
-              <td className="px-6 py-2 text-sm">{certificate.term}</td>
-              <td className="px-6 py-2 text-sm">{certificate.id_record}</td>
-              <td className="px-6 py-2 text-sm">{certificate.program}</td>
-              <td className="px-6 py-2 text-sm">{certificate.program_type}</td>
-              <td className="px-6 py-2 text-sm">{certificate.course_code}</td>
-              <td className="px-6 py-2 text-sm">{certificate.course_name}</td>
-              <td className="px-6 py-2 text-sm">{certificate.section}</td>
-              <td className="px-6 py-2 text-sm">
-                {certificate.status_section}
-              </td>
-              <td className="px-6 py-2 text-sm">{certificate.delivery_mode}</td>
-              <td className="px-6 py-2 text-sm">{certificate.start_date}</td>
-              <td className="px-6 py-2 text-sm">{certificate.end_date}</td>
-              <td className="px-6 py-2 text-sm">{certificate.start_time}</td>
-              <td className="px-6 py-2 text-sm">{certificate.end_time}</td>
-              <td className="px-6 py-2 text-sm">{certificate.hours_class}</td>
-              <td className="px-2 py-2 text-sm font-semibold">
-                {certificate.m}
-              </td>
-              <td className="px-6 py-2 text-sm font-semibold">
-                {certificate.t}
-              </td>
-              <td className="px-6 py-2 text-sm font-semibold">
-                {certificate.w}
-              </td>
-              <td className="px-6 py-2 text-sm font-semibold">
-                {certificate.th}
-              </td>
-              <td className="px-6 py-2 text-sm font-semibold">
-                {certificate.f}
-              </td>
-              <td className="px-6 py-2 text-sm font-semibold">
-                {certificate.s}
-              </td>
-              <td className="px-6 py-2 text-sm">{certificate.weeks}</td>
-              <td className="px-6 py-2 text-sm">{certificate.contact_hours}</td>
-              <td className="px-6 py-2 text-sm">{certificate.total_hours}</td>
-              <td className="px-6 py-2 text-sm">
-                {certificate.room_requirements}
-              </td>
-              <td className="px-6 py-2 text-sm">{certificate.exam_booking}</td>
-              <td className="px-6 py-2 text-sm">
-                {certificate.total_hrs_course}
-              </td>
-              <td className="px-6 py-2 text-sm">{certificate.semester_code}</td>
-              <td className="px-6 py-2 text-sm">
+              <td className="px-4 py-4 text-sm">
                 {certificate.course_section}
               </td>
+              <td className="px-4 py-4 text-sm truncate">
+                {certificate.course_name}
+              </td>
+              <td className="px-4 py-4 text-sm">{certificate.section}</td>
+              <td className="px-4 py-4 text-sm">{certificate.delivery_mode}</td>
+              <td className="px-4 py-4 text-sm">
+                {certificate.assigned_instructor_id ? (
+                  <span className="truncate">
+                    {certificate.assigned_instructor_name}
+                  </span>
+                ) : (
+                  <span className="text-sm">Unassigned</span>
+                )}
+              </td>
+              <td className="px-4 py-4 text-sm">{certificate.start_date}</td>
+              <td className="px-4 py-4 text-sm">{certificate.end_date}</td>
+              <td className="px-4 py-4 text-sm">{certificate.start_time}</td>
+              <td className="px-4 py-4 text-sm">{certificate.end_time}</td>
+              <td className="px-4 py-4 text-sm">{certificate.hours_class}</td>
+              <td className="px-4 py-4 text-sm font-semibold border-x">
+                {certificate.m}
+              </td>
+              <td className="px-4 py-4 text-sm font-semibold border-x">
+                {certificate.t}
+              </td>
+              <td className="px-4 py-4 text-sm font-semibold border-x">
+                {certificate.w}
+              </td>
+              <td className="px-4 py-4 text-sm font-semibold border-x">
+                {certificate.th}
+              </td>
+              <td className="px-4 py-4 text-sm font-semibold border-x">
+                {certificate.f}
+              </td>
+              <td className="px-4 py-4 text-sm font-semibold border-x">
+                {certificate.s}
+              </td>
+              <td className="px-4 py-4 text-sm">{certificate.weeks}</td>
+              <td className="px-4 py-4 text-sm">{certificate.contact_hours}</td>
+              <td className="px-4 py-4 text-sm">{certificate.total_hours}</td>
+              <td className="px-4 py-4 text-sm">
+                {certificate.room_requirements}
+              </td>
+              <td className="px-4 py-4 text-sm">{certificate.exam_booking}</td>
+              <td className="px-4 py-4 text-sm">
+                {certificate.total_hrs_course}
+              </td>
+              <td className="px-4 py-4 text-sm">{certificate.semester_code}</td>
             </tr>
           ))}
         </tbody>

@@ -15,6 +15,22 @@ export default function DeliveryPicker({
     return activeDays.join(" ");
   }
 
+  const InstructorBadge = ({ row }) => {
+    const hasInstructor = !!row.assigned_instructor_id;
+    return hasInstructor ? (
+      <span
+        className="text-sm font-semibold text-gray-800"
+        title={row.assigned_instructor_name}
+      >
+        Instructor: {row.assigned_instructor_name}
+      </span>
+    ) : (
+      <span className="text-sm font-semibold text-gray-800">
+        Instructor: Unassigned
+      </span>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
@@ -36,20 +52,25 @@ export default function DeliveryPicker({
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto divide-y">
-          {certificatesData.map((r) => (
+          {certificatesData.map((certificate) => (
             <div
-              key={r.deliveryId}
+              key={certificate.deliveryId}
               className="flex items-center justify-between py-2 cursor-pointer hover:bg-gray-100"
-              onClick={() => onSelectDelivery(r.deliveryId)}
+              onClick={() => onSelectDelivery(certificate.deliveryId)}
             >
               <div className="text-sm">
-                <div className="font-medium">
-                  {r.course_code} - {r.course_name} ({r.course_section})
+                <div className="font-semibold">
+                  {certificate.course_code} - {certificate.course_name} (
+                  {certificate.course_section})
                 </div>
                 <div className="text-gray-600">
-                  {r.start_date} {r.start_time} to {r.end_date} {r.end_time}
+                  {certificate.start_date} {certificate.start_time} to{" "}
+                  {certificate.end_date} {certificate.end_time}
                   {"  "}
-                  {daysToString(r) || "—"}
+                  {daysToString(certificate) || "—"}
+                </div>
+                <div>
+                  <InstructorBadge row={certificate} />
                 </div>
               </div>
             </div>
