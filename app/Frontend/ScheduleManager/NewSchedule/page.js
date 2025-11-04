@@ -59,6 +59,10 @@ export default function NewSchedule() {
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
+  // Filter and sort state
+  const [hideFullyAssignedCourses, setHideFullyAssignedCourses] = useState(true);
+  const [hideFullyAssignedInstructors, setHideFullyAssignedInstructors] = useState(true);
+  const [instructorSortMode, setInstructorSortMode] = useState("alphabetical"); // "alphabetical" | "currentSemesterHours" | "totalHours"
 
   // Handlers to update measured heights
   const handleRowResize = (instructorId, h) => {
@@ -145,12 +149,12 @@ export default function NewSchedule() {
 
         const data = await response.json();
 
-        // Update metadata
+        // Update metadata - always default all semesters to active on page load
         setNewScheduleDraft((prev) => ({
           ...prev,
           metaData: {
             year: data.metaData.year,
-            activeSemesters: data.metaData.activeSemesters,
+            activeSemesters: { winter: true, springSummer: true, fall: true },
           },
         }));
 
@@ -213,6 +217,134 @@ export default function NewSchedule() {
 
     loadSchedule();
   }, [scheduleId, isLoading, instructorData, courseData]);
+
+  // Pre-populate instructors and courses based on academic chair's programs
+  useEffect(() => {
+    if (!scheduleAcademicChairId || !courseData.length || !instructorData.length || isLoading || loadingSchedule) {
+      return;
+    }
+
+    const prePopulateInstructorsAndCourses = async () => {
+      try {
+        // Fetch all programs
+        const { data: allPrograms, error: programsError } = await supabase
+          .from("programs")
+          .select("*");
+
+        if (programsError) {
+          console.error("Error fetching programs:", programsError);
+          return;
+        }
+
+        // Filter programs where academic_chair field contains this academic chair ID
+        const filteredPrograms = allPrograms.filter((program) => {
+          const academicChairField = program.academic_chair || "";
+          return academicChairField.includes(scheduleAcademicChairId);
+        });
+
+        if (filteredPrograms.length === 0) {
+          return;
+        }
+
+        // Get all program IDs and acronyms
+        const programIds = filteredPrograms.map((p) => p.program_id);
+        const programAcronyms = filteredPrograms.map((p) => p.acronym).filter(Boolean);
+
+        // Filter instructors whose primary_program matches any program acronym
+        const matchingInstructors = instructorData.filter((instructor) => {
+          const primaryProgram = instructor.primary_program || "";
+          return programAcronyms.some((acronym) => primaryProgram === acronym);
+        });
+
+        // Filter courses that belong to these programs
+        const programCourses = courseData.filter((course) =>
+          programIds.includes(course.program_id)
+        );
+
+        // Build a map of courses by semester based on program intakes
+        const coursesBySemester = {
+          winter: new Set(),
+          springSummer: new Set(),
+          fall: new Set(),
+        };
+
+        // For each program, check its intakes and add its courses to the appropriate semesters
+        filteredPrograms.forEach((program) => {
+          const intakes = program.intakes || "";
+          const programCoursesForThisProgram = programCourses.filter(
+            (course) => course.program_id === program.program_id
+          );
+
+          // Check which semesters are in the intakes field
+          const hasWinter = intakes.includes("Winter");
+          const hasSpring = intakes.includes("Spring");
+          const hasFall = intakes.includes("Fall");
+
+          // Add courses to the appropriate semesters
+          programCoursesForThisProgram.forEach((course) => {
+            if (hasWinter) {
+              coursesBySemester.winter.add(course.course_id);
+            }
+            if (hasSpring) {
+              coursesBySemester.springSummer.add(course.course_id);
+            }
+            if (hasFall) {
+              coursesBySemester.fall.add(course.course_id);
+            }
+          });
+        });
+
+        // Convert Sets to arrays of course objects
+        const newCoursesBySemester = {
+          winter: courseData.filter((course) =>
+            coursesBySemester.winter.has(course.course_id)
+          ),
+          springSummer: courseData.filter((course) =>
+            coursesBySemester.springSummer.has(course.course_id)
+          ),
+          fall: courseData.filter((course) =>
+            coursesBySemester.fall.has(course.course_id)
+          ),
+        };
+
+        // Merge with existing courses (in case schedule was loaded first)
+        setNewScheduleDraft((prev) => {
+          const mergedCoursesBySemester = {
+            winter: [...prev.addedCoursesBySemester.winter],
+            springSummer: [...prev.addedCoursesBySemester.springSummer],
+            fall: [...prev.addedCoursesBySemester.fall],
+          };
+
+          // Add new courses to each semester if not already present
+          semester_list.forEach((semester) => {
+            newCoursesBySemester[semester].forEach((course) => {
+              if (!mergedCoursesBySemester[semester].some(c => c.course_id === course.course_id)) {
+                mergedCoursesBySemester[semester].push(course);
+              }
+            });
+          });
+
+          // Merge instructors - add matching instructors if not already present
+          const mergedInstructors = [...prev.addedInstructors];
+          matchingInstructors.forEach((instructor) => {
+            if (!mergedInstructors.some(i => i.instructor_id === instructor.instructor_id)) {
+              mergedInstructors.push(instructor);
+            }
+          });
+
+          return {
+            ...prev,
+            addedInstructors: mergedInstructors,
+            addedCoursesBySemester: mergedCoursesBySemester,
+          };
+        });
+      } catch (error) {
+        console.error("Error pre-populating instructors and courses:", error);
+      }
+    };
+
+    prePopulateInstructorsAndCourses();
+  }, [scheduleAcademicChairId, courseData, instructorData, isLoading, loadingSchedule]);
 
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
@@ -376,48 +508,24 @@ export default function NewSchedule() {
     });
   };
 
-  // Clean up assignments if instructors or courses are removed, otherwise assignments retain stale data
-  // USED AI Q: I would like to reset the section assignments if I remove the instructor and/or course. How would I do this? (CLEAN UP ASSIGNMENTS IF INSTRUCTOR/COURSE REMOVED))
+  // Clean up assignments only when instructors are removed (preserve course assignments even when hidden)
   useEffect(() => {
     setAssignments((prev) => {
       const validInstructorIds = new Set(
         newScheduleDraft.addedInstructors.map((i) => String(i.instructor_id))
       );
-      const validCourseIdsBySemester = {
-        winter: new Set(
-          newScheduleDraft.addedCoursesBySemester.winter.map((c) =>
-            String(c.course_id)
-          )
-        ),
-        springSummer: new Set(
-          newScheduleDraft.addedCoursesBySemester.springSummer.map((c) =>
-            String(c.course_id)
-          )
-        ),
-        fall: new Set(
-          newScheduleDraft.addedCoursesBySemester.fall.map((c) =>
-            String(c.course_id)
-          )
-        ),
-      };
-      // Create a new assignments object with only valid keys
+      // Create a new assignments object with only valid instructor keys
       const updatedAssignments = {};
-      // Loop through previous assignments and update assignments to include only the ones still in the addedInstructors and addedCourses
+      // Loop through previous assignments and keep only those with valid instructors
       for (const [key, value] of Object.entries(prev)) {
-        const [iId, cId, sem] = key.split("-");
-        if (
-          validInstructorIds.has(iId) &&
-          validCourseIdsBySemester[sem]?.has(cId)
-        ) {
+        const [iId] = key.split("-");
+        if (validInstructorIds.has(iId)) {
           updatedAssignments[key] = value;
         }
       }
       return updatedAssignments;
     });
-  }, [
-    newScheduleDraft.addedInstructors,
-    newScheduleDraft.addedCoursesBySemester,
-  ]);
+  }, [newScheduleDraft.addedInstructors]);
 
   // Handlers for Save and Clear buttons
   const handleSave = async () => {
@@ -494,6 +602,171 @@ export default function NewSchedule() {
     setHeaderHeight(null);
   };
 
+  // Helper functions for filtering and sorting
+
+  // Helper function to get per-week hours for a course
+  const hoursPerSection = (semester, courseId) => {
+    const courses = newScheduleDraft.addedCoursesBySemester?.[semester] || [];
+    const course = courses.find((c) => String(c.course_id) === String(courseId));
+    return {
+      classHrs: course?.class_hrs || 0,
+      onlineHrs: course?.online_hrs || 0,
+    };
+  };
+
+  // Helper function to sum per-week hours for an instructor in a semester
+  const sumHours = (instructorId, semester) => {
+    let sum = 0;
+    const iId = String(instructorId);
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const parts = key.split("-");
+      if (parts.length < 3) continue;
+      const [iid, ...rest] = parts;
+      const sem = rest[rest.length - 1];
+      const cid = rest.slice(0, -1).join("-");
+      
+      if (iid !== iId || sem !== semester) continue;
+
+      const { classHrs, onlineHrs } = hoursPerSection(sem, cid);
+      const sections = value?.sections || {};
+      for (const sec of Object.values(sections)) {
+        if (sec.class) sum += classHrs;
+        if (sec.online) sum += onlineHrs;
+      }
+    }
+    return sum;
+  };
+
+  // Helper function to calculate semester hours for an instructor in a semester
+  const calculateSemesterHours = (instructorId, semester) => {
+    return sumHours(instructorId, semester) * 15;
+  };
+
+  // Helper function to sum total assigned hours for an instructor across all semesters
+  const sumTotal = (instructorId) => {
+    let total = 0;
+    for (const sem of ["winter", "springSummer", "fall"]) {
+      total += calculateSemesterHours(instructorId, sem);
+    }
+    return total;
+  };
+
+  // Helper function to check if a course is fully assigned in a semester
+  const isCourseFullyAssigned = (courseId, semester) => {
+    const cId = String(courseId);
+    
+    // Define expected sections (A, B, C, D, E, F) (placeholder, we still need to figure out section logic in the new paradigm)
+    const expectedSections = ['A', 'B', 'C', 'D', 'E', 'F'];
+    
+    // Get all sections for this course in this semester from assignments
+    const courseSections = {};
+    for (const [key, value] of Object.entries(assignments || {})) {
+      const parts = key.split("-");
+      if (parts.length < 3) continue;
+      const [, ...rest] = parts;
+      const sem = rest[rest.length - 1];
+      const assignedCourseId = rest.slice(0, -1).join("-");
+      
+      if (assignedCourseId !== cId || sem !== semester) continue;
+
+      const sections = value?.sections || {};
+      for (const [sectionLetter, sectionData] of Object.entries(sections)) {
+        if (!courseSections[sectionLetter]) {
+          courseSections[sectionLetter] = { class: false, online: false };
+        }
+        if (sectionData.class) courseSections[sectionLetter].class = true;
+        if (sectionData.online) courseSections[sectionLetter].online = true;
+      }
+    }
+
+    // Check if all expected sections exist and are fully assigned
+    for (const sectionLetter of expectedSections) {
+      const sectionData = courseSections[sectionLetter];
+      // If section doesn't exist or doesn't have both class and online, not fully assigned
+      if (!sectionData || !sectionData.class || !sectionData.online) {
+        return false;
+      }
+    }
+
+    // All 6 sections are present and fully assigned
+    return true;
+  };
+
+  // Helper function to check if an instructor is fully assigned (90%+ of CCH limit)
+  const isInstructorFullyAssigned = (instructor) => {
+    const totalHours = sumTotal(instructor.instructor_id);
+    const cchLimit = instructor.contract_type === "Casual" ? 800 : 615;
+    return totalHours >= cchLimit * 0.9;
+  };
+
+  // Filter courses based on hideFullyAssignedCourses setting
+  const getFilteredCoursesBySemester = () => {
+    const filtered = { winter: [], springSummer: [], fall: [] };
+    
+    for (const semester of semester_list) {
+      const courses = newScheduleDraft.addedCoursesBySemester[semester] || [];
+      filtered[semester] = courses.filter((course) => {
+        if (!hideFullyAssignedCourses) return true;
+        return !isCourseFullyAssigned(course.course_id, semester);
+      });
+    }
+    
+    return filtered;
+  };
+
+  // Sort and filter instructors
+  const getSortedAndFilteredInstructors = () => {
+    let instructors = [...newScheduleDraft.addedInstructors];
+
+    // Apply filtering
+    if (hideFullyAssignedInstructors) {
+      instructors = instructors.filter((instructor) => !isInstructorFullyAssigned(instructor));
+    }
+
+    // Apply sorting
+    if (instructorSortMode === "alphabetical") {
+      instructors.sort((a, b) => {
+        const nameA = a.full_name || `${a.instructor_name} ${a.instructor_lastName}`;
+        const nameB = b.full_name || `${b.instructor_name} ${b.instructor_lastName}`;
+        return nameA.localeCompare(nameB);
+      });
+    } else if (instructorSortMode === "currentSemesterHours") {
+      // Determine current semester based on active semesters
+      const { winter, springSummer, fall } = newScheduleDraft.metaData.activeSemesters;
+      const allActive = winter && springSummer && fall;
+      const currentSemester = allActive
+        ? null // Use total hours when all are active
+        : winter
+        ? "winter"
+        : springSummer
+        ? "springSummer"
+        : fall
+        ? "fall"
+        : null;
+
+      instructors.sort((a, b) => {
+        const hoursA = currentSemester
+          ? sumHours(a.instructor_id, currentSemester)
+          : sumTotal(a.instructor_id);
+        const hoursB = currentSemester
+          ? sumHours(b.instructor_id, currentSemester)
+          : sumTotal(b.instructor_id);
+        return hoursA - hoursB;
+      });
+    } else if (instructorSortMode === "totalHours") {
+      instructors.sort((a, b) => {
+        const hoursA = sumTotal(a.instructor_id);
+        const hoursB = sumTotal(b.instructor_id);
+        return hoursA - hoursB;
+      });
+    }
+
+    return instructors;
+  };
+
+  const filteredCoursesBySemester = getFilteredCoursesBySemester();
+  const sortedAndFilteredInstructors = getSortedAndFilteredInstructors();
+
   // Determine which semesters are active for rendering CourseSection and AssignmentGrid
   const visibleSemesters = semester_list.filter(
     (sem) => newScheduleDraft.metaData.activeSemesters?.[sem]
@@ -567,13 +840,22 @@ export default function NewSchedule() {
           setNewScheduleDraft={setNewScheduleDraft}
           onSave={handleSave}
           onClear={handleClear}
+          hideFullyAssignedCourses={hideFullyAssignedCourses}
+          setHideFullyAssignedCourses={setHideFullyAssignedCourses}
+          hideFullyAssignedInstructors={hideFullyAssignedInstructors}
+          setHideFullyAssignedInstructors={setHideFullyAssignedInstructors}
+          instructorSortMode={instructorSortMode}
+          setInstructorSortMode={setInstructorSortMode}
         />
       </div>
 
       {/* Programs & Courses for this Schedule's Academic Chair */}
       {scheduleAcademicChairId && (
         <div className="mb-4">
-          <ACProgramCourses academicChairId={scheduleAcademicChairId} />
+          <ACProgramCourses 
+            academicChairId={scheduleAcademicChairId} 
+            assignments={assignments}
+          />
         </div>
       )}
 
@@ -605,9 +887,7 @@ export default function NewSchedule() {
                       onRemoveCourse={(course, sem) =>
                         handleRemoveCourseFromSemester(sem, course)
                       }
-                      addedCourses={
-                        newScheduleDraft.addedCoursesBySemester[semester]
-                      }
+                      addedCourses={filteredCoursesBySemester[semester]}
                     />
                   </div>
                 ))}
@@ -621,7 +901,7 @@ export default function NewSchedule() {
               instructors={instructorData}
               onAddInstructor={handleAddInstructor}
               onRemoveInstructor={handleRemoveInstructor}
-              addedInstructors={newScheduleDraft.addedInstructors}
+              addedInstructors={sortedAndFilteredInstructors}
               assignments={assignments}
               addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
               onRowResize={handleRowResize}
@@ -633,8 +913,8 @@ export default function NewSchedule() {
           <div className="col-start-2 row-start-2 min-w-0">
             <div ref={bottomScrollerRef} className="overflow-x-hidden w-full">
               <AssignmentGrid
-                addedInstructors={newScheduleDraft.addedInstructors}
-                addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
+                addedInstructors={sortedAndFilteredInstructors}
+                addedCoursesBySemester={filteredCoursesBySemester}
                 assignments={assignments}
                 onToggleSection={toggleSection}
                 activeSemesters={newScheduleDraft.metaData.activeSemesters}
