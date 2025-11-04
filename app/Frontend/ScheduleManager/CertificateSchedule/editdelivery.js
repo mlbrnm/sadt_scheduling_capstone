@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import InstructorPicker from "./instructorpicker";
+import { calculateTotalHours } from "./hoursUtil";
+import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
+
 export default function EditDelivery({
   deliveries,
   onSave,
@@ -10,7 +13,6 @@ export default function EditDelivery({
   instructors,
 }) {
   /**
-   * NOTES FOR BACKEND
    * deliveries prop:
    * - Array of original delivery objects from CertificateSchedule
    * - Used to initialize drafts
@@ -22,6 +24,7 @@ export default function EditDelivery({
    * - Converted back to delivery shape on Save
    */
   const [drafts, setDrafts] = useState([]);
+  const [pickerForIndex, setPickerForIndex] = useState(null); // which row is currently picking instructor
   const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
 
   // Convert flags to boolean days
@@ -46,6 +49,10 @@ export default function EditDelivery({
           start_time: delivery.start_time || "",
           end_time: delivery.end_time || "",
           days: flagsToDays(delivery),
+          assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+          assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+          assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+          prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
         }));
       }
       // Append newly added deliveries
@@ -60,6 +67,11 @@ export default function EditDelivery({
             start_time: delivery.start_time || "",
             end_time: delivery.end_time || "",
             days: flagsToDays(delivery),
+            assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+            assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+            assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+            prev_assigned_instructor_id:
+              delivery.assigned_instructor_id ?? null,
           });
         }
         return newDrafts;
@@ -68,7 +80,7 @@ export default function EditDelivery({
     });
   }, [deliveries]);
 
-  // Update a specific field (start/end dates and time) in a draft
+  // Helper to update a specific field (start/end dates and time) in a draft
   const updateField = (deliveryIndex, propertyName, newValue) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -95,6 +107,36 @@ export default function EditDelivery({
     });
   };
 
+  // Open InstructorPicker for a specific delivery row
+  const openPickerForInstructor = (index) => {
+    setPickerForIndex(index);
+    setIsInstructorPickerOpen(true);
+  };
+
+  // Helper to set or clear instructor on a row in drafts
+  const setInstructorFor = (rowIndex, instructor) => {
+    setDrafts((prevDrafts) => {
+      const updatedDrafts = [...prevDrafts];
+      updatedDrafts[rowIndex] = {
+        ...prevDrafts[rowIndex],
+        assigned_instructor_id: instructor?.instructor_id ?? null,
+        assigned_instructor_name: instructor
+          ? `${instructor.instructor_name} ${instructor.instructor_lastName}`
+          : null,
+      };
+      return updatedDrafts;
+    });
+  };
+
+  // Handle adding instructor from InstructorPicker
+  const handleAddInstructor = (instructor) => {
+    if (pickerForIndex === null) return;
+    setInstructorFor(pickerForIndex, instructor);
+    setIsInstructorPickerOpen(false);
+    setPickerForIndex(null);
+  };
+
+  // Handle saving edits
   const handleSaveEdit = () => {
     // Convert drafts back to delivery shape with 'X' from day booleans
     const updated = drafts.map((d) => ({
@@ -105,8 +147,37 @@ export default function EditDelivery({
       th: d.days.th ? "X" : "",
       f: d.days.f ? "X" : "",
       s: d.days.s ? "X" : "",
+      assigned_instructor_id: d.assigned_instructor_id ?? null,
+      assigned_instructor_name: d.assigned_instructor_name ?? null,
     }));
     onSave(updated);
+  };
+
+  // Calculate preview total hours for an instructor
+  const getPreviewTotalHours = (instructorId) => {
+    if (!instructorId) return null;
+
+    // Find instructor in original list to get their base hours
+    const base = Number(
+      instructors.find(
+        (instructor) => instructor.instructor_id === instructorId
+      )?.total_hours || 0
+    );
+
+    // Add snapshot hours that previously belonged to this instructor
+    const snapshotSum = drafts
+      .filter((draft) => draft.prev_assigned_instructor_id === instructorId)
+      .reduce(
+        (sum, draft) => sum + Number(draft.assigned_instructor_hours || 0),
+        0
+      );
+
+    // Add planned hours for drafts currently assigned to this instructor
+    const plannedSum = drafts
+      .filter((draft) => draft.assigned_instructor_id === instructorId)
+      .reduce((sum, draft) => sum + calculateTotalHours(draft), 0);
+
+    return base - snapshotSum + plannedSum;
   };
 
   // Group drafts by section
@@ -122,14 +193,6 @@ export default function EditDelivery({
 
   const sections = Object.keys(draftsBySection).sort();
 
-  // Handle adding instructor from InstructorPicker
-  // NOT IMPLEMENTED!!!
-  const handleAddInstructor = (instructor) => {
-    // ADD LOGIC TO ADD INSTRUCTOR TO DELIVERY DRAFT!!!
-    console.log("Adding instructor:", instructor);
-    setIsInstructorPickerOpen(false);
-  };
-
   // BACKEND DECIDE ON DATE FORMAT SO WE CAN CHANGE INPUT FROM TEXT TO DATE!!!
   // NEED TO FIGURE OUT HOW TO DO 24-HOUR TIME INPUT AS WELL!!!
   return (
@@ -140,6 +203,7 @@ export default function EditDelivery({
           {drafts[0]?.course_name} ({drafts[0]?.course_code})
         </span>
       </div>
+
       {/* Delivery + Section */}
       {sections.map((section) => (
         <div key={section} className="rounded-lg border border-gray-200">
@@ -152,19 +216,22 @@ export default function EditDelivery({
               Add delivery
             </button>
           </div>
-
+          {/* Section */}
           <div className="divide-y divide-gray-300">
             {draftsBySection[section].map((draft) => {
               const index = drafts.findIndex(
                 (d) => d.deliveryId === draft.deliveryId
               );
+              const previewHours = draft.assigned_instructor_id
+                ? getPreviewTotalHours(draft.assigned_instructor_id)
+                : null;
               return (
                 <div key={draft.deliveryId} className="bg-white p-4">
                   <div className="flex flex-row gap-4 mb-4">
                     {/* Start Date */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        Start Date
+                        Start Date:
                       </label>
                       <input
                         type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
@@ -179,7 +246,7 @@ export default function EditDelivery({
                     {/* End Date */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        End Date
+                        End Date:
                       </label>
                       <input
                         type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
@@ -194,7 +261,7 @@ export default function EditDelivery({
                     {/* Start Time */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        Start Time
+                        Start Time:
                       </label>
                       <input
                         type="time"
@@ -208,7 +275,7 @@ export default function EditDelivery({
                     {/* End Time */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        End Time
+                        End Time:
                       </label>
                       <input
                         type="time"
@@ -222,7 +289,7 @@ export default function EditDelivery({
                     {/* Days Selection */}
                     <div>
                       <label className="text-sm font-medium mb-1 block">
-                        Days
+                        Days:
                       </label>
                       <div className="flex flex-wrap gap-4">
                         {[
@@ -247,14 +314,56 @@ export default function EditDelivery({
                         ))}
                       </div>
                     </div>
-                    {/* Add Instructor Button */}
-                    <div className="mt-6">
-                      <button
-                        className="cursor-pointer hover:text-blue-600"
-                        onClick={() => setIsInstructorPickerOpen(true)}
-                      >
-                        + Add Instructor
-                      </button>
+                    {/* Add Instructor Button OR Instructor */}
+                    <div className="flex flex-col">
+                      <label className="text-sm font-medium">Instructor:</label>
+                      {draft.assigned_instructor_id ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="">
+                            {draft.assigned_instructor_name}
+                          </span>
+                          {previewHours !== null && (
+                            <span
+                              className={`px-1 py-1 rounded ${getUtilizationColor(
+                                {
+                                  contract_type: instructors.find(
+                                    (i) =>
+                                      i.instructor_id ===
+                                      draft.assigned_instructor_id
+                                  )?.contract_type,
+                                  total_hours: previewHours,
+                                }
+                              )}`}
+                            >
+                              {previewHours}h
+                            </span>
+                          )}
+
+                          <button
+                            className="text-sm font-semibold hover:text-blue-500 cursor-pointer"
+                            onClick={() => openPickerForInstructor(index)}
+                            title="Replace Instructor"
+                          >
+                            Replace
+                          </button>
+                          <button
+                            className="text-sm font-semibold hover:text-red-500 cursor-pointer"
+                            onClick={() => setInstructorFor(index, null)}
+                            title="Remove Instructor"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="">
+                          <button
+                            className="cursor-pointer hover:text-blue-600 mt-1"
+                            onClick={() => openPickerForInstructor(index)}
+                          >
+                            + Add Instructor
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -295,7 +404,10 @@ export default function EditDelivery({
         <InstructorPicker
           instructors={instructors}
           onAddInstructor={handleAddInstructor}
-          onClose={() => setIsInstructorPickerOpen(false)}
+          onClose={() => {
+            setIsInstructorPickerOpen(false);
+            setPickerForIndex(null);
+          }}
         />
       )}
     </div>
