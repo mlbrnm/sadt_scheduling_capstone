@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function InstructorProfiles() {
   //create the loading functional component
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedData, setFetchedData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
 
   const displayColumns = [
     { header: "First Name", key: "instructor_name" },
@@ -52,6 +54,10 @@ export default function InstructorProfiles() {
       .includes(searchQuery.toLowerCase())
   );
 
+  const viewProfile = (instructorId) => {
+    router.push(`/Frontend/InstructorProfiles/IndividualProfile?id=${instructorId}`);
+  };
+
   return (
     <div className="p-6">
       {/* Title and Search Bar */}
@@ -86,6 +92,7 @@ export default function InstructorProfiles() {
                       {col.header}
                     </th>
                   ))}
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase"></th>
                 </tr>
               </thead>
               <tbody>
@@ -99,6 +106,14 @@ export default function InstructorProfiles() {
                         {row[col.key] || "-"}
                       </td>
                     ))}
+                    <td className="py-3 px-6 border-b text-center text-sm">
+                      <button
+                        onClick={() => viewProfile(row.instructor_id)}
+                        className="text-blue-500 hover:underline"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
