@@ -458,6 +458,30 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
 
 # created with help of AI - needed help understanding why filter was needed
 def clear_table_data(table_name):
+    # Define child table dependencies to handle foreign key constraints
+    CHILD_TABLES = {
+        "courses": ["instructor_course_qualifications"],
+        "instructors": ["instructor_course_qualifications", "instructor_availability"],
+        "programs": [],
+    }
+    
+    # Clear child tables first to avoid foreign key constraint violations
+    if table_name in CHILD_TABLES:
+        for child_table in CHILD_TABLES[table_name]:
+            try:
+                # Delete all rows from child table using a filter that matches all rows
+                # For instructor_course_qualifications, both instructor_id and course_id are part of primary key
+                # For instructor_availability, instructor_id is the primary key
+                # Using not_.is_(column, None) matches all rows since primary keys can't be NULL
+                if child_table == "instructor_course_qualifications":
+                    supabase_client.table(child_table).delete().not_.is_("course_id", None).execute()
+                elif child_table == "instructor_availability":
+                    supabase_client.table(child_table).delete().not_.is_("instructor_id", None).execute()
+                print(f"Cleared child table: {child_table}")
+            except Exception as e:
+                print(f"Warning: Could not clear {child_table}: {e}")
+    
+    # Then clear the main table
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
     # ensure table holds a primary key
     if not primary_key:
@@ -568,4 +592,3 @@ def get_section_info (term):
     except Exception as e:
         print(f"Error fetching section for term {term}: {e}")
         return []
-
