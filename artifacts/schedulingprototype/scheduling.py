@@ -224,7 +224,19 @@ def generate_section_timeslots(sections, instructor_availability):
     for section in sections:
         section_id = section["id"]
         weekly_hours = section["weekly_hours_required"]
-        sessions_per_week = section
+        sessions_per_week = section["sessions_per_week"]
+        instructor_id = section.get("instructors_id")
+
+        if not instructor_id:
+            print(f"Skipping section {section_id}: no assigned instructor")
+            continue
+
+        # we will divide weekly hours evenly for each session at the moment
+        session_duration = (weekly_hours * 60) // sessions_per_week
+        assigned_times = []
+
+        available_times = instructor_availability.get(instructor_id, [])
+        
 
 
 # def generate_time_slots():
@@ -531,8 +543,24 @@ def solve_schedule(model, assignments, sections):
 #     main()
 
 def main(schedule_id):
+    # fetch all scheduled courses for this schedule
+    scheduled_courses_response = supabase_client.table("scheduled_courses").select("*").eq("schedule_id", schedule_id).execute()
+    scheduled_courses = scheduled_courses_response.data
+
+    if not scheduled_courses:
+        print(f"No scheduled courses found for schedule {schedule_id}")
+        return
+
+    # create sections for each scheduled course
+    for scheduled_course in scheduled_courses:
+        response = create_sections(scheduled_course)
+        #print(f"Inserted sections for course_id {scheduled_course['course_id']}: {response}")
+
+
     #get all the sections and instructor qualifications for this schedule
     sections, qualifications = get_sections_and_instructor_qualifications(supabase_client, schedule_id)
+    print("Sections:", sections)
+    print("Instructor Qualifications:", qualifications)
 
     if not sections:
         print(f"No sections found for schedule {schedule_id}")

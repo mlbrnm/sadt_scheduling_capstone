@@ -1,20 +1,22 @@
 -- Create sections table
 CREATE TABLE IF NOT EXISTS public.sections (
 create table public.sections (
-  id uuid not null default gen_random_uuid (),
-  schedule_id uuid not null,
-  instructor_id real null,
-  course_id character varying(50) not null,
-  term character varying(50) null,
-  section_letter character varying(10) not null,
-  delivery_mode character varying(50) not null,
-  timeslots jsonb null default '[]'::jsonb,
-  created_at timestamp with time zone null default now(),
-  updated_at timestamp with time zone null default now(),
-  semester_id character varying(50) null,
-  constraint sections_pkey primary key (id),
-  constraint fk_sections_course foreign KEY (course_id) references courses (course_id) on delete CASCADE,
-  constraint sections_schedule_id_fkey foreign KEY (schedule_id) references schedules (id) on delete CASCADE
+    id uuid not null default gen_random_uuid (),
+    schedule_id uuid not null,
+    instructor_id real null,
+    course_id character varying(50) not null,
+    term character varying(50) null,
+    section_letter character varying(10) not null,
+    delivery_mode character varying(50) not null,
+    timeslots jsonb null default '[]'::jsonb,
+    created_at timestamp with time zone null default now(),
+    updated_at timestamp with time zone null default now(),
+    semester_id character varying(50) null,
+    weekly_hours_required numeric(4, 2) null,
+    sessions_per_week integer null,
+    constraint sections_pkey primary key (id),
+    constraint fk_sections_course foreign KEY (course_id) references courses (course_id) on delete CASCADE,
+    constraint sections_schedule_id_fkey foreign KEY (schedule_id) references schedules (id) on delete CASCADE
 ) TABLESPACE pg_default;
 
 create index IF not exists idx_sections_course on public.sections using btree (course_id) TABLESPACE pg_default;
