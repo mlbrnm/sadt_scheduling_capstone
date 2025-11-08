@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import InstructorPicker from "./instructorpicker";
 import { calculateTotalHours } from "./hoursUtil";
+import { convertToMinutes } from "./hoursUtil";
 import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 export default function EditDelivery({
@@ -26,6 +27,7 @@ export default function EditDelivery({
   const [drafts, setDrafts] = useState([]);
   const [pickerForIndex, setPickerForIndex] = useState(null); // which row is currently picking instructor
   const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Convert flags to boolean days
   const flagsToDays = (delivery) => ({
@@ -138,6 +140,24 @@ export default function EditDelivery({
 
   // Handle saving edits
   const handleSaveEdit = () => {
+    const validationErrors = {};
+    // Validate each draft row
+    drafts.forEach((draft) => {
+      const draftErrors = validateDraft(draft);
+      if (Object.keys(draftErrors).length > 0) {
+        validationErrors[draft.deliveryId] = draftErrors;
+      }
+    });
+
+    // If any errors, set errors state and abort save
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    // Clear errors if validation passes
+    setErrors({});
+
     // Convert drafts back to delivery shape with 'X' from day booleans
     const updated = drafts.map((d) => ({
       ...d,
@@ -178,6 +198,39 @@ export default function EditDelivery({
       .reduce((sum, draft) => sum + calculateTotalHours(draft), 0);
 
     return base - snapshotSum + plannedSum;
+  };
+
+  // Validate draft times
+  const validateDraft = (draft) => {
+    const draftErrors = {};
+
+    const hasStart = !!draft.start_time;
+    const hasEnd = !!draft.end_time;
+
+    const start = hasStart ? convertToMinutes(draft.start_time) : null;
+    const end = hasEnd ? convertToMinutes(draft.end_time) : null;
+
+    // Invalid format checks
+    if (hasStart && start === null) {
+      draftErrors.start_time = "Enter a valid time (HH:MM)";
+    }
+    if (hasEnd && end === null) {
+      draftErrors.end_time = "Enter a valid time (HH:MM)";
+    }
+
+    // One side missing
+    if (hasStart && !hasEnd && !draftErrors.start_time) {
+      draftErrors.end_time = "End Time required!";
+    }
+    if (!hasStart && hasEnd && !draftErrors.end_time) {
+      draftErrors.start_time = "Start Time required!";
+    }
+
+    // Order check (only if both valid)
+    if (start != null && end != null && end <= start) {
+      draftErrors.end_time = "End Time must be After Start Time!";
+    }
+    return draftErrors;
   };
 
   // Group drafts by section
@@ -222,6 +275,7 @@ export default function EditDelivery({
               const index = drafts.findIndex(
                 (d) => d.deliveryId === draft.deliveryId
               );
+              const draftErrors = errors[draft.deliveryId] || {};
               const previewHours = draft.assigned_instructor_id
                 ? getPreviewTotalHours(draft.assigned_instructor_id)
                 : null;
@@ -265,12 +319,21 @@ export default function EditDelivery({
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-32"
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.start_time
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.start_time}
                         onChange={(e) =>
                           updateField(index, "start_time", e.target.value)
                         }
                       />
+                      {draftErrors.start_time && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.start_time}
+                        </span>
+                      )}
                     </div>
                     {/* End Time */}
                     <div className="flex flex-col">
@@ -279,12 +342,21 @@ export default function EditDelivery({
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-32"
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.end_time
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.end_time}
                         onChange={(e) =>
                           updateField(index, "end_time", e.target.value)
                         }
                       />
+                      {draftErrors.end_time && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.end_time}
+                        </span>
+                      )}
                     </div>
                     {/* Days Selection */}
                     <div>
