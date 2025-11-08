@@ -210,6 +210,14 @@ export default function EditDelivery({
     const start = hasStart ? convertToMinutes(draft.start_time) : null;
     const end = hasEnd ? convertToMinutes(draft.end_time) : null;
 
+    // Both times required
+    if (!hasStart) {
+      draftErrors.start_time = "Start Time required!";
+    }
+    if (!hasEnd) {
+      draftErrors.end_time = "End Time required!";
+    }
+
     // Invalid format checks
     if (hasStart && start === null) {
       draftErrors.start_time = "Enter a valid time (HH:MM)";
@@ -227,7 +235,13 @@ export default function EditDelivery({
     }
 
     // Order check (only if both valid)
-    if (start != null && end != null && end <= start) {
+    if (
+      start != null &&
+      end != null &&
+      end <= start &&
+      !draftErrors.start_time &&
+      !draftErrors.end_time
+    ) {
       draftErrors.end_time = "End Time must be After Start Time!";
     }
     return draftErrors;
