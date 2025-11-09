@@ -18,11 +18,6 @@ export default function InstructorPicker({
 
   // Filter instructors based on search term and if already added
   const filteredInstructors = instructors.filter((instructor) => {
-    // Check if instructor is already added
-    // const isAlreadyAdded = addedInstructors.some(
-    //   (i) => i.instructor_id === instructor.instructor_id
-    // );
-
     // Filter by searching name
     const name =
       instructor.instructor_name + " " + instructor.instructor_lastName;

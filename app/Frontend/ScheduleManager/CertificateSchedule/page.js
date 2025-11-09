@@ -1,3 +1,4 @@
+// BACKEND CHECK handoverNotes.md FILE AND REMOVE AFTER.
 "use client";
 import { useState, useEffect } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
@@ -12,7 +13,7 @@ export default function CertificateSchedule() {
   const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
   const [isDeliveryPickerOpen, setIsDeliveryPickerOpen] = useState(false);
-  // Dropdowns state STATIC HARDCODED FOR NOW!!!
+  // Dropdowns state STATIC HARDCODED FOR NOW. BACKEND CHANGE THIS LATER!!!
   const [year, setYear] = useState("2026");
   const [semester, setSemester] = useState("Winter");
   const [program, setProgram] = useState("ISS");
@@ -30,7 +31,7 @@ export default function CertificateSchedule() {
         // const instructorData = await response.json();
         setInstructorsData(mockInstructors);
         setCertificatesData(
-          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // ADD deliveryId INDEX IS FINE FOR NOW!!!
+          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // ADD deliveryId as INDEX IS FINE FOR NOW. BACKEND CHANGE THIS LATER!!!
         );
       } catch (error) {
         setError("Failed to fetch data.");
