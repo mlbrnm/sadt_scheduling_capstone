@@ -70,3 +70,13 @@ assigned_instructor_id: number | null,
 assigned_instructor_name: string | null,
 assigned_instructor_hours: number // per-delivery snapshot
 }
+
+### Backend Integration Notes:
+
+- Replace mockcertificates and mockinstructors
+- deliveryId must be a persistent backend ID, currently just using index.
+- Backend should store and return:
+  - assigned_instructor_id
+  - assigned_instructor_name
+  - assigned_instructor_hours (snapshot) - After save, backend should recalculate and return refreshed instructor totals.
+- Change date inputs to <input type="date"> once backend confirms format.
