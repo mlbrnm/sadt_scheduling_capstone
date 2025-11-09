@@ -38,42 +38,32 @@ export default function EditDelivery({
     s: (delivery.s || "").toUpperCase() === "X",
   });
 
+  // Helper to create initial draft from delivery object
+  const makeDraftFromDelivery = (delivery) => ({
+    ...delivery,
+    start_date: delivery.start_date || "",
+    end_date: delivery.end_date || "",
+    start_time: delivery.start_time || "",
+    end_time: delivery.end_time || "",
+    days: flagsToDays(delivery),
+    assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+    assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+    assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+    prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+  });
+
   // Initialize/append drafts when deliveries change
   useEffect(() => {
     setDrafts((prevDrafts) => {
       // if editor just opened
       if (prevDrafts.length === 0) {
-        return deliveries.map((delivery) => ({
-          ...delivery,
-          start_date: delivery.start_date || "",
-          end_date: delivery.end_date || "",
-          start_time: delivery.start_time || "",
-          end_time: delivery.end_time || "",
-          days: flagsToDays(delivery),
-          assigned_instructor_id: delivery.assigned_instructor_id ?? null,
-          assigned_instructor_name: delivery.assigned_instructor_name ?? null,
-          assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
-          prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
-        }));
+        return deliveries.map(makeDraftFromDelivery);
       }
       // Append newly added deliveries
       if (deliveries.length > prevDrafts.length) {
         const newDrafts = [...prevDrafts];
         for (let i = prevDrafts.length; i < deliveries.length; i++) {
-          const delivery = deliveries[i];
-          newDrafts.push({
-            ...delivery,
-            start_date: delivery.start_date || "",
-            end_date: delivery.end_date || "",
-            start_time: delivery.start_time || "",
-            end_time: delivery.end_time || "",
-            days: flagsToDays(delivery),
-            assigned_instructor_id: delivery.assigned_instructor_id ?? null,
-            assigned_instructor_name: delivery.assigned_instructor_name ?? null,
-            assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
-            prev_assigned_instructor_id:
-              delivery.assigned_instructor_id ?? null,
-          });
+          newDrafts.push(makeDraftFromDelivery(deliveries[i]));
         }
         return newDrafts;
       }
