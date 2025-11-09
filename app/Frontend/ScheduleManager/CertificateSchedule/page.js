@@ -1,3 +1,4 @@
+// BACKEND CHECK handoverNotes.md FILE AND REMOVE AFTER.
 "use client";
 import { useState, useEffect } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
