@@ -90,20 +90,26 @@ def register_data_routes(app):
                 
                 # Parse academic chair UUIDs and fetch names
                 academic_chair_field = program.get("academic_chair") or ""
-                chair_uuids = [uuid.strip() for uuid in academic_chair_field.split(",") if uuid.strip()]
+                chair_uuids = [uuid_str.strip() for uuid_str in academic_chair_field.split(",") if uuid_str.strip()]
                 
                 chair_names = []
                 if chair_uuids:
-                    # Fetch user names for these UUIDs
-                    users_response = supabase_client.table("users") \
-                        .select("id, first_name, last_name") \
-                        .in_("id", chair_uuids) \
-                        .execute()
-                    
-                    for user in (users_response.data or []):
-                        full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
-                        if full_name:
-                            chair_names.append(full_name)
+                    try:
+                        # Fetch user names for these UUIDs
+                        # Note: Using filter with 'in' instead of in_() method
+                        users_response = supabase_client.table("users") \
+                            .select("id, first_name, last_name") \
+                            .filter("id", "in", f"({','.join(chair_uuids)})") \
+                            .execute()
+                        
+                        for user in (users_response.data or []):
+                            full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
+                            if full_name:
+                                chair_names.append(full_name)
+                    except Exception as user_error:
+                        print(f"Error fetching users for program {program_id}: {user_error}")
+                        # Continue without chair names if there's an error
+                        pass
                 
                 summary_data.append({
                     "program_id": program_id,
@@ -124,6 +130,9 @@ def register_data_routes(app):
             return jsonify(summary_data), 200
             
         except Exception as e:
+            print(f"Error in academic-year-summary endpoint: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 500
     
     @app.route("/api/instructors", methods=["GET"])
