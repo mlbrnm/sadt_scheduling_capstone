@@ -22,6 +22,7 @@ export default function UploadData() {
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [unmatchedCourses, setUnmatchedCourses] = useState([]);
 
   // const authorize_user = async () => {
   //   const {
@@ -68,7 +69,17 @@ export default function UploadData() {
 
   const userEmail = session?.user?.email;
 
-  const dataTypes = ["Programs", "Courses", "Instructors"];
+  const dataTypes = ["Programs", "Courses", "Instructors", "OTR Loading Sheet"];
+
+  // Auto-load current data when data type is selected
+  useEffect(() => {
+    if (selectedDataType) {
+      const table = tableMap[selectedDataType];
+      if (table) {
+        fetchTableData(table);
+      }
+    }
+  }, [selectedDataType]);
 
   //Created with the help of AI (making sure bases were covered)
   const validateFile = (file) => {
@@ -94,6 +105,8 @@ export default function UploadData() {
     intakes: "Intakes",
     duration: "Duration",
     starting_date: "Starting Date",
+    delivery: "Delivery",
+    status: "Status",
     uploaded_at: "Uploaded At",
     uploaded_by: "Uploaded By",
 
@@ -102,10 +115,16 @@ export default function UploadData() {
     course_code: "Course Code",
     course_name: "Course Name",
     program_major: "Program Major",
+    group: "Group",
+    credits: "Credits",
+    contact_hours: "Contact Hours",
     program_type: "Program Type",
     credential: "Credential",
     req_elec: "Req Elec",
     delivery_method: "Delivery Method",
+    online_hrs: "Online Hours",
+    class_hrs: "Class Hours",
+    ac_name_loading: "AC Name - Loading",
     school: "School",
     exam_otr: "Exam OTR",
     semester: "Semester",
@@ -115,10 +134,6 @@ export default function UploadData() {
     notes: "Notes",
     uploaded_by: "Uploaded By",
     uploaded_at: "Uploaded At",
-    credits: "Credits",
-    contact_hours: "Contact Hours",
-    group: "Group",
-    ac_name_loading: "AC Name - Loading",
 
     //Instructors header mapping
     instructor_id: "Instructor ID",
@@ -142,6 +157,39 @@ export default function UploadData() {
     notes_plan: "Notes/Plan",
     full_name: "Full Name",
     fte: "FTE",
+
+    //OTR Loading Sheet header mapping
+    term: "Term",
+    block_dept: "Block Dept",
+    block: "Block",
+    course_dept: "Course Dept",
+    course: "Course",
+    title: "Title",
+    component: "Component",
+    schedule_type: "Schedule Type",
+    status: "Status",
+    delivery: "Delivery",
+    meet_type: "Meet Type",
+    start_date: "Start Date",
+    end_date: "End Date",
+    forced_day: "Forced Day",
+    forced_start_time: "Forced Start Time",
+    forced_duration: "Forced Duration",
+    pattern: "Pattern",
+    pattern_day: "Pattern Day",
+    pattern_start_time: "Pattern Start Time",
+    pattern_duration: "Pattern Duration",
+    instructor_id: "Instructor ID",
+    name: "Name",
+    surname: "Surname",
+    room_type_requested: "Room Type Requested",
+    pavilion_requested: "Pavilion Requested",
+    room_number: "Room Number",
+    room_type_assigned: "Room Type Assigned",
+    room_description: "Room Description",
+    component_disabled: "Component Disabled",
+    section_disabled: "Section Disabled",
+    course_disabled: "Course Disabled",
   };
 
   //headers will either be one from the headersMap or if not there, just what is found in the returned data
@@ -211,6 +259,7 @@ export default function UploadData() {
     Programs: "programs",
     Courses: "courses",
     Instructors: "instructors",
+    "OTR Loading Sheet": "otr_submissions",
   };
 
   //created with help of AI - helped properly track user's email
@@ -281,6 +330,10 @@ export default function UploadData() {
           result.data.column_order || []
         )
       );
+      
+      // Set unmatched courses if any
+      setUnmatchedCourses(result.unmatched_courses || []);
+      
       setSuccessMessage(`File "${file.name}" uploaded successfully!`);
 
       await fetchTableData(table);
@@ -339,34 +392,6 @@ export default function UploadData() {
     }
   };
 
-  //   // Fake timeout
-  //   await new Promise((resolve) => setTimeout(resolve, 500)); //!!!REMOVE!!!!
-  //   // Mock data - !!!REMOVE AFTER!!!
-  //   return [
-  //     {
-  //       id: "1",
-  //       fileName: `${selectedDataType.toLowerCase()}_20230815.xlsx`,
-  //       uploadTime: "August 6, 2025, 10:30 AM",
-  //       uploadedBy: "Vanessa Diaz",
-  //       dataType: selectedDataType,
-  //       size: "245 KB",
-  //     },
-  //     {
-  //       id: "2",
-  //       fileName: `${selectedDataType.toLowerCase()}_20230801.xlsx`,
-  //       uploadTime: "August 1, 2025, 2:15 PM",
-  //       uploadedBy: "Vanessa Diaz",
-  //       dataType: selectedDataType,
-  //       size: "238 KB",
-  //     },
-  //   ];
-  // } catch (error) {
-  //   setError("Failed to load previous versions.");
-  //   return [];
-  // } finally {
-  //   setIsLoading(false);
-  // }
-
   const handleRestoreButtonClick = async () => {
     const versions = await fetchPreviousVersions();
     setPreviousVersions(versions);
@@ -419,13 +444,33 @@ export default function UploadData() {
     }
   };
 
+  // const handleDownload = async (storagePath) => {
+  //   const response = await fetch(
+  //     `http://localhost:5000/admin/uploads/download/${storagePath}`
+  //   );
+  //   const data = await response.json();
+  //   if (data.download_url) {
+  //     window.open(data.download_url, "_blank");
+  //   }
+  // };
+
   const handleDownload = async (storagePath) => {
-    const response = await fetch(
-      `http://localhost:5000/admin/uploads/download/${storagePath}`
-    );
-    const data = await response.json();
-    if (data.download_url) {
-      window.open(data.download_url, "_blank");
+    try {
+      const response = await fetch(
+        `http://localhost:5000/admin/uploads/download/${storagePath}` //api location
+      );
+      const blob = await response.blob(); //save the response as a blob (especially since it is a file)
+      const url = window.URL.createObjectURL(blob); //make a temporary url to store the blob object
+      const a = document.createElement("a"); //creates anchor element
+      const fileName = storagePath;
+      a.href = url; //this will assign the blob to the url link
+      a.download = fileName; //sets the filename for the user's browser to use
+      document.body.appendChild(a); //ensures anchor element is attached to the DOM
+      a.click(); //this tells th browser to start downloading the file when clicked
+      a.remove(); //once the download is triggered, removes the anchor element
+      window.URL.revokeObjectURL(url); //gets rid of the blob url that was created to free up memory
+    } catch (err) {
+      console.error("Download failed:", err);
     }
   };
 
@@ -463,6 +508,47 @@ export default function UploadData() {
       {successMessage && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg mb-6">
           <p>{successMessage}</p>
+        </div>
+      )}
+
+      {/* Unmatched Courses Warning */}
+      {unmatchedCourses.length > 0 && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg mb-6">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="font-bold mb-2">
+                Warning: {unmatchedCourses.length} course{unmatchedCourses.length !== 1 ? 's' : ''} could not be linked to any program
+              </p>
+              <p className="text-sm mb-2">
+                The following courses have a program value that doesn't match any program in the database. Please verify the program names in your data:
+              </p>
+              <div className="mt-2 max-h-40 overflow-y-auto bg-white rounded p-2">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100 sticky top-0">
+                    <tr>
+                      <th className="text-left p-2">Course Code</th>
+                      <th className="text-left p-2">Course Name</th>
+                      <th className="text-left p-2">Program Major</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unmatchedCourses.map((course, index) => (
+                      <tr key={index} className="border-t">
+                        <td className="p-2">{course.course_code || course.course_id}</td>
+                        <td className="p-2">{course.course_name}</td>
+                        <td className="p-2 font-semibold">{course.program_major}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

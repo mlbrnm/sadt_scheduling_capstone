@@ -56,8 +56,9 @@ export default function InstructorSection({
 
   // Handler function to remove an instructor
   const handleRemoveInstructor = (instructor) => {
+    const displayName = instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`;
     const confirmRemove = window.confirm(
-      `Are you sure you want to remove ${instructor.instructor_name} ${instructor.instructor_lastName}?`
+      `Are you sure you want to remove ${displayName}?`
     );
     if (confirmRemove) {
       onRemoveInstructor(instructor);
@@ -112,21 +113,20 @@ export default function InstructorSection({
     return sum;
   };
 
-  // Helper Function to Sum total assigned hours for an instructor across all semesters and add to current total hours
-  const sumTotal = (instructorId) => {
-    // base hours for this instructor
-    const base =
-      addedInstructors.find(
-        (i) => String(i.instructor_id) === String(instructorId)
-      )?.total_hours || 0;
+  // Helper Function to calculate semester hours for an instructor in a semester
+  // Semester hours = hours per week * 15 weeks
+  const calculateSemesterHours = (instructorId, semester) => {
+    return sumHours(instructorId, semester) * 15;
+  };
 
-    // add up assigned hours from all semesters
-    let assigned = 0;
+  // Helper Function to Sum total assigned hours for an instructor across all semesters
+  const sumTotal = (instructorId) => {
+    // add up assigned hours from all semesters (each semester is 15 weeks)
+    let total = 0;
     for (const sem of ["winter", "springSummer", "fall"]) {
-      assigned += sumHours(instructorId, sem);
+      total += calculateSemesterHours(instructorId, sem);
     }
-    // 15 for number of weeks in a semester
-    return base + assigned * 15;
+    return total;
   };
 
   // Measure header + each row height and report up
@@ -198,7 +198,7 @@ export default function InstructorSection({
                     }}
                     onClick={() => handleRemoveInstructor(instructor)}
                     className="cursor-pointer hover:bg-red-100"
-                    title={`Click to remove ${instructor.instructor_name} ${instructor.instructor_lastName}`}
+                    title={`Click to remove ${instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`}`}
                   >
                     <td className="px-3 py-2 text-sm">
                       {instructor.contract_type}
@@ -224,9 +224,7 @@ export default function InstructorSection({
                       {`${sumTotal(instructor.instructor_id)}h`}
                     </td>
                     <td className="px-3 py-2 text-sm">
-                      {instructor.instructor_name +
-                        " " +
-                        instructor.instructor_lastName}
+                      {instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`}
                     </td>
                   </tr>
                 ))}
@@ -308,18 +306,17 @@ export default function InstructorSection({
                           {instructor.instructor_id}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {instructor.instructor_name}{" "}
-                          {instructor.instructor_lastName}
+                          {instructor.full_name || `${instructor.instructor_name} ${instructor.instructor_lastName}`}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instructor.contract_type}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {`${instructor.semester_hours} h`}
+                          0 h
                         </td>
                         <td className="px-3 py-2 text-sm font-semibold border-b border-gray-300">
-                          <span className={getUtilizationColor(instructor)}>
-                            {`${instructor.total_hours}/${
+                          <span className="bg-green-100 text-green-800">
+                            {`0/${
                               instructor.contract_type === "Casual"
                                 ? "800"
                                 : "615"

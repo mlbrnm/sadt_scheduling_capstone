@@ -8,17 +8,6 @@ import os
 import io
 from supabase_client import supabase
 
-#CHANGING STRUCTURE TO NOT HAVE TEMP FOLDER
-# create a folder to temporarily store the file that will be uploaded
-    # storing it in a folder takes up less space since it is not aved directly to memory 
-    # this also gives you a clear space where the file will exist and can control it's deletion
-# UPLOAD_FOLDER = os.path.join(os.getcwd(), "temp_uploads") # interacts with OS to get current working directory and creates (through join()) a "temp_uploads" folder
-# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-# makedirs() will create parent directories if needed
-# mkdir() will only create directory 1 level deep (technically works now, but won't work later if I want to add more folders to save the upload file into)
-# exist_ok= checks what to do if the folder already exists, True means it is ok if it exists (it will skip creation), False means it is not ok if folder already exists (it will raise an error)
-
-
 # function to check user authorization and get authorized user's email
 # def authorize_user(supabase):
 #     authorization_header = request.headers.get("Authorization")
@@ -75,7 +64,8 @@ def register_admin_routes(app):
             if not uploaded_by:
                 return jsonify({"error": "Missing user email"}), 400
             
-            # upload to Supabase storage
+            # upload to Supabase storage and database
+            # Note: save_uploaded_file() handles both storage AND database upload
             storage_result = save_uploaded_file(
                 file, 
                 uploaded_by, 
@@ -83,16 +73,14 @@ def register_admin_routes(app):
                 table_name = table_name,
                 bucket_name="uploads")
             
-
-            # upload to database
-            upload_table(file, table_name, uploaded_by)
+            # Fetch the newly uploaded data
             data = fetch_table_data(table_name)
-
 
             return jsonify({
                 "status": f"{table_name.capitalize()} uploaded successfully",
                 "data": data,
-                "file_storage": storage_result
+                "file_storage": storage_result,
+                "unmatched_courses": storage_result.get("unmatched_courses", [])
             }), 200
 
         except Exception as e:

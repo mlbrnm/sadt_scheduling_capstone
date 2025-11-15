@@ -27,8 +27,6 @@ from datetime import datetime
 
 import uuid
 
-import pandas as pd
-
 import requests
 
 from io import BytesIO
@@ -51,18 +49,6 @@ supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # : Client - type hint that says the variable supabase_client is an object instance 
 # of class Client (a class from the supabase package we imported)
 
-# CONNECTION TEST FUNCTION (will only work if courses table actually has data in it)
-def test_connection():
-    try:
-        # Attempt to fetch 1 row from the "courses" table
-        response = supabase_client.table("courses").select("*").limit(1).execute()
-        
-        # Check if data was returned
-        if response.data:
-            print("Supabase connected successfully!")
-
-    except Exception as e:
-        print("Supabase connection failed:", e)
 
 # dictionary to organize and map table columns to what they will be in the database
 TABLE_COLUMN_MAPPINGS = {
@@ -78,6 +64,8 @@ TABLE_COLUMN_MAPPINGS = {
         "Credential": "credential", 
         "Req_Elec": "req_elec", 
         "Delivery_Method": "delivery_method", 
+        "Online hrs": "online_hrs",
+        "Class hrs": "class_hrs",
         "AC_Name - Loading": "ac_name_loading", 
         "School": "school",
         "Exam_OTR": "exam_otr", 
@@ -86,6 +74,7 @@ TABLE_COLUMN_MAPPINGS = {
         "Winter": "winter", 
         "Spring_Summer": "spring_summer", 
         "Notes": "notes",
+        "Contact Hours": "contact_hours",
     },
     "instructors": {
         "Instructor_ID": "instructor_id",
@@ -105,8 +94,6 @@ TABLE_COLUMN_MAPPINGS = {
         "Action Plan": "action_plan",
         "Notes/Plan": "notes_plan",
         "Full Name": "full_name",
-        "FTE": "fte",
-        "Time off": "time_off",
     },
     "programs": {
         "Group": "group",
@@ -119,11 +106,13 @@ TABLE_COLUMN_MAPPINGS = {
         "Intakes": "intakes",
         "Duration": "duration",
         "Starting Date": "starting_date",
+        "Delivery": "delivery",
+        "Status": "status",
     }
 }
 
 
-# dictionary used to validate which columns are allowed in each table by using the other dictionary to get the values
+# dictionary used to validate which columns are allowed in each table by using the TABLE_COLUMN_MAPPINGS dictionary to get the values
 TABLE_VALID_COLUMNS = {
     "courses": set(TABLE_COLUMN_MAPPINGS["courses"].values()),
     "instructors": set(TABLE_COLUMN_MAPPINGS["instructors"].values()),
@@ -144,6 +133,32 @@ TABLE_PRIMARY_KEYS = {
     "programs": "program_id",
 }
 
+# CONNECTION TEST FUNCTION (will only work if courses table actually has data in it)
+def test_connection():
+    try:
+        # Attempt to fetch 1 row from the "courses" table
+        response = supabase_client.table("courses").select("*").limit(1).execute()
+        
+        # Check if data was returned
+        if response.data:
+            print("Supabase connected successfully!")
+
+    except Exception as e:
+        print("Supabase connection failed:", e)
+
+# def read_file_safely(file):
+#     filename = file if isinstance(file, str) else file.filename
+#     extension = os.path.splitext(filename)[1].lower()
+
+#     if extension in [".xlsx", ".xls"]:
+#         return pd.read_excel(file)
+    
+#     encodings = ["utf-8", "cp1252", "latin-1"]
+#     for enc in encodings:
+#         try:
+#             if hasattr(file, "seek"):
+
+
 # data is formatted for JSON format and database upload 
 #Created with help of AI - helped ensure all cases of Nan, None, and infinite numbers were accounted for
 def formatted_data(df, table_name):
@@ -151,15 +166,28 @@ def formatted_data(df, table_name):
     # variable to store the primary key to check against later 
     primary_key =  TABLE_PRIMARY_KEYS.get(table_name)
 
-    # Filter unexpected columns
+    # Filter out unexpected columns
     valid_columns = TABLE_VALID_COLUMNS.get(table_name, set()) # get the current set of valid columns for the according table
     df = df[[col for col in df.columns if col in valid_columns]] # loops through the columns in the dataframe to see if they are in valid_columns, if not they are dropped
 
-    # Timestamp and datetime values are converted to y-m-d format
-    df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
-    # map() applies the lambda function to all the elements of the dataframe 
-    # the lambda function converts the value to ISO if it is eitherpd.Timestamp or datetime
-    # if it isnt either, it is not changed
+#CAN MAYBE TAKE THIS OUT BY USING BELOW FUNCTION
+    # # Timestamp and datetime values are converted to y-m-d format
+    # df = df.applymap(lambda x: x.strftime("%Y-%m-%d") if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x) else x)
+    # # map() applies the lambda function to all the elements of the dataframe 
+    # # the lambda function converts the value to strftime("%Y-%m-%d") if it is eitherpd.Timestamp or datetime
+    # # if it isnt either, it is not changed
+
+    def clean_data(x):
+        if isinstance(x, (pd.Timestamp, datetime)) and pd.notna(x):
+            return x.strftime("%Y-%m-%d")
+        elif isinstance(x, float) and x.is_integer():
+            return int(x)
+        elif isinstance(x, str) and x.replace('.', '', 1).isdigit():
+            return int(float(x))
+        else:
+            return x
+    
+    df = df.applymap(clean_data)
 
     # Replace invalid numeric values
     df = df.replace({np.nan: None, np.inf: None, -np.inf: None})
@@ -176,7 +204,6 @@ def formatted_data(df, table_name):
         # Replace NaN and infinities with None (JSON-safe)
         df['years_as_temp'] = df['years_as_temp'].replace([np.nan, np.inf, -np.inf], None)
 
-
     # Drop rows where the primary key is missing
     if primary_key and primary_key in df.columns:
         df = df[df[primary_key].notnull()]
@@ -185,8 +212,28 @@ def formatted_data(df, table_name):
 
     # UUID is created if table is missing primary key altogether (like program table)
     if primary_key and primary_key not in df.columns:
-        df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))] # _ is a throwaway variable (we don't need it's value)
+        df[primary_key] = [str(uuid.uuid4()) for _ in range(len(df))]
         # primary key created for each row of dataframe and converted to string 
+
+    # Convert float to int for online_hrs and class_hrs
+    if table_name == "courses":
+        for col in ['online_hrs', 'class_hrs']:
+            if col in df.columns:
+                # Convert to numeric, coercing invalid entries to NaN
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                # Convert column to nullable integer type ('Int64')
+                # This handles np.nan by converting it to pd.NA
+                # It also converts 3.0 (float) to 3 (int)
+                try:
+                    df[col] = df[col].astype('Int64') 
+                except (TypeError, ValueError):
+                    # Fallback if casting fails
+                    pass 
+
+    # Final cleanup to ensure no NaN, pd.NA, or infinity values remain
+    df = df.replace({np.nan: None, np.inf: None, -np.inf: None, pd.NA: None})
+    df = df.where(pd.notnull(df), None)
 
     return df
 
@@ -277,6 +324,68 @@ def backup_table(table_name):
     except Exception as e:
         print("Backup failed: ", e)
 
+def link_courses_to_programs():
+    """
+    Links courses to programs by matching course.program_major to program.acronym.
+    Returns a list of courses that couldn't be matched to any program.
+    """
+    try:
+        # Fetch all programs
+        programs_response = supabase_client.table("programs").select("program_id, acronym, program").execute()
+        programs = programs_response.data or []
+        
+        # Fetch all courses
+        courses_response = supabase_client.table("courses").select("course_id, course_code, course_name, program_major").execute()
+        courses = courses_response.data or []
+        
+        if not programs:
+            print("Warning: No programs found in database. Cannot link courses.")
+            return [{"course_id": c["course_id"], "course_code": c.get("course_code"), "course_name": c.get("course_name"), "program_major": c.get("program_major")} for c in courses if c.get("program_major")]
+        
+        # Create a mapping of acronym (uppercase) to program_id
+        acronym_to_program_id = {}
+        for program in programs:
+            if program.get("acronym"):
+                acronym_to_program_id[program["acronym"].upper().strip()] = program["program_id"]
+        
+        unmatched_courses = []
+        matched_count = 0
+        
+        # Match each course to a program
+        for course in courses:
+            program_major = course.get("program_major")
+            
+            if not program_major:
+                # Skip courses without a program_major value
+                continue
+            
+            # Try to match by acronym (case-insensitive)
+            program_major_upper = program_major.upper().strip()
+            matched_program_id = acronym_to_program_id.get(program_major_upper)
+            
+            if matched_program_id:
+                # Update the course with the matched program_id
+                supabase_client.table("courses").update({
+                    "program_id": matched_program_id
+                }).eq("course_id", course["course_id"]).execute()
+                matched_count += 1
+            else:
+                # Add to unmatched list
+                unmatched_courses.append({
+                    "course_id": course["course_id"],
+                    "course_code": course.get("course_code", ""),
+                    "course_name": course.get("course_name", ""),
+                    "program_major": program_major
+                })
+        
+        print(f"Course linking complete: {matched_count} matched, {len(unmatched_courses)} unmatched")
+        return unmatched_courses
+        
+    except Exception as e:
+        print(f"Error linking courses to programs: {e}")
+        return []
+
+
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
     try:
         print("Starting save_uploaded_file()...")  # DEBUG
@@ -313,7 +422,7 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         clear_table_data(table_name)
 
         column_standardization = TABLE_COLUMN_MAPPINGS.get(table_name, {})
-        column_order = upload_file(file, table_name, column_standardization, user_email)
+        column_order = upload_file(file, table_name, column_standardization, user_email) #THIS IS WHERE ERROR HAPPENS - go check upload file function
         print("Column order:", column_order)  # DEBUG
 
         supabase.table("uploaded_files").insert({
@@ -327,12 +436,20 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         }).execute()
 
         print("File metadata inserted successfully")  # DEBUG
+        
+        # Link courses to programs after uploading courses or programs
+        unmatched_courses = []
+        if table_name in ["courses", "programs"]:
+            print(f"Linking courses to programs after {table_name} upload...")
+            unmatched_courses = link_courses_to_programs()
+        
         return {
             "version": next_version,
             "storage_path": storage_path,
             "original_name": file.filename,
             "table_name": table_name,
-            "column_order": column_order
+            "column_order": column_order,
+            "unmatched_courses": unmatched_courses
         }
 
     except Exception as e:
@@ -341,6 +458,30 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
 
 # created with help of AI - needed help understanding why filter was needed
 def clear_table_data(table_name):
+    # Define child table dependencies to handle foreign key constraints
+    CHILD_TABLES = {
+        "courses": ["instructor_course_qualifications"],
+        "instructors": ["instructor_course_qualifications", "instructor_availability"],
+        "programs": [],
+    }
+    
+    # Clear child tables first to avoid foreign key constraint violations
+    if table_name in CHILD_TABLES:
+        for child_table in CHILD_TABLES[table_name]:
+            try:
+                # Delete all rows from child table using a filter that matches all rows
+                # For instructor_course_qualifications, both instructor_id and course_id are part of primary key
+                # For instructor_availability, instructor_id is the primary key
+                # Using not_.is_(column, None) matches all rows since primary keys can't be NULL
+                if child_table == "instructor_course_qualifications":
+                    supabase_client.table(child_table).delete().not_.is_("course_id", None).execute()
+                elif child_table == "instructor_availability":
+                    supabase_client.table(child_table).delete().not_.is_("instructor_id", None).execute()
+                print(f"Cleared child table: {child_table}")
+            except Exception as e:
+                print(f"Warning: Could not clear {child_table}: {e}")
+    
+    # Then clear the main table
     primary_key = TABLE_PRIMARY_KEYS.get(table_name)
     # ensure table holds a primary key
     if not primary_key:
@@ -420,3 +561,34 @@ def restore_file_from_url(file_url, table_name, uploaded_by):
     file_like.filename = file_url.split("/")[-1] # gives the filename an attribute
 
     upload_table(file_like, table_name, uploaded_by)
+
+def get_user_info(id):
+    try:
+        print("Looking for user id:", id)
+        response = supabase_client.table("users").select("first_name, last_name, role").eq("id", id).single().execute()
+        print("Supabase response:", response)
+
+        if response.data:
+            user_data = response.data
+            full_name = f"{user_data['first_name']} {user_data['last_name']}"
+            role = user_data.get("role")
+            return {"full_name": full_name, "role": role}
+        else:
+            return "None"
+    
+    except Exception as e:
+        print("Error fetching user info", e)
+        return None
+
+
+#Get all the sections and their info (will get some from courses table) for a specified term
+def get_section_info (term):
+    try:
+        query = (supabase_client.table("sections")
+                .select("id, course_id, instructor_id, term, section_letter, timeslots, created_at, uploaded_at, semester_id, courses(has_lab, sessions_per_week, lecture_duration, lab_duration)")
+                .eq("term", term))
+        response = query.execute()
+        return response.data or []
+    except Exception as e:
+        print(f"Error fetching section for term {term}: {e}")
+        return []

@@ -20,7 +20,11 @@ CREATE TABLE IF NOT EXISTS courses (
     spring_summer character varying(1) null,
     notes text null,
     uploaded_by character varying(255) null,
-    uploaded_at character varying(50) null
+    uploaded_at character varying(50) null,
+    class_hrs integer null,
+    online_hrs integer null,
+    weekly_hours_required integer null,
+
 );
 
 -- Enable Row-Level Security
