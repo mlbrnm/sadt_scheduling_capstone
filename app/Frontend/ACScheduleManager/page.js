@@ -207,9 +207,96 @@ export default function ACScheduleManage() {
     router.push(`/Frontend/ScheduleManager/NewSchedule?schedule_id=${scheduleId}`);
   };
 
-  const handleSubmitSchedule = (scheduleId) => {
-    console.log("Submit schedule:", scheduleId);
-    // TODO: Implement schedule submission that goes to Aariyana's Vanessa page
+  const handleSubmitSchedule = async (scheduleId) => {
+    if (!confirm("Are you sure you want to submit this schedule? You will need to recall it to make further changes.")) {
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(`http://localhost:5000/schedules/${scheduleId}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit schedule");
+      }
+
+      setGenerateMessage({
+        type: "success",
+        text: data.message,
+      });
+
+      // Refresh the schedules list
+      if (!currentUser) return;
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      console.error("Error submitting schedule:", error);
+      setGenerateMessage({
+        type: "error",
+        text: error.message,
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRecallSchedule = async (scheduleId) => {
+    if (!confirm("Are you sure you want to recall this schedule? This will allow you to make changes again.")) {
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(`http://localhost:5000/schedules/${scheduleId}/recall`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to recall schedule");
+      }
+
+      setGenerateMessage({
+        type: "success",
+        text: data.message,
+      });
+
+      // Refresh the schedules list
+      if (!currentUser) return;
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      console.error("Error recalling schedule:", error);
+      setGenerateMessage({
+        type: "error",
+        text: error.message,
+      });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
