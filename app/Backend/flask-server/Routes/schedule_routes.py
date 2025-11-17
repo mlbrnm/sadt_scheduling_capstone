@@ -334,3 +334,51 @@ def register_schedule_routes(app):
             
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+    
+    @app.route("/schedules/<schedule_id>/submit", methods=["POST"])
+    def submit_schedule(schedule_id):
+        """
+        Submit a schedule by changing its submission_status to 'submitted'.
+        This prevents further modifications to the schedule.
+        """
+        try:
+            # Update the schedule's submission_status to 'submitted'
+            response = supabase_client.table("schedules").update({
+                "submission_status": "submitted",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            return jsonify({
+                "message": "Schedule submitted successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/schedules/<schedule_id>/recall", methods=["POST"])
+    def recall_schedule(schedule_id):
+        """
+        Recall a submitted schedule by changing its submission_status back to 'not_submitted'.
+        This allows the academic chair to make further modifications.
+        """
+        try:
+            # Update the schedule's submission_status to 'not_submitted'
+            response = supabase_client.table("schedules").update({
+                "submission_status": "not_submitted",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            return jsonify({
+                "message": "Schedule recalled successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
