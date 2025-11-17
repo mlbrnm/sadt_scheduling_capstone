@@ -469,17 +469,32 @@ export default function ACScheduleManage() {
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => handleCreateModifySchedule(schedule.id)}
-                  className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                  className={`button-primary text-white px-4 py-2 rounded-lg font-medium transition-colors ${
+                    schedule.submission_status === "submitted"
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "hover:bg-red-700 cursor-pointer"
+                  }`}
+                  disabled={schedule.submission_status === "submitted"}
                 >
-                  Create/Modify Schedule
+                  {schedule.submission_status === "submitted" ? "Schedule Locked" : "Create/Modify Schedule"}
                 </button>
-                <button
-                  onClick={() => handleSubmitSchedule(schedule.id)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
-                  disabled={schedule.completion_status !== "completed"}
-                >
-                  Submit
-                </button>
+                
+                {schedule.submission_status === "not_submitted" ? (
+                  <button
+                    onClick={() => handleSubmitSchedule(schedule.id)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={schedule.completion_status !== "completed"}
+                  >
+                    Submit
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRecallSchedule(schedule.id)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                  >
+                    Recall Schedule
+                  </button>
+                )}
               </div>
             </div>
           ))}
