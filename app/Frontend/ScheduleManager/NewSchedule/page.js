@@ -870,6 +870,7 @@ export default function NewSchedule() {
           setHideFullyAssignedInstructors={setHideFullyAssignedInstructors}
           instructorSortMode={instructorSortMode}
           setInstructorSortMode={setInstructorSortMode}
+          isScheduleSubmitted={isScheduleSubmitted}
         />
       </div>
 
