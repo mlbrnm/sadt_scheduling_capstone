@@ -56,6 +56,7 @@ export default function NewSchedule() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [saveStatus, setSaveStatus] = useState(null); // { type: 'success' | 'error', message: string }
   const [scheduleAcademicChairId, setScheduleAcademicChairId] = useState(null);
+  const [isScheduleSubmitted, setIsScheduleSubmitted] = useState(false);
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
