@@ -400,10 +400,14 @@ def register_schedule_routes(app):
         """
         try:
             # Fetch schedules with their academic chair information
-            schedules_response = supabase_client.table("schedules").select(
-                "id, academic_year, academic_chair_id, submission_status, approval_status, "
-                "associated_programs, created_at, updated_at"
-            ).execute()
+            try:
+                schedules_response = supabase_client.table("schedules").select(
+                    "id, academic_year, academic_chair_id, submission_status, approval_status, "
+                    "associated_programs, created_at, updated_at"
+                ).execute()
+            except Exception as e:
+                print(f"Error fetching schedules: {e}")
+                return jsonify({"error": "Failed to fetch schedules", "details": str(e)}), 500
             
             if not schedules_response.data:
                 return jsonify({"schedules": []}), 200
@@ -411,53 +415,72 @@ def register_schedule_routes(app):
             # Filter schedules: submitted, recalled, or approved
             filtered_schedules = [
                 s for s in schedules_response.data
-                if s["submission_status"] in ["submitted", "recalled"] or s["approval_status"] == "approved"
+                if s.get("submission_status") in ["submitted", "recalled"] or s.get("approval_status") == "approved"
             ]
             
             # Fetch all users to get academic chair names
-            users_response = supabase_client.table("users").select("id, first_name, last_name").execute()
-            users_map = {u["id"]: f"{u['first_name']} {u['last_name']}" for u in users_response.data}
+            try:
+                users_response = supabase_client.table("users").select("id, first_name, last_name").execute()
+                users_map = {u["id"]: f"{u.get('first_name', '')} {u.get('last_name', '')}" for u in (users_response.data or [])}
+            except Exception as e:
+                print(f"Error fetching users: {e}")
+                users_map = {}
             
             # Fetch all programs to get program names
-            programs_response = supabase_client.table("programs").select("program_id, program_name").execute()
-            programs_map = {p["program_id"]: p["program_name"] for p in programs_response.data}
+            try:
+                programs_response = supabase_client.table("programs").select("program_id, program_name").execute()
+                programs_map = {p["program_id"]: p.get("program_name", p["program_id"]) for p in (programs_response.data or [])}
+            except Exception as e:
+                print(f"Error fetching programs: {e}")
+                programs_map = {}
             
             # Build response data
             result = []
             for schedule in filtered_schedules:
-                # Get academic chair name
-                ac_name = users_map.get(schedule["academic_chair_id"], "Unknown")
-                
-                # Get program names (comma-separated in associated_programs)
-                program_ids = schedule.get("associated_programs", "").split(",") if schedule.get("associated_programs") else []
-                program_names = [programs_map.get(pid.strip(), pid.strip()) for pid in program_ids if pid.strip()]
-                
-                # Determine combined status
-                if schedule["approval_status"] == "approved":
-                    combined_status = "Approved"
-                elif schedule["submission_status"] == "recalled":
-                    combined_status = "Recalled"
-                else:
-                    combined_status = schedule["submission_status"].replace("_", " ").title()
-                
-                result.append({
-                    "schedule_id": schedule["id"],
-                    "title": f"{ac_name} - {schedule['academic_year']}",
-                    "academic_chair_name": ac_name,
-                    "academic_year": schedule["academic_year"],
-                    "programs": program_names,
-                    "status": combined_status,
-                    "submission_status": schedule["submission_status"],
-                    "approval_status": schedule["approval_status"],
-                    "date_submitted": schedule["updated_at"] or schedule["created_at"]
-                })
+                try:
+                    # Get academic chair name
+                    ac_name = users_map.get(schedule.get("academic_chair_id"), "Unknown")
+                    
+                    # Get program names (comma-separated in associated_programs)
+                    associated_programs_str = schedule.get("associated_programs", "") or ""
+                    program_ids = associated_programs_str.split(",") if associated_programs_str else []
+                    program_names = [programs_map.get(pid.strip(), pid.strip()) for pid in program_ids if pid.strip()]
+                    
+                    # Determine combined status
+                    approval_status = schedule.get("approval_status", "pending")
+                    submission_status = schedule.get("submission_status", "not_submitted")
+                    
+                    if approval_status == "approved":
+                        combined_status = "Approved"
+                    elif submission_status == "recalled":
+                        combined_status = "Recalled"
+                    else:
+                        combined_status = submission_status.replace("_", " ").title()
+                    
+                    result.append({
+                        "schedule_id": schedule["id"],
+                        "title": f"{ac_name} - {schedule.get('academic_year', 'N/A')}",
+                        "academic_chair_name": ac_name,
+                        "academic_year": schedule.get("academic_year"),
+                        "programs": program_names,
+                        "status": combined_status,
+                        "submission_status": submission_status,
+                        "approval_status": approval_status,
+                        "date_submitted": schedule.get("updated_at") or schedule.get("created_at")
+                    })
+                except Exception as e:
+                    print(f"Error processing schedule {schedule.get('id', 'unknown')}: {e}")
+                    continue
             
             # Sort by date submitted (most recent first)
-            result.sort(key=lambda x: x["date_submitted"], reverse=True)
+            result.sort(key=lambda x: x.get("date_submitted", ""), reverse=True)
             
             return jsonify({"schedules": result}), 200
             
         except Exception as e:
+            print(f"Error in list_admin_schedules: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 500
     
     @app.route("/admin/schedules/<schedule_id>/approve", methods=["POST"])
