@@ -25,7 +25,7 @@ function AddInstructorModal({onClose, onSuccess}) {
   // Auto-generate a random instructor ID
   useEffect(() => {
     const generateInstructorID = () => {
-      const generatedId = Math.floor(1000 + Math.random() * 9000);
+      const generatedId = Math.floor(1000 + Math.random() * 900000);
       setFormData((prevData) => ({
         ...prevData,
         instructor_id: generatedId.toString(),
@@ -45,7 +45,7 @@ function AddInstructorModal({onClose, onSuccess}) {
 
       // ensure both names have actual values
       if (firstName.trim() && lastName.trim()) {
-        const generatedId = Math.floor(1000 + Math.random() * 9000);
+        const generatedId = Math.floor(1000 + Math.random() * 900000);
         updatedFormData.instructor_id = generatedId.toString();
       } else {
         updatedFormData.instructor_id = "";
@@ -90,9 +90,24 @@ function AddInstructorModal({onClose, onSuccess}) {
         }
       );
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error(response.error || "Failed to add instructor");
+        throw new Error(result.error || "Failed to add instructor");
       }
+
+      // Clear the form for next time's use
+      setFormData({
+        instructor_name: "",
+        instructor_lastname: "",
+        instructor_id: "",
+        cch_target_ay2025: "",
+        contract_type: "",
+        instructor_status: "",
+        salaried_begin_date: "",
+        contract_end: "",
+        reporting_ac: "",
+      });
 
       onSuccess();
       onClose();
@@ -103,8 +118,8 @@ function AddInstructorModal({onClose, onSuccess}) {
     }
   }
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
     
     <form onSubmit={handleSubmit}>
       <div className="grid grid-cols-2 gap-4">
