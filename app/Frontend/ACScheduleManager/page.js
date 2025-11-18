@@ -511,8 +511,7 @@ export default function ACScheduleManage() {
                 {schedule.submission_status === "not_submitted" ? (
                   <button
                     onClick={() => handleSubmitSchedule(schedule.id)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    disabled={schedule.completion_status !== "completed"}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
                   >
                     Submit
                   </button>
