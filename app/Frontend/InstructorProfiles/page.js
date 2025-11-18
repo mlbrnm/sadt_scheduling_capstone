@@ -2,8 +2,267 @@
 // search filtering logic, were developed with the assistance of
 "use client"; //confirm component runs on client side
 
-import { useState, useEffect } from "react";
+import { useState, useEffect} from "react";
 import { useRouter } from "next/navigation";
+
+// data that will be stored in the database for the new added instructor
+function AddInstructorModal({onClose, onSuccess}) {
+  const [formData, setFormData] = useState({
+    instructor_name: "",
+    instructor_lastname: "",
+    instructor_id: "",
+    cch_target_ay2025: "",
+    contract_type: "",
+    instructor_status: "",
+    salaried_begin_date: "",
+    contract_end: "",
+    reporting_ac: "",
+  })
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Auto-generate a random instructor ID
+  useEffect(() => {
+    const generateInstructorID = () => {
+      const generatedId = Math.floor(1000 + Math.random() * 900000);
+      setFormData((prevData) => ({
+        ...prevData,
+        instructor_id: generatedId.toString(),
+      }));
+    };
+    generateInstructorID();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let updatedFormData = { ...formData, [name]: value };
+
+    // make sure id auto-generation happens only once both name fields are filled
+    if (name === 'instructor_name' || name === 'instructor_lastname') {
+      const firstName = name === 'instructor_name' ? value : formData.instructor_name;
+      const lastName = name === 'instructor_lastname' ? value : formData.instructor_lastname;
+
+      // ensure both names have actual values
+      if (firstName.trim() && lastName.trim()) {
+        const generatedId = Math.floor(1000 + Math.random() * 900000);
+        updatedFormData.instructor_id = generatedId.toString();
+      } else {
+        updatedFormData.instructor_id = "";
+      }
+    }
+
+    // determine CCH target based on contract type
+    if (name === 'contract_type') {
+      let cchTarget;
+      switch (value) {
+        case 'Permanent':
+          cchTarget = '615';
+          break;
+        case 'Temoporary':
+          cchTarget = '615';
+          break;
+        case 'Casual':
+          cchTarget = '800';
+          break;
+        default:
+          cchTarget = '';
+      }
+      updatedFormData.cch_target_ay2025 = cchTarget;
+    }
+    setFormData(updatedFormData);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/admin/data/instructors",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to add instructor");
+      }
+
+      // Clear the form for next time's use
+      setFormData({
+        instructor_name: "",
+        instructor_lastname: "",
+        instructor_id: "",
+        cch_target_ay2025: "",
+        contract_type: "",
+        instructor_status: "",
+        salaried_begin_date: "",
+        contract_end: "",
+        reporting_ac: "",
+      });
+
+      onSuccess();
+      onClose();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+  return (
+    <div className="fixed inset-0 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    
+    <form onSubmit={handleSubmit}>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          {/*First Name Input */}
+          <label className="block mb-1 font-medium text-sm">First Name</label>
+          <input 
+          type='text'
+          name='instructor_name'
+          value={formData.instructor_name}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          required
+          />
+        </div>
+        <div>
+          {/*Last Name Input */}
+          <label className="block mb-1 font-medium text-sm">Last Name</label>
+          <input 
+          type='text'
+          name='instructor_lastname'
+          value={formData.instructor_lastname}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          required
+          />
+        </div>
+        {/* Display Instructor ID */}
+        {formData.instructor_id && (
+          <div className="col-span-2">
+            <div className="bg-gray-100 p-2 rounded">
+              <p className="text-sm">
+                <span className="font-medium">Instructor ID:</span> {formData.instructor_id}
+              </p>
+            </div>
+          </div>
+        )}
+        {/* CCH Target (greyed out - will autofill upon contract type selection) */}
+        <div>
+          <label className="block mb-1 font-medium text-sm">CCH Target</label>
+          <input
+          type='text'
+          name='cch_target_ay2025'
+          value={formData.cch_target_ay2025}
+          readOnly
+          className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+          />
+        </div>
+        <div>
+          {/*Contract Type Dropdown */}
+          <label className="block mb-1 font-medium text-sm">Contract Type</label>
+          <select
+          name='contract_type'
+          value={formData.contract_type}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          required
+          >
+            <option selected value=''>Select Contract Type</option>
+            <option value='Permanent'>Permanent</option>
+            <option value='Temporary'>Temporary</option>
+            <option value='Casual'>Casual</option>
+          </select>
+        </div>
+        {/* Instructor Status Dropdown */}
+        <div>
+          <label className="block mb-1 font-medium text-sm"> Status</label>
+          <select
+          name='instructor_status'
+          value={formData.instructor_status}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          required
+          >
+            <option selected value=''>Select Status</option>
+            <option value='Active'>Active</option>
+            <option value='Inactive'>Inactive</option>
+            <option value='On Leave'>On Leave</option>
+            <option value='Retired'>Retired</option>
+            <option value='Renew'>Renew</option>
+            <option value='Expire'> Expire</option>
+          </select>
+        </div>
+        {/* Start Date Input */}
+        <div>
+          <label className="block mb-1 font-medium text-sm">Start Date</label>
+          <input
+          type='date'
+          name='salaried_begin_date'
+          value={formData.salaried_begin_date}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          required
+          />
+        </div>
+        {/* End Date Input */}
+        <div>
+          <label className="block mb-1 font-medium text-sm">End Date</label>
+          <input
+          type='date'
+          name='contract_end'
+          value={formData.contract_end}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          required
+          />
+        </div>
+        {/* Reporting AC Input */}
+        <div className="col-span-2">
+          <label className="block mb-1 font-medium text-sm">Reporting AC</label>
+          <input
+          type='text'
+          name='reporting_ac'
+          value={formData.reporting_ac}
+          onChange={handleChange}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          required
+          />
+        </div>
+      </div>
+      {/* Form Buttons */}
+      <div className="flex justify-end gap-3 mt-6 p-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="button-secondary px-4 py-2 rounded-lg"
+          disabled={isSubmitting}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="button-primary px-4 py-2 rounded-lg"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Saving..." : "Save"}
+        </button>
+      </div>
+    </form>
+    </div>
+    </div>
+  ); 
+};
 
 export default function InstructorProfiles() {
   //create the loading functional component for data loading from api
@@ -15,6 +274,9 @@ export default function InstructorProfiles() {
   //this will store the user's search to filter the table
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+
+  //this will control the ability to add new instructors into the system and database
+  const [showAddInstructorModal, setShowAddInstructorModal] = useState(false);
 
   //this is an array of objects for which columns will be diplayed in the instructor table
   //created with hep of AI - redundant code creation
@@ -82,10 +344,28 @@ export default function InstructorProfiles() {
         <input
           type="text"
           placeholder="Search..."
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 bg-white focus:ring-blue-700"
+          className="border-tertiary rounded-lg px-3 py-2 text-md text-primary w-1/3"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+
+        {/*Add Instructor Button*/}
+        <button
+          onClick={() => setShowAddInstructorModal(true)}
+          className="ml-4 button-primary text-white px-4 py-2 rounded-lg"
+        >
+          + Add New Instructor
+        </button>
+        {/* Render Add Instructor Modal */}
+        {showAddInstructorModal && (
+          <AddInstructorModal
+            onClose={() => setShowAddInstructorModal(false)}
+            onSuccess={() => {
+              setShowAddInstructorModal(false);
+              fetchInstructorData();
+            }}
+          />
+        )}
       </div>
 
       {/*Instructor Table*/}
