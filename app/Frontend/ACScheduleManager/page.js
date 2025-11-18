@@ -498,14 +498,13 @@ export default function ACScheduleManage() {
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => handleCreateModifySchedule(schedule.id)}
-                  className={`button-primary text-white px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`button-primary text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
                     schedule.submission_status === "submitted"
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "hover:bg-red-700 cursor-pointer"
+                      ? "bg-gray-500 hover:bg-gray-600"
+                      : "hover:bg-red-700"
                   }`}
-                  disabled={schedule.submission_status === "submitted"}
                 >
-                  {schedule.submission_status === "submitted" ? "Schedule Locked" : "Create/Modify Schedule"}
+                  {schedule.submission_status === "submitted" ? "View Schedule (Read-Only)" : "Create/Modify Schedule"}
                 </button>
                 
                 {schedule.submission_status === "not_submitted" ? (
