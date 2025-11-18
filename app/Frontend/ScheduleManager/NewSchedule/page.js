@@ -56,6 +56,7 @@ export default function NewSchedule() {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [saveStatus, setSaveStatus] = useState(null); // { type: 'success' | 'error', message: string }
   const [scheduleAcademicChairId, setScheduleAcademicChairId] = useState(null);
+  const [isScheduleSubmitted, setIsScheduleSubmitted] = useState(false);
   // Dynamic heights from InstructorSection for syncing row heights
   const [rowHeights, setRowHeights] = useState({}); // { [instructor_id]: pxNumber }
   const [headerHeight, setHeaderHeight] = useState(null);
@@ -126,10 +127,10 @@ export default function NewSchedule() {
     const loadSchedule = async () => {
       setLoadingSchedule(true);
       try {
-        // Fetch schedule metadata from Supabase to get academic_chair_id
+        // Fetch schedule metadata from Supabase to get academic_chair_id and submission_status
         const { data: scheduleMetadata, error: scheduleError } = await supabase
           .from("schedules")
-          .select("academic_chair_id")
+          .select("academic_chair_id, submission_status")
           .eq("id", scheduleId)
           .single();
 
@@ -137,6 +138,7 @@ export default function NewSchedule() {
           console.error("Error fetching schedule metadata:", scheduleError);
         } else if (scheduleMetadata) {
           setScheduleAcademicChairId(scheduleMetadata.academic_chair_id);
+          setIsScheduleSubmitted(scheduleMetadata.submission_status === "submitted");
         }
 
         const response = await fetch(
@@ -348,6 +350,7 @@ export default function NewSchedule() {
 
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
+    if (isScheduleSubmitted) return; // Prevent editing when submitted
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
       addedInstructors: [...prevDraft.addedInstructors, instructor],
@@ -356,6 +359,7 @@ export default function NewSchedule() {
 
   // Handler function to remove an instructor from the newScheduleDraft state
   const handleRemoveInstructor = (instructor) => {
+    if (isScheduleSubmitted) return; // Prevent editing when submitted
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
       addedInstructors: prevDraft.addedInstructors.filter(
@@ -372,6 +376,7 @@ export default function NewSchedule() {
 
   // Handler function to add a course to a specific semester in the newScheduleDraft state
   const handleAddCourseToSemester = (semester, course) => {
+    if (isScheduleSubmitted) return; // Prevent editing when submitted
     setNewScheduleDraft((prevDraft) => {
       const current = prevDraft.addedCoursesBySemester[semester] || [];
       // Prevent adding duplicates
@@ -389,6 +394,7 @@ export default function NewSchedule() {
 
   // Handler function to remove a course from semester in the newScheduleDraft state
   const handleRemoveCourseFromSemester = (semester, course) => {
+    if (isScheduleSubmitted) return; // Prevent editing when submitted
     setNewScheduleDraft((prevDraft) => ({
       ...prevDraft,
       addedCoursesBySemester: {
@@ -409,6 +415,7 @@ export default function NewSchedule() {
     semester,
     component // "class" | "online" | "both"
   ) => {
+    if (isScheduleSubmitted) return; // Prevent editing when submitted
     const courseId = String(course.course_id);
     const key = `${instructorId}-${courseId}-${semester}`;
 
@@ -784,6 +791,23 @@ export default function NewSchedule() {
 
   return (
     <div className="p-4">
+      {/* Read-Only Warning Banner */}
+      {isScheduleSubmitted && (
+        <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded-md">
+          <div className="flex items-center">
+            <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+            </svg>
+            <div>
+              <strong className="font-bold">Schedule Locked (Read-Only Mode)</strong>
+              <p className="text-sm mt-1">
+                This schedule has been submitted and is locked for editing. To make changes, you must first recall the schedule from the AC Schedule Manager page.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Loading State */}
       {(isLoading || loadingSchedule) && (
         <div className="mb-4 p-4 bg-blue-50 text-blue-700 rounded-md flex items-center">
@@ -846,6 +870,7 @@ export default function NewSchedule() {
           setHideFullyAssignedInstructors={setHideFullyAssignedInstructors}
           instructorSortMode={instructorSortMode}
           setInstructorSortMode={setInstructorSortMode}
+          isScheduleSubmitted={isScheduleSubmitted}
         />
       </div>
 
