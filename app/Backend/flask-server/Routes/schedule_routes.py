@@ -375,8 +375,166 @@ def register_schedule_routes(app):
             if not response.data:
                 return jsonify({"error": "Schedule not found"}), 404
             
+            # Log the recall action
+            supabase_client.table("schedule_submission_log").insert({
+                "schedule_id": schedule_id,
+                "action": "recalled",
+                "admin_user_id": None,
+                "comment": None
+            }).execute()
+            
             return jsonify({
                 "message": "Schedule recalled successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/admin/schedules/list", methods=["GET"])
+    def list_admin_schedules():
+        """
+        Fetch all schedules for admin review.
+        Returns schedules with submission_status in ('submitted', 'recalled') or approval_status = 'approved'.
+        Includes academic chair name, programs, and combined status.
+        """
+        try:
+            # Fetch schedules with their academic chair information
+            schedules_response = supabase_client.table("schedules").select(
+                "id, academic_year, academic_chair_id, submission_status, approval_status, "
+                "associated_programs, created_at, updated_at"
+            ).execute()
+            
+            if not schedules_response.data:
+                return jsonify({"schedules": []}), 200
+            
+            # Filter schedules: submitted, recalled, or approved
+            filtered_schedules = [
+                s for s in schedules_response.data
+                if s["submission_status"] in ["submitted", "recalled"] or s["approval_status"] == "approved"
+            ]
+            
+            # Fetch all users to get academic chair names
+            users_response = supabase_client.table("users").select("id, first_name, last_name").execute()
+            users_map = {u["id"]: f"{u['first_name']} {u['last_name']}" for u in users_response.data}
+            
+            # Fetch all programs to get program names
+            programs_response = supabase_client.table("programs").select("program_id, program_name").execute()
+            programs_map = {p["program_id"]: p["program_name"] for p in programs_response.data}
+            
+            # Build response data
+            result = []
+            for schedule in filtered_schedules:
+                # Get academic chair name
+                ac_name = users_map.get(schedule["academic_chair_id"], "Unknown")
+                
+                # Get program names (comma-separated in associated_programs)
+                program_ids = schedule.get("associated_programs", "").split(",") if schedule.get("associated_programs") else []
+                program_names = [programs_map.get(pid.strip(), pid.strip()) for pid in program_ids if pid.strip()]
+                
+                # Determine combined status
+                if schedule["approval_status"] == "approved":
+                    combined_status = "Approved"
+                elif schedule["submission_status"] == "recalled":
+                    combined_status = "Recalled"
+                else:
+                    combined_status = schedule["submission_status"].replace("_", " ").title()
+                
+                result.append({
+                    "schedule_id": schedule["id"],
+                    "title": f"{ac_name} - {schedule['academic_year']}",
+                    "academic_chair_name": ac_name,
+                    "academic_year": schedule["academic_year"],
+                    "programs": program_names,
+                    "status": combined_status,
+                    "submission_status": schedule["submission_status"],
+                    "approval_status": schedule["approval_status"],
+                    "date_submitted": schedule["updated_at"] or schedule["created_at"]
+                })
+            
+            # Sort by date submitted (most recent first)
+            result.sort(key=lambda x: x["date_submitted"], reverse=True)
+            
+            return jsonify({"schedules": result}), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/admin/schedules/<schedule_id>/approve", methods=["POST"])
+    def approve_schedule(schedule_id):
+        """
+        Approve a schedule by setting approval_status to 'approved'.
+        Optionally accepts a comment in the request body.
+        """
+        try:
+            data = request.get_json() or {}
+            comment = data.get("comment")
+            admin_user_id = data.get("admin_user_id")
+            
+            # Update the schedule's approval_status to 'approved'
+            response = supabase_client.table("schedules").update({
+                "approval_status": "approved",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            # Log the approval action
+            supabase_client.table("schedule_submission_log").insert({
+                "schedule_id": schedule_id,
+                "action": "approved",
+                "admin_user_id": admin_user_id,
+                "comment": comment
+            }).execute()
+            
+            return jsonify({
+                "message": "Schedule approved successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/admin/schedules/<schedule_id>/reject", methods=["POST"])
+    def reject_schedule(schedule_id):
+        """
+        Reject a schedule by setting approval_status to 'rejected' and 
+        submission_status back to 'not_submitted'.
+        Requires a comment (rejection reason) in the request body.
+        """
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return jsonify({"error": "Request body is required"}), 400
+            
+            comment = data.get("comment")
+            admin_user_id = data.get("admin_user_id")
+            
+            if not comment:
+                return jsonify({"error": "Comment (rejection reason) is required"}), 400
+            
+            # Update the schedule's approval_status to 'rejected' and submission_status to 'not_submitted'
+            response = supabase_client.table("schedules").update({
+                "approval_status": "rejected",
+                "submission_status": "not_submitted",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            # Log the rejection action
+            supabase_client.table("schedule_submission_log").insert({
+                "schedule_id": schedule_id,
+                "action": "rejected",
+                "admin_user_id": admin_user_id,
+                "comment": comment
+            }).execute()
+            
+            return jsonify({
+                "message": "Schedule rejected successfully",
                 "schedule": response.data[0]
             }), 200
             
