@@ -13,6 +13,7 @@ export default function ACScheduleManage() {
   const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState(null);
+  const [scheduleAssignments, setScheduleAssignments] = useState({}); // Store assignments by schedule_id
   const router = useRouter();
 
   // Get current user
@@ -61,6 +62,31 @@ export default function ACScheduleManage() {
 
         setSchedules(schedulesData || []);
         setPrograms(programsData || []);
+
+        // Fetch assignments for each schedule
+        if (schedulesData && schedulesData.length > 0) {
+          const assignmentsMap = {};
+          
+          for (const schedule of schedulesData) {
+            try {
+              const response = await fetch(
+                `http://localhost:5000/schedules/${schedule.id}/json`
+              );
+              
+              if (response.ok) {
+                const data = await response.json();
+                assignmentsMap[schedule.id] = data.assignments || {};
+              } else {
+                assignmentsMap[schedule.id] = {};
+              }
+            } catch (err) {
+              console.error(`Error fetching assignments for schedule ${schedule.id}:`, err);
+              assignmentsMap[schedule.id] = {};
+            }
+          }
+          
+          setScheduleAssignments(assignmentsMap);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         setError(error.message);
@@ -403,7 +429,10 @@ export default function ACScheduleManage() {
 
               {/* Programs & Courses Detail */}
               <div className="mb-4">
-                <ACProgramCourses academicChairId={schedule.academic_chair_id} />
+                <ACProgramCourses 
+                  academicChairId={schedule.academic_chair_id} 
+                  assignments={scheduleAssignments[schedule.id] || {}}
+                />
               </div>
 
               {/* Status Indicators */}

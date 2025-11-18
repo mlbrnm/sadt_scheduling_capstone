@@ -428,8 +428,8 @@ def register_schedule_routes(app):
             
             # Fetch all programs to get program names
             try:
-                programs_response = supabase_client.table("programs").select("program_id, program_name").execute()
-                programs_map = {p["program_id"]: p.get("program_name", p["program_id"]) for p in (programs_response.data or [])}
+                programs_response = supabase_client.table("programs").select("program_id, program").execute()
+                programs_map = {p["program_id"]: p.get("program", p["program_id"]) for p in (programs_response.data or [])}
             except Exception as e:
                 print(f"Error fetching programs: {e}")
                 programs_map = {}
