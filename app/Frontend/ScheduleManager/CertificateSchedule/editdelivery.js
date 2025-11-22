@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import InstructorPicker from "./instructorpicker";
-import { calculateTotalHours } from "./hoursUtil";
+import { calculateTotalHours, convertToMinutes } from "./hoursUtil";
 import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
 
 export default function EditDelivery({
@@ -26,6 +26,7 @@ export default function EditDelivery({
   const [drafts, setDrafts] = useState([]);
   const [pickerForIndex, setPickerForIndex] = useState(null); // which row is currently picking instructor
   const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Convert flags to boolean days
   const flagsToDays = (delivery) => ({
@@ -37,42 +38,32 @@ export default function EditDelivery({
     s: (delivery.s || "").toUpperCase() === "X",
   });
 
+  // Helper to create initial draft from delivery object
+  const makeDraftFromDelivery = (delivery) => ({
+    ...delivery,
+    start_date: delivery.start_date || "",
+    end_date: delivery.end_date || "",
+    start_time: delivery.start_time || "",
+    end_time: delivery.end_time || "",
+    days: flagsToDays(delivery),
+    assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+    assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+    assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+    prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+  });
+
   // Initialize/append drafts when deliveries change
   useEffect(() => {
     setDrafts((prevDrafts) => {
       // if editor just opened
       if (prevDrafts.length === 0) {
-        return deliveries.map((delivery) => ({
-          ...delivery,
-          start_date: delivery.start_date || "",
-          end_date: delivery.end_date || "",
-          start_time: delivery.start_time || "",
-          end_time: delivery.end_time || "",
-          days: flagsToDays(delivery),
-          assigned_instructor_id: delivery.assigned_instructor_id ?? null,
-          assigned_instructor_name: delivery.assigned_instructor_name ?? null,
-          assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
-          prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
-        }));
+        return deliveries.map(makeDraftFromDelivery);
       }
       // Append newly added deliveries
       if (deliveries.length > prevDrafts.length) {
         const newDrafts = [...prevDrafts];
         for (let i = prevDrafts.length; i < deliveries.length; i++) {
-          const delivery = deliveries[i];
-          newDrafts.push({
-            ...delivery,
-            start_date: delivery.start_date || "",
-            end_date: delivery.end_date || "",
-            start_time: delivery.start_time || "",
-            end_time: delivery.end_time || "",
-            days: flagsToDays(delivery),
-            assigned_instructor_id: delivery.assigned_instructor_id ?? null,
-            assigned_instructor_name: delivery.assigned_instructor_name ?? null,
-            assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
-            prev_assigned_instructor_id:
-              delivery.assigned_instructor_id ?? null,
-          });
+          newDrafts.push(makeDraftFromDelivery(deliveries[i]));
         }
         return newDrafts;
       }
@@ -136,8 +127,101 @@ export default function EditDelivery({
     setPickerForIndex(null);
   };
 
+  // Validate draft times
+  const validateDraft = (draft) => {
+    const draftErrors = {};
+
+    // DATE VALIDATION
+    const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])\/\d{4}$/;
+    const hasStartDate = !!draft.start_date;
+    const hasEndDate = !!draft.end_date;
+
+    // Both dates required
+    if (!hasStartDate) {
+      draftErrors.start_date = "Start Date required!";
+    }
+    if (!hasEndDate) {
+      draftErrors.end_date = "End Date required!";
+    }
+
+    // Invalid format checks
+    if (hasStartDate && !dateRegex.test(draft.start_date)) {
+      draftErrors.start_date = "Enter a valid date (MM/DD/YYYY)";
+    }
+    if (hasEndDate && !dateRegex.test(draft.end_date)) {
+      draftErrors.end_date = "Enter a valid date (MM/DD/YYYY)";
+    }
+
+    // Order check (only if both valid)
+    if (
+      hasStartDate &&
+      hasEndDate &&
+      !draftErrors.start_date &&
+      !draftErrors.end_date
+    ) {
+      const start = new Date(draft.start_date);
+      const end = new Date(draft.end_date);
+      if (end < start) {
+        draftErrors.end_date = "End Date must be After Start Date!";
+      }
+    }
+
+    // HOURS VALIDATION
+    const hasStart = !!draft.start_time;
+    const hasEnd = !!draft.end_time;
+
+    const start = hasStart ? convertToMinutes(draft.start_time) : null;
+    const end = hasEnd ? convertToMinutes(draft.end_time) : null;
+
+    // Both times required
+    if (!hasStart) {
+      draftErrors.start_time = "Start Time required!";
+    }
+    if (!hasEnd) {
+      draftErrors.end_time = "End Time required!";
+    }
+
+    // Invalid format checks
+    if (hasStart && start === null) {
+      draftErrors.start_time = "Enter a valid time (HH:MM)";
+    }
+    if (hasEnd && end === null) {
+      draftErrors.end_time = "Enter a valid time (HH:MM)";
+    }
+
+    // Order check (only if both valid)
+    if (
+      start != null &&
+      end != null &&
+      end <= start &&
+      !draftErrors.start_time &&
+      !draftErrors.end_time
+    ) {
+      draftErrors.end_time = "End Time must be After Start Time!";
+    }
+    return draftErrors;
+  };
+
   // Handle saving edits
   const handleSaveEdit = () => {
+    const validationErrors = {};
+    // Validate each draft row
+    drafts.forEach((draft) => {
+      const draftErrors = validateDraft(draft);
+      if (Object.keys(draftErrors).length > 0) {
+        validationErrors[draft.deliveryId] = draftErrors;
+      }
+    });
+
+    // If any errors, set errors state and abort save
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    // Clear errors if validation passes
+    setErrors({});
+
     // Convert drafts back to delivery shape with 'X' from day booleans
     const updated = drafts.map((d) => ({
       ...d,
@@ -222,6 +306,7 @@ export default function EditDelivery({
               const index = drafts.findIndex(
                 (d) => d.deliveryId === draft.deliveryId
               );
+              const draftErrors = errors[draft.deliveryId] || {};
               const previewHours = draft.assigned_instructor_id
                 ? getPreviewTotalHours(draft.assigned_instructor_id)
                 : null;
@@ -234,14 +319,23 @@ export default function EditDelivery({
                         Start Date:
                       </label>
                       <input
-                        type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
-                        className="border border-gray-300 rounded p-1 w-32"
+                        type="text" // CHANGE TO DATE INPUT WHEN BACKEND DECIDES ON FORMAT!!!
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.start_date
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.start_date}
                         onChange={(e) =>
                           updateField(index, "start_date", e.target.value)
                         }
                         placeholder="MM/DD/YYYY"
                       />
+                      {draftErrors.start_date && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.start_date}
+                        </span>
+                      )}
                     </div>
                     {/* End Date */}
                     <div className="flex flex-col">
@@ -249,14 +343,23 @@ export default function EditDelivery({
                         End Date:
                       </label>
                       <input
-                        type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
-                        className="border border-gray-300 rounded p-1 w-32"
+                        type="text" // CHANGE TO DATE INPUT WHEN BACKEND DECIDES ON FORMAT!!!
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.end_date
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.end_date}
                         onChange={(e) =>
                           updateField(index, "end_date", e.target.value)
                         }
                         placeholder="MM/DD/YYYY"
                       />
+                      {draftErrors.end_date && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.end_date}
+                        </span>
+                      )}
                     </div>
                     {/* Start Time */}
                     <div className="flex flex-col">
@@ -265,12 +368,21 @@ export default function EditDelivery({
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-32"
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.start_time
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.start_time}
                         onChange={(e) =>
                           updateField(index, "start_time", e.target.value)
                         }
                       />
+                      {draftErrors.start_time && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.start_time}
+                        </span>
+                      )}
                     </div>
                     {/* End Time */}
                     <div className="flex flex-col">
@@ -279,12 +391,21 @@ export default function EditDelivery({
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-32"
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.end_time
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.end_time}
                         onChange={(e) =>
                           updateField(index, "end_time", e.target.value)
                         }
                       />
+                      {draftErrors.end_time && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.end_time}
+                        </span>
+                      )}
                     </div>
                     {/* Days Selection */}
                     <div>

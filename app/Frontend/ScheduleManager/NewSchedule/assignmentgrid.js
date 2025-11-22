@@ -9,6 +9,36 @@ const semester_titles = {
 };
 const maxSections = 6; // A–F
 
+// Helper function to get subtle grey background gradient for sections A-F
+const getSectionBgColor = (sectionIndex, isHeader = false, isAdd = false) => {
+  if (isAdd) return 'bg-gray-50 opacity-50';
+  
+  // Progressive grey values from A (lightest) to F (darkest)
+  const greyValues = [50, 100, 150, 200, 250, 300]; // A, B, C, D, E, F
+  const greyValue = greyValues[sectionIndex] || 50;
+  
+  // For custom values not in Tailwind (150, 250), use inline style
+  if (greyValue === 150 || greyValue === 250) {
+    return null; // Will use inline style instead
+  }
+  
+  // Return Tailwind class for standard values
+  return isHeader ? `bg-gray-${greyValue}` : `bg-gray-${greyValue}`;
+};
+
+// Helper function to get inline style for custom grey values
+const getSectionInlineStyle = (sectionIndex) => {
+  const greyValues = [50, 100, 150, 200, 250, 300];
+  const greyValue = greyValues[sectionIndex] || 50;
+  
+  if (greyValue === 150) {
+    return { backgroundColor: '#f1f1f1' }; // Between gray-100 and gray-200
+  } else if (greyValue === 250) {
+    return { backgroundColor: '#d9d9d9' }; // Between gray-200 and gray-300
+  }
+  return {};
+};
+
 export default function AssignmentGrid({
   addedInstructors,
   addedCoursesBySemester,
@@ -81,21 +111,26 @@ export default function AssignmentGrid({
                 style={{ height: headerH }}
               >
                 <div className="grid grid-cols-6 h-full">
-                  {Array.from({ length: maxSections }, (_, i) => (
-                    <div
-                      key={i}
-                      className={`text-center text-sm font-semibold border box-border flex items-center justify-center ${
-                        course.__isAdd ? "bg-gray-50 opacity-50" : "bg-gray-100"
-                      }`}
-                      title={
-                        course.__isAdd
-                          ? "Add Course to create sections"
-                          : `Section ${String.fromCharCode(65 + i)} header`
-                      }
-                    >
-                      {String.fromCharCode(65 + i)}
-                    </div>
-                  ))}
+                  {Array.from({ length: maxSections }, (_, i) => {
+                    const bgColor = getSectionBgColor(i, true, course.__isAdd);
+                    const inlineStyle = bgColor ? {} : getSectionInlineStyle(i);
+                    return (
+                      <div
+                        key={i}
+                        className={`text-center text-sm font-semibold border box-border flex items-center justify-center ${
+                          bgColor || ""
+                        }`}
+                        style={inlineStyle}
+                        title={
+                          course.__isAdd
+                            ? "Add Course to create sections"
+                            : `Section ${String.fromCharCode(65 + i)} header`
+                        }
+                      >
+                        {String.fromCharCode(65 + i)}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -155,13 +190,18 @@ export default function AssignmentGrid({
                           }
                           const baseClasses =
                             "relative border box-border text-[11px] flex items-center justify-center";
+                          
+                          // Get gradient background color for unassigned cells
+                          const gradientBgColor = !ownsAny && !isAdd ? getSectionBgColor(i, false, false) : null;
+                          const gradientInlineStyle = gradientBgColor === null && !ownsAny && !isAdd ? getSectionInlineStyle(i) : {};
+                          
                           const bgClasses = isAdd
                             ? "bg-gray-50 opacity-50 cursor-not-allowed"
                             : ownsBoth
                             ? "bg-green-200 hover:bg-red-200 font-semibold cursor-pointer"
                             : ownsAny
                             ? "bg-green-200 hover:bg-red-200 font-semibold cursor-pointer"
-                            : "bg-gray-50 hover:bg-green-100 font-semibold cursor-pointer";
+                            : `${gradientBgColor || ""} hover:bg-green-100 font-semibold cursor-pointer`;
 
                           return (
                             <button
@@ -169,6 +209,7 @@ export default function AssignmentGrid({
                               disabled={isAdd}
                               aria-pressed={ownsAny}
                               className={`${baseClasses} ${bgClasses} group`}
+                              style={gradientInlineStyle}
                               onClick={
                                 isAdd
                                   ? undefined

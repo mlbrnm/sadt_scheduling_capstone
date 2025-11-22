@@ -9,6 +9,7 @@ export default function ScheduleControls({
   setHideFullyAssignedInstructors,
   instructorSortMode,
   setInstructorSortMode,
+  isScheduleSubmitted = false,
 }) {
   // Handler to select a specific semester tab
   const handleSemesterTabClick = (semester) => {
@@ -104,14 +105,24 @@ export default function ScheduleControls({
           {/* Right Side: Save and Clear Buttons */}
           <div className="space-x-3">
             <button
-              className="mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer"
+              className={`mr-2 px-4 py-2 rounded-md ${
+                isScheduleSubmitted
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+              }`}
               onClick={onSave}
+              disabled={isScheduleSubmitted}
             >
               Save
             </button>
             <button
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer"
+              className={`px-4 py-2 rounded-md ${
+                isScheduleSubmitted
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-gray-200 text-gray-800 hover:bg-gray-300 cursor-pointer"
+              }`}
               onClick={onClear}
+              disabled={isScheduleSubmitted}
             >
               Clear
             </button>

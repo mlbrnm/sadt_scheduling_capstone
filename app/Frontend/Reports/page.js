@@ -3,6 +3,9 @@ import { useState } from "react";
 import dummyInstructorData from "./dummyinstructordata.json";
 import dummyProgramData from "./dummyprogramdata.json";
 import dummyutilizationData from "./dummyutilizationdata.json";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import { DOT_NEXT_ALIAS } from "next/dist/lib/constants";
 
 export default function Reports() {
   const reportTypes = ["Program", "Instructor", "Instructor Utilization"];
@@ -145,6 +148,82 @@ export default function Reports() {
     // setIsLoading(false);
     setError(null);
   };
+
+  //PDF VERSION of GENERATE PROGRAM REPORT with Actual Stats Computed
+  const generateProgramReportPDF = () => {
+    if (!dataForReport || dataForReport.length === 0) {
+      setError("No data available for report generation.");
+      // setIsLoading(false);
+      return;
+    }
+    // map the data + add additional details
+    const programInfo = dataForReport[0];
+    if (!programInfo || !programInfo.programData) {
+      setError("No changes to data since previous report. Unable to generate new report.");
+      setIsLoading(false);
+      return;
+    }
+
+    const doc = new jsPDF();
+    const semesterData = programInfo.programData;
+    const numSems = semesterData.length;
+
+    // Computation of Program Report Summary Stats
+    const avgApplications = (semesterData.reduce((sum, semester) => sum + semester.applied, 0) / numSems).toFixed(2);
+    const avgNewStudents = (semesterData.reduce((sum, semester) => sum + semester.newlyAdmitted, 0) / numSems).toFixed(2);
+    const avgContinuing = (semesterData.reduce((sum, semester) => sum + semester.continuing, 0) / numSems).toFixed(2);
+    const avgGraduating = (semesterData.reduce((sum, semester) => sum + semester.graduated, 0) / numSems).toFixed(2);
+    const avgEnrolled = (semesterData.reduce((sum, semester) => sum + (semester.newlyAdmitted + semester.continuing), 0) / numSems).toFixed(2);
+    const avgAdmissionRate = (semesterData.reduce((sum, semester) => sum + semester.admissionRate, 0) / numSems).toFixed(2);
+    const totalAdmitted = semesterData.reduce((sum, semester) => sum + semester.newlyAdmitted, 0);
+    const totalApplied = semesterData.reduce((sum, semester) => sum + semester.applied, 0);
+    const overallAdmissionRate = ((totalAdmitted / totalApplied) * 100).toFixed(2);
+
+    // DOCUMENT FORMATTING  **Size computations, alignments, fonts, etc. for formatting purposes generated using Perplexity AI, based on sample documents created by Aariyana, uploaded to AI engine to ensure proper formatting and alignment settings achieved in final generated document**
+
+    // MAIN Header/Title
+    let yPos = 20;
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(programInfo.program, 105, yPos, { align: "center" });
+    yPos += 10;
+    // Data Available for ___ Semesters 
+    doc.setFontSize(12);
+    doc.text(`Data Available for ${numSems} Semesters`, 105, yPos, { align: "center" });
+    yPos += 15;
+    // Current AC: _______
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "underlined");
+    doc.text('Current AC:', 20, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(programInfo.currentAC, 48, yPos);
+    yPos += 15;
+    // Summary Stats Header
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text('Summary Statistics', 20, yPos);
+    yPos += 10;
+    // Associated Semesters
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(100, 100, 100);
+    doc.text('Associated Semesters with Available Data:', 20, yPos);
+    yPos += 7;
+    // List of Semesters w Available Data
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
+    semesterData.forEach((semester) => {
+      doc.text(`- ${semester.semester}`, 25, yPos);
+      yPos += 5;
+    });
+    yPos += 8;
+    
+
+
+
+
+
+
 
   //TEMPORARY COMMENT OUTT!!!!
   // GENERATE INSTRUCTOR REPORT
@@ -552,4 +631,5 @@ export default function Reports() {
     )}
     </div>
   );
+}
 }

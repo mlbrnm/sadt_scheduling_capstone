@@ -334,3 +334,232 @@ def register_schedule_routes(app):
             
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+    
+    @app.route("/schedules/<schedule_id>/submit", methods=["POST"])
+    def submit_schedule(schedule_id):
+        """
+        Submit a schedule by changing its submission_status to 'submitted'.
+        This prevents further modifications to the schedule.
+        """
+        try:
+            # Update the schedule's submission_status to 'submitted'
+            response = supabase_client.table("schedules").update({
+                "submission_status": "submitted",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            return jsonify({
+                "message": "Schedule submitted successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/schedules/<schedule_id>/recall", methods=["POST"])
+    def recall_schedule(schedule_id):
+        """
+        Recall a submitted schedule by changing its submission_status back to 'not_submitted'.
+        This allows the academic chair to make further modifications.
+        """
+        try:
+            # Update the schedule's submission_status to 'not_submitted'
+            response = supabase_client.table("schedules").update({
+                "submission_status": "not_submitted",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            # Log the recall action
+            supabase_client.table("schedule_submission_log").insert({
+                "schedule_id": schedule_id,
+                "action": "recalled",
+                "admin_user_id": None,
+                "comment": None
+            }).execute()
+            
+            return jsonify({
+                "message": "Schedule recalled successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/admin/schedules/list", methods=["GET"])
+    def list_admin_schedules():
+        """
+        Fetch all schedules for admin review.
+        Returns schedules with submission_status in ('submitted', 'recalled') or approval_status = 'approved'.
+        Includes academic chair name, programs, and combined status.
+        """
+        try:
+            # Fetch schedules with their academic chair information
+            try:
+                schedules_response = supabase_client.table("schedules").select(
+                    "id, academic_year, academic_chair_id, submission_status, approval_status, "
+                    "associated_programs, created_at, updated_at"
+                ).execute()
+            except Exception as e:
+                print(f"Error fetching schedules: {e}")
+                return jsonify({"error": "Failed to fetch schedules", "details": str(e)}), 500
+            
+            if not schedules_response.data:
+                return jsonify({"schedules": []}), 200
+            
+            # Filter schedules: submitted, recalled, or approved
+            filtered_schedules = [
+                s for s in schedules_response.data
+                if s.get("submission_status") in ["submitted", "recalled"] or s.get("approval_status") == "approved"
+            ]
+            
+            # Fetch all users to get academic chair names
+            try:
+                users_response = supabase_client.table("users").select("id, first_name, last_name").execute()
+                users_map = {u["id"]: f"{u.get('first_name', '')} {u.get('last_name', '')}" for u in (users_response.data or [])}
+            except Exception as e:
+                print(f"Error fetching users: {e}")
+                users_map = {}
+            
+            # Fetch all programs to get program names
+            try:
+                programs_response = supabase_client.table("programs").select("program_id, program").execute()
+                programs_map = {p["program_id"]: p.get("program", p["program_id"]) for p in (programs_response.data or [])}
+            except Exception as e:
+                print(f"Error fetching programs: {e}")
+                programs_map = {}
+            
+            # Build response data
+            result = []
+            for schedule in filtered_schedules:
+                try:
+                    # Get academic chair name
+                    ac_name = users_map.get(schedule.get("academic_chair_id"), "Unknown")
+                    
+                    # Get program names (comma-separated in associated_programs)
+                    associated_programs_str = schedule.get("associated_programs", "") or ""
+                    program_ids = associated_programs_str.split(",") if associated_programs_str else []
+                    program_names = [programs_map.get(pid.strip(), pid.strip()) for pid in program_ids if pid.strip()]
+                    
+                    # Determine combined status
+                    approval_status = schedule.get("approval_status", "pending")
+                    submission_status = schedule.get("submission_status", "not_submitted")
+                    
+                    if approval_status == "approved":
+                        combined_status = "Approved"
+                    elif submission_status == "recalled":
+                        combined_status = "Recalled"
+                    else:
+                        combined_status = submission_status.replace("_", " ").title()
+                    
+                    result.append({
+                        "schedule_id": schedule["id"],
+                        "title": f"{ac_name} - {schedule.get('academic_year', 'N/A')}",
+                        "academic_chair_name": ac_name,
+                        "academic_year": schedule.get("academic_year"),
+                        "programs": program_names,
+                        "status": combined_status,
+                        "submission_status": submission_status,
+                        "approval_status": approval_status,
+                        "date_submitted": schedule.get("updated_at") or schedule.get("created_at")
+                    })
+                except Exception as e:
+                    print(f"Error processing schedule {schedule.get('id', 'unknown')}: {e}")
+                    continue
+            
+            # Sort by date submitted (most recent first)
+            result.sort(key=lambda x: x.get("date_submitted", ""), reverse=True)
+            
+            return jsonify({"schedules": result}), 200
+            
+        except Exception as e:
+            print(f"Error in list_admin_schedules: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/admin/schedules/<schedule_id>/approve", methods=["POST"])
+    def approve_schedule(schedule_id):
+        """
+        Approve a schedule by setting approval_status to 'approved'.
+        Optionally accepts a comment in the request body.
+        """
+        try:
+            data = request.get_json() or {}
+            comment = data.get("comment")
+            admin_user_id = data.get("admin_user_id")
+            
+            # Update the schedule's approval_status to 'approved'
+            response = supabase_client.table("schedules").update({
+                "approval_status": "approved",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            # Log the approval action
+            supabase_client.table("schedule_submission_log").insert({
+                "schedule_id": schedule_id,
+                "action": "approved",
+                "admin_user_id": admin_user_id,
+                "comment": comment
+            }).execute()
+            
+            return jsonify({
+                "message": "Schedule approved successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @app.route("/admin/schedules/<schedule_id>/reject", methods=["POST"])
+    def reject_schedule(schedule_id):
+        """
+        Reject a schedule by setting approval_status to 'rejected' and 
+        submission_status back to 'not_submitted'.
+        Requires a comment (rejection reason) in the request body.
+        """
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return jsonify({"error": "Request body is required"}), 400
+            
+            comment = data.get("comment")
+            admin_user_id = data.get("admin_user_id")
+            
+            if not comment:
+                return jsonify({"error": "Comment (rejection reason) is required"}), 400
+            
+            # Update the schedule's approval_status to 'rejected' and submission_status to 'not_submitted'
+            response = supabase_client.table("schedules").update({
+                "approval_status": "rejected",
+                "submission_status": "not_submitted",
+                "updated_at": "now()"
+            }).eq("id", schedule_id).execute()
+            
+            if not response.data:
+                return jsonify({"error": "Schedule not found"}), 404
+            
+            # Log the rejection action
+            supabase_client.table("schedule_submission_log").insert({
+                "schedule_id": schedule_id,
+                "action": "rejected",
+                "admin_user_id": admin_user_id,
+                "comment": comment
+            }).execute()
+            
+            return jsonify({
+                "message": "Schedule rejected successfully",
+                "schedule": response.data[0]
+            }), 200
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
