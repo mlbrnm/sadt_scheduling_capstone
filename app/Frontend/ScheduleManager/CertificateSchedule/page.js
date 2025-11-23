@@ -260,6 +260,48 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds((prevIds) => [...prevIds, deliveryToAdd.deliveryId]);
   };
 
+  // Handler to add ALL deliveries for this Certificate (all sections)
+  const handleAddAllDeliveries = () => {
+    if (selectedDeliveryIds.length === 0) return;
+
+    // Use the FIRST selected delivery as the anchor
+    const anchorId = selectedDeliveryIds[0];
+    const anchorRow = certificatesData.find(
+      (row) => row.deliveryId === anchorId
+    );
+    if (!anchorRow) return;
+
+    const key = certificateGroupKey(anchorRow);
+
+    // Find all deliveries in the SAME certificate group (course_code, term, program, semester_code)
+    const certificateGroupDeliveries = certificatesData.filter(
+      (row) =>
+        row.course_code === key.course_code &&
+        row.term === key.term &&
+        row.program === key.program &&
+        row.semester_code === key.semester_code
+    );
+    if (certificateGroupDeliveries.length === 0) return;
+    const allDeliveryIds = certificateGroupDeliveries.map(
+      (row) => row.deliveryId
+    );
+
+    // Check if we already have them all
+    const alreadyHasAll = allDeliveryIds.every((id) =>
+      selectedDeliveryIds.includes(id)
+    );
+    if (alreadyHasAll) {
+      alert(
+        `All deliveries are already added for ${anchorRow.course_name} (${anchorRow.course_code}).`
+      );
+      return;
+    }
+    setSelectedDeliveryIds((prevIds) => {
+      const newIdsSet = new Set([...prevIds, ...allDeliveryIds]);
+      return Array.from(newIdsSet);
+    });
+  };
+
   // EDIT VIEW
   if (selectedDeliveryIds.length > 0) {
     // Find the actual selected delivery objects from selected IDs to send to EditDelivery
@@ -275,6 +317,7 @@ export default function CertificateSchedule() {
           onCancel={handleCancelEdit}
           onAddSiblingDelivery={handleAddSiblingDelivery}
           onAddSection={handleAddSection}
+          onAddAllDeliveries={handleAddAllDeliveries}
           instructors={instructorsData}
         />
       </div>
