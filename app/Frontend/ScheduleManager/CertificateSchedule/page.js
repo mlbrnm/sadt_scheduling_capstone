@@ -33,7 +33,7 @@ export default function CertificateSchedule() {
         setCertificatesData(
           mockCertificates.map((row) => ({
             ...row,
-            // TEMPORARY FRONTEND-ONLY ID
+            // TEMPORARY FRONTEND ONLY ID
             // BACKEND SHOULD REPLACE THIS WITH A REAL PERSISTENT ID!!!
             deliveryId:
               row.deliveryId ||
