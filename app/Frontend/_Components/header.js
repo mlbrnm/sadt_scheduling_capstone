@@ -150,11 +150,11 @@ export default function Header() {
             {/* Dropdown (only if submenu exists) */}
             {tab.submenu && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full
+                className="absolute left-0 right-0 top-full
                      background-headerfooter
                      opacity-0 pointer-events-none
                      group-hover:opacity-100 group-hover:pointer-events-auto
-                     z-50 min-w-full"
+                     z-50"
               >
                 {tab.submenu.map((item, subIndex) => (
                   <Link
