@@ -75,7 +75,7 @@ export default function Header() {
     //{ label: "Home", href: "/Frontend/Home" },
     {
       label: "Schedule Manager",
-      href: "/Frontend/ScheduleManager/NewSchedule", //THIS GOES RIGHT TO NEW SCHEDULE
+      href: "/Frontend/ScheduleManager", // Goes to approval list rather than NewSchedule.
     },
     { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
     { label: "Upload Data", href: "/Frontend/UploadData" },

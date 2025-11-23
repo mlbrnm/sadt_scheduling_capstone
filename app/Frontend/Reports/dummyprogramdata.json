@@ -1,61 +1,111 @@
 [
     {
-        "program": "ITS",
+        "program": "ITS Diploma",
         "programType": "Diploma",
-        "admissionRate": "65%",
+        "currentAC": "Roderick MacIntosh",
         "programData": [
             {
+                "semester": "Fall 2025",
+                "applied": 150,
+                "admissionRate": 43.33,
+                "newlyAdmitted": 65,
+                "continuing": 245,
+                "graduated": 30,
+                "academicChair": "Roderick MacIntosh"
+            },
+            {
+                "semester": "Spring 2025",
+                "applied": 80,
+                "admissionRate": 87.5,
+                "newlyAdmitted": 70,
+                "continuing": 200,
+                "graduated": 25,
+                "academicChair": "Roderick MacIntosh"
+            },
+            {
+                "semester": "Winter 2025",
+                "applied": 90,
+                "admissionRate": 84.44,
+                "newlyAdmitted": 76,
+                "continuing": 249,
+                "graduated": 112,
+                "academicChair": "Roderick MacIntosh"
+            },
+            {
+                "semester": "Fall 2024",
+                "applied": 120,
+                "admissionRate": 66.67,
+                "newlyAdmitted": 80,
+                "continuing": 233,
+                "graduated": 100,
+                "academicChair": "Roderick MacIntosh"
+            },
+            {
+                "semester": "Spring 2024",
+                "applied": 200,
+                "admissionRate": 75.0,
+                "newlyAdmitted": 150,
+                "continuing": 163,
+                "graduated": 60,
+                "academicChair": "Roderick MacIntosh"
+            },
+            {
                 "semester": "Winter 2024",
-                "studentsApplied": 150,
-                "studentsNewlyAdmitted": 65,
-                "studentsContinuing": 120,
-                "studentsCompleted": 30,
+                "applied": 77,
+                "admissionRate": 85.71,
+                "newlyAdmitted": 66,
+                "continuing": 144,
+                "graduated": 67,
                 "academicChair": "Roderick MacIntosh"
             },
             {
                 "semester": "Fall 2023",
-                "studentsApplied": 80,
-                "studentsNewlyAdmitted": 70,
-                "studentsContinuing": 110,
-                "studentsCompleted": 25,
+                "applied": 312,
+                "admissionRate": 45.19,
+                "newlyAdmitted": 141,
+                "continuing": 85,
+                "graduated": 17,
                 "academicChair": "Roderick MacIntosh"
             }
         ]
     },
     {
-        "program": "SD",
+        "program": "SD Diploma",
         "programType": "Diploma",
-        "admissionRate": "76%",
+        "currentAC": "Ali Moussa",
         "programData": [
             {
                 "semester": "Spring 2025",
-                "studentsApplied": 90,
-                "studentsNewlyAdmitted": 76,
-                "studentsContinuing": 185,
-                "studentsCompleted": 112,
+                "applied": 90,
+                "admissionRate": 84.44,
+                "newlyAdmitted": 76,
+                "continuing": 185,
+                "graduated": 112,
                 "academicChair": "Ali Moussa"
             },
             {
                 "semester": "Winter 2025",
-                "studentsApplied": 120,
-                "studentsNewlyAdmitted": 80,
-                "studentsContinuing": 190,
-                "studentsCompleted": 100,
-                "academicChair": "Omar Wahdan"
+                "applied": 120,
+                "admissionRate": 66.67,
+                "newlyAdmitted": 80,
+                "continuing": 190,
+                "graduated": 100,
+                "academicChair": "Ali Moussa"
             }
         ]
     },
     {
         "program": "SD BTech",
         "programType": "Bachelors",
-        "admissionRate": "75%",
+        "currentAC": "Omar Wahdan",
         "programData": [
             {
                 "semester": "Fall 2025",
-                "studentsApplied": 200,
-                "studentsNewlyAdmitted": 150,
-                "studentsContinuing": 0,
-                "studentsCompleted": 0,
+                "applied": 200,
+                "admissionRate": 75.0,
+                "newlyAdmitted": 150,
+                "continuing": 0,
+                "graduated": 0,
                 "academicChair": "Omar Wahdan"
             }
         ]

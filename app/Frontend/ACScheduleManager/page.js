@@ -13,6 +13,7 @@ export default function ACScheduleManage() {
   const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState(null);
+  const [scheduleAssignments, setScheduleAssignments] = useState({}); // Store assignments by schedule_id
   const router = useRouter();
 
   // Get current user
@@ -61,6 +62,31 @@ export default function ACScheduleManage() {
 
         setSchedules(schedulesData || []);
         setPrograms(programsData || []);
+
+        // Fetch assignments for each schedule
+        if (schedulesData && schedulesData.length > 0) {
+          const assignmentsMap = {};
+          
+          for (const schedule of schedulesData) {
+            try {
+              const response = await fetch(
+                `http://localhost:5000/schedules/${schedule.id}/json`
+              );
+              
+              if (response.ok) {
+                const data = await response.json();
+                assignmentsMap[schedule.id] = data.assignments || {};
+              } else {
+                assignmentsMap[schedule.id] = {};
+              }
+            } catch (err) {
+              console.error(`Error fetching assignments for schedule ${schedule.id}:`, err);
+              assignmentsMap[schedule.id] = {};
+            }
+          }
+          
+          setScheduleAssignments(assignmentsMap);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         setError(error.message);
@@ -207,9 +233,96 @@ export default function ACScheduleManage() {
     router.push(`/Frontend/ScheduleManager/NewSchedule?schedule_id=${scheduleId}`);
   };
 
-  const handleSubmitSchedule = (scheduleId) => {
-    console.log("Submit schedule:", scheduleId);
-    // TODO: Implement schedule submission that goes to Aariyana's Vanessa page
+  const handleSubmitSchedule = async (scheduleId) => {
+    if (!confirm("Are you sure you want to submit this schedule? You will need to recall it to make further changes.")) {
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(`http://localhost:5000/schedules/${scheduleId}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit schedule");
+      }
+
+      setGenerateMessage({
+        type: "success",
+        text: data.message,
+      });
+
+      // Refresh the schedules list
+      if (!currentUser) return;
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      console.error("Error submitting schedule:", error);
+      setGenerateMessage({
+        type: "error",
+        text: error.message,
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRecallSchedule = async (scheduleId) => {
+    if (!confirm("Are you sure you want to recall this schedule? This will allow you to make changes again.")) {
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(`http://localhost:5000/schedules/${scheduleId}/recall`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to recall schedule");
+      }
+
+      setGenerateMessage({
+        type: "success",
+        text: data.message,
+      });
+
+      // Refresh the schedules list
+      if (!currentUser) return;
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      console.error("Error recalling schedule:", error);
+      setGenerateMessage({
+        type: "error",
+        text: error.message,
+      });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -316,7 +429,10 @@ export default function ACScheduleManage() {
 
               {/* Programs & Courses Detail */}
               <div className="mb-4">
-                <ACProgramCourses academicChairId={schedule.academic_chair_id} />
+                <ACProgramCourses 
+                  academicChairId={schedule.academic_chair_id} 
+                  assignments={scheduleAssignments[schedule.id] || {}}
+                />
               </div>
 
               {/* Status Indicators */}
@@ -382,17 +498,30 @@ export default function ACScheduleManage() {
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => handleCreateModifySchedule(schedule.id)}
-                  className="button-primary hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                  className={`button-primary text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
+                    schedule.submission_status === "submitted"
+                      ? "bg-gray-500 hover:bg-gray-600"
+                      : "hover:bg-red-700"
+                  }`}
                 >
-                  Create/Modify Schedule
+                  {schedule.submission_status === "submitted" ? "View Schedule (Read-Only)" : "Create/Modify Schedule"}
                 </button>
-                <button
-                  onClick={() => handleSubmitSchedule(schedule.id)}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
-                  disabled={schedule.completion_status !== "completed"}
-                >
-                  Submit
-                </button>
+                
+                {schedule.submission_status === "not_submitted" ? (
+                  <button
+                    onClick={() => handleSubmitSchedule(schedule.id)}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                  >
+                    Submit
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRecallSchedule(schedule.id)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                  >
+                    Recall Schedule
+                  </button>
+                )}
               </div>
             </div>
           ))}
