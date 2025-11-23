@@ -31,7 +31,18 @@ export default function CertificateSchedule() {
         // const instructorData = await response.json();
         setInstructorsData(mockInstructors);
         setCertificatesData(
-          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // ADD deliveryId as INDEX IS FINE FOR NOW. BACKEND CHANGE THIS LATER!!!
+          mockCertificates.map((row) => ({
+            ...row,
+            // TEMPORARY FRONTEND-ONLY ID
+            // BACKEND SHOULD REPLACE THIS WITH A REAL PERSISTENT ID!!!
+            deliveryId:
+              row.deliveryId ||
+              (typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${row.course_code || "COURSE"}-${row.section || "SEC"}-${
+                    row.start_date || "DATE"
+                  }-${Math.random().toString(36).slice(2, 8)}`),
+          }))
         );
       } catch (error) {
         setError("Failed to fetch data.");
