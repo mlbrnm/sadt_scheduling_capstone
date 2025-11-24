@@ -32,6 +32,7 @@ export default function CertificateSchedule() {
           mockCertificates.map((row) => ({
             ...row,
             // TEMPORARY FRONTEND ONLY ID
+            // USED AI Q: How to generate a random id using UUID in Next.js
             deliveryId:
               row.deliveryId ||
               (typeof crypto !== "undefined" && crypto.randomUUID
