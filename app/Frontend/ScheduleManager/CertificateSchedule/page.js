@@ -1,4 +1,4 @@
-// BACKEND CHECK handoverNotes.md FILE AND REMOVE AFTER.
+// BACKEND CHECK handoverNotes.md FILE.
 "use client";
 import { useState, useEffect } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
@@ -9,11 +9,11 @@ import EditDelivery from "./editdelivery";
 import { calculateTotalHoursFromRow } from "./hoursUtil";
 
 export default function CertificateSchedule() {
-  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates - REPLACE WITH API CALL
-  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
+  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates
+  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
   const [isDeliveryPickerOpen, setIsDeliveryPickerOpen] = useState(false);
-  // Dropdowns state STATIC HARDCODED FOR NOW. BACKEND CHANGE THIS LATER!!!
+  // Dropdowns state STATIC HARDCODED FOR NOW.
   const [year, setYear] = useState("2026");
   const [semester, setSemester] = useState("Winter");
   const [program, setProgram] = useState("ISS");
@@ -27,14 +27,11 @@ export default function CertificateSchedule() {
       setError(null);
       try {
         // REPLACE WITH API CALL
-        // const response = await fetch("");
-        // const instructorData = await response.json();
         setInstructorsData(mockInstructors);
         setCertificatesData(
           mockCertificates.map((row) => ({
             ...row,
             // TEMPORARY FRONTEND ONLY ID
-            // BACKEND SHOULD REPLACE THIS WITH A REAL PERSISTENT ID!!!
             deliveryId:
               row.deliveryId ||
               (typeof crypto !== "undefined" && crypto.randomUUID
@@ -383,16 +380,35 @@ export default function CertificateSchedule() {
         </button>
       </div>
 
-      {/* Certificate Table */}
-      <CertificatesTable certificatesData={certificatesData} />
+      {/* Loading and Error States */}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+          <p>{error}</p>
+        </div>
+      )}
+      {/* Loading Spinner */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700" />
+          <span className="ml-2">Loading certificates...</span>
+        </div>
+      ) : (
+        !error && (
+          <>
+            {/* Certificate Table */}
+            <CertificatesTable certificatesData={certificatesData} />
 
-      {/* Delivery Picker Modal */}
-      {isDeliveryPickerOpen && (
-        <DeliveryPicker
-          certificatesData={certificatesData}
-          onSelectDelivery={handleSelectDelivery}
-          onClose={() => setIsDeliveryPickerOpen(false)}
-        />
+            {/* Delivery Picker Modal */}
+            {isDeliveryPickerOpen && (
+              <DeliveryPicker
+                certificatesData={certificatesData}
+                onSelectDelivery={handleSelectDelivery}
+                onClose={() => setIsDeliveryPickerOpen(false)}
+              />
+            )}
+          </>
+        )
       )}
     </div>
   );
