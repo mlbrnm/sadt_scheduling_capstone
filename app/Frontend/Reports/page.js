@@ -6,7 +6,7 @@ import dummyutilizationData from "./dummyutilizationdata.json";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { DOT_NEXT_ALIAS } from "next/dist/lib/constants";
-import { Chart, Tooltip } from "chart.js/auto";
+import { Chart } from "chart.js/auto";
 
 export default function Reports() {
   const reportTypes = ["Program", "Instructor", "Instructor Utilization"];
@@ -49,8 +49,8 @@ export default function Reports() {
     setSelectedProgram(program);
     //mapping program options to according ones in dummy data
     const programMapping = {
-      "Software Development Diploma": "SD",
-      "ITS Diploma": "ITS",
+      "Software Development Diploma": "SD Diploma",
+      "ITS Diploma": "ITS Diploma",
       "Software Development BTech": "SD BTech",
     };
     //find the corresponding data for the selected program
@@ -348,7 +348,23 @@ export default function Reports() {
     setError(null);
   };
 
-  //PDF VERSION of GENERATE PROGRAM REPORT with Actual Stats Computed
+  // Setup page header for PDF report depending on report type
+  const generatePDFHeader = (doc, reportType) => {
+    // Date of Generation (today)
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    // Type of report
+    doc.setFontSize(10);
+    doc.text(`Report Type: ${reportType} Report`, 15, 10);
+    // Place date on RHS
+    doc.text(`Date of Generation: ${dateStr}`, 175, 15, { align: "right" });
+    // Horizontal line separator
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(20, 18, 190, 18);
+  };
+
+  //////////////////////////// PDF VERSION of GENERATE PROGRAM REPORT with Actual Stats Computed /////////////////////////////////
   const generateProgramReportPDF = async () => {
     if (!dataForReport || dataForReport.length === 0) {
       setError("No data available for report generation.");
@@ -363,6 +379,7 @@ export default function Reports() {
       return;
     }
 
+    // Create PDF and set data to be used in it
     const doc = new jsPDF();
     const semesterData = programInfo.programData;
     const numSems = semesterData.length;
@@ -381,9 +398,15 @@ export default function Reports() {
 
     // DOCUMENT FORMATTING  **Skeleton code generated using Perplexity AI, based on sample documents created by Aariyana, uploaded to AI engine to ensure proper formatting and alignment settings achieved in final generated document. AI helped with the math for size computations, provided general measurements for font size, line spacing and alignments for layout. Aariyana customized the generated skeleton to fit needs and personalized to make sure reports generate aesthetically and as close as possible to the template documents she created.**
 
+    // Create 
+
+    // _____________________START OF DOCUMENT_______________________
+    // __________PAGE 1 OF DOCUMENT__________
+    // Page Header
+    generatePDFHeader(doc, "Program");
     // MAIN Header/Title
     let yPos = 20;
-    doc.setFontSize(18);
+    doc.setFontSize(26);
     doc.setFont("helvetica", "bold");
     doc.text(programInfo.program, 105, yPos, { align: "center" });
     yPos += 10;
@@ -397,20 +420,23 @@ export default function Reports() {
     doc.text('Current AC:', 20, yPos);
     doc.setFont("helvetica", "normal");
     doc.text(programInfo.currentAC, 48, yPos);
+    doc.line(48, yPos + 1, 48 + doc.getTextWidth(programInfo.currentAC), yPos + 1); // underline AC Name
     yPos += 15;
 
     // Summary Stats Header
-    doc.setFontSize(14);
+    doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text('Summary Statistics', 20, yPos);
     yPos += 10;
 
     // Associated Semesters
+    let leftYPos = yPos;
     doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
-    doc.setTextColor(100, 100, 100);
-    doc.text('Associated Semesters with Available Data:', 20, yPos);
-    yPos += 7;
+    doc.text('Associated Semesters', 20, leftYPos);
+    doc.text('(with available data):', 20, leftYPos + 5);
+    leftYPos += 12;
+
     // List of Semesters w Available Data
     doc.setFont("helvetica", "normal");
     doc.setTextColor(0, 0, 0);
@@ -425,7 +451,7 @@ export default function Reports() {
     doc.setFontSize(8);
     doc.text('Enrolled Students = Newly Admitted + Continuing', 20, yPos);
     yPos += 8;
-    // Avg app per semester
+    // Avg apps per semester
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.text(`Average Applications per Semester: `, 20, yPos);
@@ -456,6 +482,12 @@ export default function Reports() {
     doc.setFont("helvetica", "bold");
     doc.text(`${avgEnrolled}`, 145, yPos);
     yPos += 10;
+
+    // Generate Donut Pie Chart
+    const donutChartImage = await generateProgramReportDonutChart(totalAdmitted, totalApplied, overallAggregateAdmitRate);  
+
+    // Add donut pie chart to right side of page
+    doc.addImage(donutChartImage, 'PNG', 115, yPos, 10, 80, 80);
 
     // Avg of Semester Admission Rates
     doc.setFont("helvetica", "bold");
@@ -499,33 +531,64 @@ export default function Reports() {
     yPos += 15;
     doc.setTextColor(0, 0, 0);
 
-    // Generate charts
-    const donutChartImage = await generateProgramReportDonutChart(totalAdmitted, totalApplied, overallAggregateAdmitRate);
+    // __________PAGE 2 OF DOCUMENT__________
+
+    // Generate Bar charts
     const admitRateBarChartImage = await generateAdmitRatePerIndivSem(semesterData);
     const admitEnrollBarChartImage = await generateAdmitEnrollByStudentType(semesterData);
 
-    // Add Donut Chart to PDF
-    // doc.addPage();
-    // yPos = 20;
-    doc.text('Summary Statistics', 105, yPos, { align: 'center' });
-    yPos += 10;
-    doc.addImage(donutChartImage, 'PNG', 55, yPos, 100, 100);
-    yPos += 110;
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "italic");
-    doc.text('Associated Semesters', 105, yPos, { align: "center" });
-    yPos += 8;
-    doc.setFont("helvetica", "bold");
-    semesterData.forEach((semester) => {
-      doc.text(`• ${semester.semester}`, 105, yPos, { align: "center" });
-      yPos += 6;
-    });
     // Add Bar Charts to PDF
     doc.addPage();
     yPos = 20;
     doc.addImage(admitRateBarChartImage, 'PNG', 10, yPos, 190, 95);
     yPos += 105;
     doc.addImage(admitEnrollBarChartImage, 'PNG', 10, yPos, 190, 95);
+
+    // ___________________PAGE 3 OF DOCUMENT____________________
+    doc.addPage();
+    yPos = 20;
+    // Subsection Title Header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text('Available Data', 105, yPos, { align: "center" });
+    yPos += 10;
+
+    // Data Per Semester
+    // Assign section of page for each semester's data
+    semesterData.forEach((semester, index) => {
+      // check if new page is needed
+      if (yPos > 240) { // if not enough space for next semester's data
+        doc.addPage();
+        yPos = 20; // reset yPos for new page
+      }
+      // Semester Header
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(semester.semester, 20, yPos);
+      yPos += 8;
+      // Semester Data
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Application Received: ${semester.applied}`, 25, yPos);
+      yPos += 6;
+      doc.text(`Admission Rate: ${semester.admissionRate}%`, 25, yPos);
+      yPos += 6;
+      doc.text(`Newly Students: ${semester.newlyAdmitted}`, 25, yPos);
+      yPos += 6;
+      doc.text(`Continuing Students: ${semester.continuing}`, 25, yPos);
+      yPos += 6;
+      doc.text(`Graduating Students: ${semester.graduated}`, 25, yPos);
+      yPos += 6;
+      doc.text(`Enrolled Students (New + Continuing): ${semester.newlyAdmitted + semester.continuing}`, 25, yPos);
+      yPos += 12;
+    });
+
+    // Report Ending Signal
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text('--- End of Report ---', 105, yPos, { align: "center" });
+
+    // ______________________END OF DOCUMENT_______________________
 
     // Save the PDF
     doc.save(`Program_Report_${programInfo.program.replace(/\s+/g, "_")}.pdf`);
