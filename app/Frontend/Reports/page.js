@@ -6,6 +6,7 @@ import dummyutilizationData from "./dummyutilizationdata.json";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { DOT_NEXT_ALIAS } from "next/dist/lib/constants";
+import { Chart, Tooltip } from "chart.js/auto";
 
 export default function Reports() {
   const reportTypes = ["Program", "Instructor", "Instructor Utilization"];
@@ -93,6 +94,72 @@ export default function Reports() {
     } else if (selectedReportType === "Instructor Utilization") {
       generateInstructorUtilizationReport();
     }
+  };
+
+  // GENERATE DONUT PIE CHART SHOWING OVERALL AGGREGATE ADMISSION RATE
+  const generateProgramReportDonutChart = async (totalAdmitted, totalApplied, overallAggregateAdmitRate) => {
+    return new Promise((resolve) => {
+      //set area for where chart will be created
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      // tell system that chart is 2D
+      const ctx = canvas.getContext('2d');
+      // creating the new chart object
+      const chart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Admitted Students', 'Non-Admitted Students'],
+          datasets: [{
+            data: [totalAdmitted, totalApplied - totalAdmitted],
+            backgroundColor: ['#2E7D32', '#C8E6C9'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              enabled: false
+            }
+          },
+          cutout: '70%',
+        },
+        plugins: [{
+          id: 'textCenter',
+          beforeDraw: (chart) => {
+            const ctx = chart.ctx;
+            const width = chart.width;
+            const height = chart.height;
+
+            ctx.restore();
+            ctx.font = 'bold 24px Helvetica';
+            ctx.fillStyle = '#000';
+            ctx.textBaseline = 'middle';
+
+            const text = `${overallAggregateAdmitRate}%`;
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            const textY = height / 2-20;
+            ctx.fillText(text, textX, textY);
+            ctx.font = '12px Helvetica';
+            const subtext1 = `with ${totalAdmitted} students admitted`;
+            const subtext2 = `out of ${totalApplied} total applications`;
+            ctx.fillText(subtext1, Math.round((width - ctx.measureText(subtext1).width) / 2), height / 2 + 10);
+            ctx.fillText(subtext2, Math.round((width - ctx.measureText(subtext2).width) / 2), height / 2 + 25);
+
+            ctx.save();
+          }
+        }]
+      });
+      setTimeout(() => {
+        const imageData = canvas.toDataURL('image/png');
+        chart.destroy();
+        resolve(imageData);
+      }, 1000); // wait for 1 second to ensure chart is rendered
+    });
   };
 
   // GENERATE PROGRAM REPORT
@@ -293,7 +360,7 @@ export default function Reports() {
     doc.setFontSize(8);
     doc.text(`with ${totalAdmitted} students admitted out of ${totalApplied} total applications received`, 25, yPos);
     yPos += 5;
-    
+
     doc.setFontSize(8);
     doc.setTextColor(100, 100, 100);
     doc.text('(∑ New Students Across All Semesters ÷ ∑ Applications Across All Semesters) × 100', 25, yPos);
