@@ -55,31 +55,67 @@ export default function ScheduleManager() {
     fetchSchedules();
   }, []);
 
+  // Helper function to get submission status priority
+  const getStatusPriority = (status) => {
+    switch (status.toLowerCase()) {
+      case "submitted":
+        return 1;
+      case "recalled":
+        return 2;
+      case "approved":
+        return 3;
+      case "rejected":
+        return 4;
+      case "not submitted":
+        return 5;
+      default:
+        return 6;
+    }
+  };
+
   // Sorting the schedules
   const sortData = (data, option) => {
     if (!option) return data;
-    else {
-      switch (option) {
-        case "newest":
-          return [...data].sort((a, b) => new Date(b.date_submitted) - new Date(a.date_submitted));
-        case "oldest":
-          return [...data].sort((a, b) => new Date(a.date_submitted) - new Date(b.date_submitted));
-        case "title-a":
-          return [...data].sort((a, b) => a.title.localeCompare(b.title));
-        case "title-z":
-          return [...data].sort((a, b) => b.title.localeCompare(a.title));
-        case "program":
-          return [...data].sort((a, b) => {
-            const programA = a.programs[0] || "";
-            const programB = b.programs[0] || "";
-            return programA.localeCompare(programB);
-          });
-        case "status":
-          return [...data].sort((a, b) => a.status.localeCompare(b.status));
-        default:
-          return data;
-      }
+    
+    // Create a copy of the data
+    const sortedData = [...data];
+    
+    // Apply sorting based on option
+    switch (option) {
+      case "newest":
+        sortedData.sort((a, b) => new Date(b.date_submitted) - new Date(a.date_submitted));
+        break;
+      case "oldest":
+        sortedData.sort((a, b) => new Date(a.date_submitted) - new Date(b.date_submitted));
+        break;
+      case "title-a":
+        sortedData.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case "title-z":
+        sortedData.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case "program":
+        sortedData.sort((a, b) => {
+          const programA = a.programs[0] || "";
+          const programB = b.programs[0] || "";
+          return programA.localeCompare(programB);
+        });
+        break;
+      case "status":
+        sortedData.sort((a, b) => a.status.localeCompare(b.status));
+        break;
+      default:
+        break;
     }
+    
+    // Then apply primary sort by submission status priority
+    sortedData.sort((a, b) => {
+      const priorityA = getStatusPriority(a.status);
+      const priorityB = getStatusPriority(b.status);
+      return priorityA - priorityB;
+    });
+    
+    return sortedData;
   };
 
   // Searching
