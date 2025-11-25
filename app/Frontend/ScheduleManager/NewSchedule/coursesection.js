@@ -17,19 +17,17 @@ export default function CourseSection({
   onAddCourse,
   onRemoveCourse,
   addedCourses,
+  onUpdateCourseSections,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Handler function to add the selected course
   const handleAddCourse = (course) => {
     onAddCourse(course, semester);
     setIsModalOpen(false);
   };
 
-  // Handler function to remove a course
   const handleRemoveCourse = (course) => {
-    // USED AI Q: how can we add a confirmation message for removing an added instructor without making a custom modal? (https://chat.deepseek.com/a/chat/s/cdbd0a66-d6f9-47e0-b1da-c564f09c6e7d)
     const confirmRemove = window.confirm(
       `Are you sure you want to remove ${course.course_name}?`
     );
@@ -38,30 +36,22 @@ export default function CourseSection({
     }
   };
 
-  // Filter courses based on search term and if already added
   const filteredCourses = courses.filter((course) => {
-    // Check if course is already added
-    // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
     const isAlreadyAdded = addedCourses.some(
       (c) => c.course_id === course.course_id
     );
 
-    // Filter by searching name
     const matchesName = course.course_name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
-    // Filter by searching course Code
     const matchesCode = course.course_code
       .toLowerCase()
-      .toString()
       .includes(searchTerm.toLowerCase());
 
     return (matchesName || matchesCode) && !isAlreadyAdded;
   });
 
-  // Add sentinel course to end of addedCourses for "+ Add Course" button
-  // USED AI Q: How can I add a button at the end of a list that opens a modal to add more items to the list? (SENTINEL ADD COURSE CARD)
   const coursesWithAdd = [
     ...addedCourses,
     { __isAdd: true, course_id: `__add-${semester}` },
@@ -71,8 +61,6 @@ export default function CourseSection({
     <div>
       {/* Added Courses */}
       <div className="bg-gray-50 w-full">
-        {/* Display added courses */}
-        {/* Course list */}
         <ul className="flex flex-nowrap">
           {coursesWithAdd.map((course) => (
             <li
@@ -109,6 +97,38 @@ export default function CourseSection({
                   <span>{course.delivery_method}</span>
                   <span>{`Online: ${course.online_hrs}hrs`}</span>
                   <span>{`Class: ${course.class_hrs}hrs`}</span>
+                  {/* Section Controls */}
+                  <span className="flex items-center justify-center gap-2 mt-1">
+                    Sections: {course.num_sections}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateCourseSections(
+                          course.course_id,
+                          semester,
+                          course.num_sections + 1
+                        );
+                      }}
+                      className="px-1 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (course.num_sections > 1) {
+                          onUpdateCourseSections(
+                            course.course_id,
+                            semester,
+                            course.num_sections - 1
+                          );
+                        }
+                      }}
+                      className="px-1 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                      –
+                    </button>
+                  </span>
                 </>
               )}
             </li>
@@ -122,9 +142,7 @@ export default function CourseSection({
           className="fixed inset-0 flex items-center justify-center z-50"
           onClick={() => setIsModalOpen(false)}
         >
-          {/* Background Overlay */}
           <div className="absolute inset-0 bg-gray-800 opacity-50" />
-          {/* Modal Content */}
           <div
             className="relative bg-gray-100 p-4 rounded-md w-3/4 max-h-3/4 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
@@ -139,7 +157,6 @@ export default function CourseSection({
               </button>
             </div>
 
-            {/* Search Bar */}
             <div className="flex justify-center my-2">
               <input
                 type="text"
@@ -150,7 +167,6 @@ export default function CourseSection({
               />
             </div>
 
-            {/* Course List */}
             <div className="max-h-80 overflow-y-auto">
               <table className="min-w-full border border-gray-300">
                 <thead className="bg-gray-50 sticky top-0">

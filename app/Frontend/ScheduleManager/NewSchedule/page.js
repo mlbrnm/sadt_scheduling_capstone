@@ -33,6 +33,7 @@ export default function NewSchedule() {
   const [saveStatus, setSaveStatus] = useState(null);
   const [scheduleAcademicChairId, setScheduleAcademicChairId] = useState(null);
   const [isScheduleSubmitted, setIsScheduleSubmitted] = useState(false);
+  const [courseSections, setCourseSections] = useState({});
 
   // Dynamic heights from InstructorSection
   const [rowHeights, setRowHeights] = useState({});
@@ -119,7 +120,7 @@ export default function NewSchedule() {
       setError(null);
 
       try {
-        // Fetch schedule metadata
+        // 1️⃣ Fetch schedule metadata
         const { data: scheduleMeta, error: metaError } = await supabase
           .from("schedules")
           .select("academic_chair_id, submission_status, academic_year")
@@ -131,9 +132,7 @@ export default function NewSchedule() {
 
         if (scheduleMeta) {
           setScheduleAcademicChairId(scheduleMeta.academic_chair_id);
-          setIsScheduleSubmitted(
-            scheduleMeta.submission_status === "submitted"
-          );
+          setIsScheduleSubmitted(false);
           setNewScheduleDraft((prev) => ({
             ...prev,
             metaData: {
@@ -143,13 +142,12 @@ export default function NewSchedule() {
           }));
         }
 
-        //Fetch assignments JSON
+        // 2️⃣ Fetch assignments JSON
         const response = await fetch(
           `http://localhost:5000/schedules/${scheduleId}/json`
         );
         if (!response.ok) throw new Error("Failed to load schedule JSON");
         const data = await response.json();
-
         setAssignments(data.assignments || []);
 
         const activeSemestersFromBackend = data.metaData?.activeSemesters || {
@@ -167,7 +165,23 @@ export default function NewSchedule() {
           },
         }));
 
-        // Build addedCoursesBySemester from assignments and scheduled_courses
+        // 3️⃣ Fetch scheduled courses for this schedule
+        const { data: schCoursesData, error: schCoursesError } = await supabase
+          .from("scheduled_courses")
+          .select("course_id, term, num_sections")
+          .eq("schedule_id", scheduleId);
+
+        if (schCoursesError) console.error(schCoursesError);
+
+        // Map course_id => num_sections
+        const courseSectionsMap = {};
+        (schCoursesData || []).forEach((sc) => {
+          courseSectionsMap[sc.course_id] = sc.num_sections;
+        });
+
+        setCourseSections(courseSectionsMap); // ✅ store in state
+
+        // 4️⃣ Build addedCoursesBySemester
         const addedCoursesBySemester = {
           winter: [],
           springSummer: [],
@@ -179,49 +193,31 @@ export default function NewSchedule() {
           fall: new Set(),
         };
 
-        // From assignments
-        for (const key of Object.keys(data.assignments || {})) {
-          const parts = key.split("-");
-          if (parts.length < 3) continue;
-          const semester = parts[parts.length - 1];
-          const courseId = parts.slice(1, -1).join("-");
-          if (courseIdsBySemester[semester])
-            courseIdsBySemester[semester].add(courseId);
-        }
+        (schCoursesData || []).forEach((sc) => {
+          const termParts = (sc.term || "")
+            .split(/[,|;-]+|\s-\s/)
+            .map((t) => t.trim().toLowerCase())
+            .filter(Boolean);
 
-        // From scheduled_courses table
-        const { data: schCoursesData, error: schCoursesError } = await supabase
-          .from("scheduled_courses")
-          .select("course_id, term")
-          .eq("schedule_id", scheduleId);
-
-        if (schCoursesError) console.error(schCoursesError);
-        else if (Array.isArray(schCoursesData)) {
-          schCoursesData.forEach((sc) => {
-            const termParts = (sc.term || "")
-              .split(/[,|;-]+|\s-\s/)
-              .map((t) => t.trim().toLowerCase())
-              .filter(Boolean);
-
-            termParts.forEach((t) => {
-              if (t.includes("winter"))
-                courseIdsBySemester.winter.add(String(sc.course_id));
-              if (t.includes("spring"))
-                courseIdsBySemester.springSummer.add(String(sc.course_id));
-              if (t.includes("fall"))
-                courseIdsBySemester.fall.add(String(sc.course_id));
-            });
+          termParts.forEach((t) => {
+            if (t.includes("winter"))
+              courseIdsBySemester.winter.add(sc.course_id);
+            if (t.includes("spring"))
+              courseIdsBySemester.springSummer.add(sc.course_id);
+            if (t.includes("fall")) courseIdsBySemester.fall.add(sc.course_id);
           });
-        }
-
-        // Map course IDs to course objects
-        semester_list.forEach((sem) => {
-          addedCoursesBySemester[sem] = courseData.filter((c) =>
-            courseIdsBySemester[sem].has(String(c.course_id))
-          );
         });
 
-        // Build addedInstructors from assignments
+        semester_list.forEach((sem) => {
+          addedCoursesBySemester[sem] = courseData
+            .filter((c) => courseIdsBySemester[sem].has(c.course_id))
+            .map((c) => ({
+              ...c,
+              num_sections: courseSectionsMap[c.course_id] || 0, // attach num_sections here
+            }));
+        });
+
+        // 5️⃣ Build addedInstructors from assignments
         const instructorIds = new Set();
         Object.keys(data.assignments || {}).forEach((key) => {
           const parts = key.split("-");
@@ -233,7 +229,7 @@ export default function NewSchedule() {
           instructorIds.has(String(instr.instructor_id))
         );
 
-        // Update state
+        // 6️⃣ Update state
         setNewScheduleDraft((prev) => ({
           ...prev,
           addedCoursesBySemester,
@@ -374,6 +370,32 @@ export default function NewSchedule() {
     loadingSchedule,
   ]);
 
+  // Handler to update num_sections for a course in a semester
+  const handleUpdateCourseSections = (course_id, semester, newCount) => {
+    if (isScheduleSubmitted) return; // prevent edits if submitted
+
+    setNewScheduleDraft((prev) => {
+      const currentCourses = prev.addedCoursesBySemester[semester] || [];
+      const updatedCourses = currentCourses.map((c) =>
+        c.course_id === course_id ? { ...c, num_sections: newCount } : c
+      );
+
+      return {
+        ...prev,
+        addedCoursesBySemester: {
+          ...prev.addedCoursesBySemester,
+          [semester]: updatedCourses,
+        },
+      };
+    });
+
+    // Also update courseSections state for easy lookup if needed elsewhere
+    setCourseSections((prev) => ({
+      ...prev,
+      [course_id]: newCount,
+    }));
+  };
+
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
     if (isScheduleSubmitted) return; // Prevent editing when submitted
@@ -399,7 +421,7 @@ export default function NewSchedule() {
       return copy;
     });
 
-    // Option A behaviour (you asked earlier): remove all assignments for that instructor
+    // remove all assignments for that instructor
     setAssignments((prev) => {
       const copy = { ...prev };
       Object.keys(copy).forEach((k) => {
@@ -774,8 +796,7 @@ export default function NewSchedule() {
                 Schedule Locked (Read-Only Mode)
               </strong>
               <p className="text-sm mt-1">
-                This schedule has been submitted and is locked for editing. To
-                make changes, recall it from the AC Schedule Manager.
+                This schedule has been submitted and is locked from editing.
               </p>
             </div>
           </div>
@@ -876,6 +897,7 @@ export default function NewSchedule() {
                       onAddCourse={(course, sem) =>
                         handleAddCourseToSemester(sem, course)
                       }
+                      onUpdateCourseSections={handleUpdateCourseSections}
                       onRemoveCourse={(course, sem) =>
                         handleRemoveCourseFromSemester(sem, course)
                       }
@@ -911,6 +933,7 @@ export default function NewSchedule() {
                   activeSemesters={newScheduleDraft.metaData.activeSemesters}
                   rowHeights={rowHeights}
                   headerHeight={headerHeight}
+                  onUpdateCourseSections={handleUpdateCourseSections}
                 />
               )}
             </div>
