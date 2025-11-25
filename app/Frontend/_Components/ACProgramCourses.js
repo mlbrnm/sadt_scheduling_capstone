@@ -65,7 +65,7 @@ export default function ACProgramCourses({ academicChairId }) {
           programNameMap[p.program_id] = p.program;
         });
 
-        // Map programs -> scheduled courses
+        // Map programs to scheduled courses
         const programMap = {};
         scheduledData.forEach((sc) => {
           const course = sc.courses;

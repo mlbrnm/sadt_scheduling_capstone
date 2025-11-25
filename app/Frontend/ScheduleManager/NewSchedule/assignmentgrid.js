@@ -9,33 +9,23 @@ const semester_titles = {
 };
 const maxSections = 6; // A–F
 
-// Helper function to get subtle grey background gradient for sections A-F
 const getSectionBgColor = (sectionIndex, isHeader = false, isAdd = false) => {
-  if (isAdd) return 'bg-gray-50 opacity-50';
-  
-  // Progressive grey values from A (lightest) to F (darkest)
-  const greyValues = [50, 100, 150, 200, 250, 300]; // A, B, C, D, E, F
+  if (isAdd) return "bg-gray-50 opacity-50";
+
+  const greyValues = [50, 100, 150, 200, 250, 300];
   const greyValue = greyValues[sectionIndex] || 50;
-  
-  // For custom values not in Tailwind (150, 250), use inline style
-  if (greyValue === 150 || greyValue === 250) {
-    return null; // Will use inline style instead
-  }
-  
-  // Return Tailwind class for standard values
+
+  if (greyValue === 150 || greyValue === 250) return null;
+
   return isHeader ? `bg-gray-${greyValue}` : `bg-gray-${greyValue}`;
 };
 
-// Helper function to get inline style for custom grey values
 const getSectionInlineStyle = (sectionIndex) => {
   const greyValues = [50, 100, 150, 200, 250, 300];
   const greyValue = greyValues[sectionIndex] || 50;
-  
-  if (greyValue === 150) {
-    return { backgroundColor: '#f1f1f1' }; // Between gray-100 and gray-200
-  } else if (greyValue === 250) {
-    return { backgroundColor: '#d9d9d9' }; // Between gray-200 and gray-300
-  }
+
+  if (greyValue === 150) return { backgroundColor: "#f1f1f1" };
+  if (greyValue === 250) return { backgroundColor: "#d9d9d9" };
   return {};
 };
 
@@ -48,39 +38,29 @@ export default function AssignmentGrid({
   rowHeights,
   headerHeight,
 }) {
-  // contextMenu = { x, y, instructorId, courseId, section, semester } or null
   const [contextMenu, setContextMenu] = useState(null);
 
-  // useEffect to listen for outside clicks (close context menu on any window click)
   useEffect(() => {
     const handleOutsideClick = () => setContextMenu(null);
     window.addEventListener("click", handleOutsideClick);
     return () => window.removeEventListener("click", handleOutsideClick);
   }, []);
 
-  // Helper function to add sentinel course to end of addedCourses for "+ Add Course" button
   const coursesWithAdd = (semester) => [
     ...(addedCoursesBySemester[semester] || []),
     { __isAdd: true, course_id: `__add-${semester}` },
   ];
 
-  // Helper function to check if an instructor owns class or online of a course section
   const owns = (instructorId, courseId, section, semester, comp) => {
     const key = `${instructorId}-${courseId}-${semester}`;
     const sec = assignments[key]?.sections?.[section];
     return !!sec?.[comp];
   };
 
-  const visibleSemesters = semester_list.filter(
-    (sem) => activeSemesters?.[sem]
-  );
-
+  // --- FIX: show all semesters if none are selected ---
+  let visibleSemesters = semester_list.filter((sem) => activeSemesters?.[sem]);
   if (visibleSemesters.length === 0) {
-    return (
-      <p className="text-gray-500 text-center p-4">
-        Select at least one semester to view and edit sections.
-      </p>
-    );
+    visibleSemesters = [...semester_list];
   }
 
   const noCoursesAdded = Object.values(addedCoursesBySemester).every(
@@ -176,32 +156,33 @@ export default function AssignmentGrid({
                             );
                           const ownsAny = ownsClass || ownsOnline;
                           const ownsBoth = ownsClass && ownsOnline;
+
                           let label = "";
                           if (!isAdd) {
-                            if (ownsBoth) {
-                              label = `${totalHrs}h`;
-                            } else if (ownsClass) {
-                              label = `C${classHrs}h`;
-                            } else if (ownsOnline) {
-                              label = `O${onlineHrs}h`;
-                            } else {
-                              label = "";
-                            }
+                            if (ownsBoth) label = `${totalHrs}h`;
+                            else if (ownsClass) label = `C${classHrs}h`;
+                            else if (ownsOnline) label = `O${onlineHrs}h`;
                           }
+
                           const baseClasses =
                             "relative border box-border text-[11px] flex items-center justify-center";
-                          
-                          // Get gradient background color for unassigned cells
-                          const gradientBgColor = !ownsAny && !isAdd ? getSectionBgColor(i, false, false) : null;
-                          const gradientInlineStyle = gradientBgColor === null && !ownsAny && !isAdd ? getSectionInlineStyle(i) : {};
-                          
+                          const gradientBgColor =
+                            !ownsAny && !isAdd
+                              ? getSectionBgColor(i, false, false)
+                              : null;
+                          const gradientInlineStyle =
+                            gradientBgColor === null && !ownsAny && !isAdd
+                              ? getSectionInlineStyle(i)
+                              : {};
                           const bgClasses = isAdd
                             ? "bg-gray-50 opacity-50 cursor-not-allowed"
                             : ownsBoth
                             ? "bg-green-200 hover:bg-red-200 font-semibold cursor-pointer"
                             : ownsAny
                             ? "bg-green-200 hover:bg-red-200 font-semibold cursor-pointer"
-                            : `${gradientBgColor || ""} hover:bg-green-100 font-semibold cursor-pointer`;
+                            : `${
+                                gradientBgColor || ""
+                              } hover:bg-green-100 font-semibold cursor-pointer`;
 
                           return (
                             <button
@@ -214,7 +195,7 @@ export default function AssignmentGrid({
                                 isAdd
                                   ? undefined
                                   : (e) => {
-                                      if (e.altKey) {
+                                      if (e.altKey)
                                         onToggleSection(
                                           instructor.instructor_id,
                                           course,
@@ -222,7 +203,7 @@ export default function AssignmentGrid({
                                           semester,
                                           "class"
                                         );
-                                      } else if (e.shiftKey) {
+                                      else if (e.shiftKey)
                                         onToggleSection(
                                           instructor.instructor_id,
                                           course,
@@ -230,7 +211,7 @@ export default function AssignmentGrid({
                                           semester,
                                           "online"
                                         );
-                                      } else {
+                                      else
                                         onToggleSection(
                                           instructor.instructor_id,
                                           course,
@@ -238,7 +219,6 @@ export default function AssignmentGrid({
                                           semester,
                                           "both"
                                         );
-                                      }
                                     }
                               }
                               onContextMenu={(e) => {
@@ -255,11 +235,9 @@ export default function AssignmentGrid({
                               title={
                                 isAdd
                                   ? ""
-                                  : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.course_code} to ${instructor.instructor_name} ${instructor.instructor_lastName}.
-                                  `
+                                  : `Click to assign Section ${section} (${semester_titles[semester]}) ${course.course_code} to ${instructor.instructor_name} ${instructor.instructor_lastName}.`
                               }
                             >
-                              {/* Main Label */}
                               {!isAdd ? label : ""}
                             </button>
                           );
@@ -273,6 +251,7 @@ export default function AssignmentGrid({
           })}
         </div>
       ))}
+
       {/* Context Menu */}
       {contextMenu && (
         <div

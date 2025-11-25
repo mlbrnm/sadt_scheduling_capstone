@@ -6,6 +6,7 @@ import ACProgramCourses from "../_Components/ACProgramCourses";
 
 export default function ACScheduleManage() {
   const [schedules, setSchedules] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -26,7 +27,7 @@ export default function ACScheduleManage() {
     getCurrentUser();
   }, []);
 
-  // Fetch schedules, programs, courses, and scheduled_courses
+  // fetch schedules, programs, courses, and scheduled_courses
   useEffect(() => {
     if (!currentUser) return;
 
@@ -35,7 +36,7 @@ export default function ACScheduleManage() {
         setLoading(true);
         setError(null);
 
-        // 1. Fetch schedules for current AC
+        //Fetch schedules for current AC
         const { data: schedulesData, error: schedulesError } = await supabase
           .from("schedules")
           .select("*")
@@ -43,35 +44,28 @@ export default function ACScheduleManage() {
           .order("academic_year", { ascending: false });
         if (schedulesError) throw schedulesError;
 
-        if (!schedulesData?.length) {
-          setSchedules([]);
-          setScheduleAssignments({});
-          return;
-        }
+        setSchedules(schedulesData || []);
 
-        setSchedules(schedulesData);
-
-        // 2. Get all assigned program IDs for these schedules
-        const assignedProgramIds = schedulesData
-          .flatMap((s) => (s.associated_programs || "").split(","))
-          .map((p) => p.trim())
-          .filter(Boolean);
-
-        // 3. Fetch programs
-        const { data: programsData, error: programsError } = await supabase
+        //Fetch all programs and filter by current AC
+        const { data: allPrograms, error: programsError } = await supabase
           .from("programs")
-          .select("program_id, program, acronym, credential")
-          .in("program_id", assignedProgramIds);
+          .select("*");
         if (programsError) throw programsError;
 
-        // 4. Fetch courses for these programs
+        const programsData = allPrograms.filter((p) =>
+          (p.academic_chair || "").includes(currentUser)
+        );
+        setPrograms(programsData || []);
+
+        // Fetch courses for assigned programs
+        const assignedProgramIds = programsData.map((p) => p.program_id);
         const { data: coursesData, error: coursesError } = await supabase
           .from("courses")
           .select("course_id, program_id")
           .in("program_id", assignedProgramIds);
         if (coursesError) throw coursesError;
 
-        // 5. Fetch scheduled_courses for these schedules
+        // Fetch scheduled_courses for these schedules
         const scheduleIds = schedulesData.map((s) => s.id);
         const { data: scheduledCourses, error: scheduledError } = await supabase
           .from("scheduled_courses")
@@ -79,7 +73,7 @@ export default function ACScheduleManage() {
           .in("schedule_id", scheduleIds);
         if (scheduledError) throw scheduledError;
 
-        // 6. Build assignment map per schedule
+        // Build assignment map per schedule
         const assignmentsMap = {};
         for (const schedule of schedulesData) {
           const scheduleCourses = scheduledCourses.filter(
@@ -114,7 +108,6 @@ export default function ACScheduleManage() {
 
           assignmentsMap[schedule.id] = programAssignments;
         }
-
         setScheduleAssignments(assignmentsMap);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -159,30 +152,203 @@ export default function ACScheduleManage() {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
 
-  // Handlers (generate, clear, submit, recall, navigate)
-  // ... (reuse your existing handlers without changes)
+  // Handlers for generate/clear/submit/recall schedules
+  const handleGenerateSchedules = async () => {
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(
+        "http://localhost:5000/admin/schedules/generate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ academic_year: parseInt(academicYear) }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to generate schedules");
+
+      setGenerateMessage({
+        type: "success",
+        text: `${data.message}. Created: ${data.created}, Skipped: ${data.skipped}`,
+      });
+
+      // Refresh schedules list
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      setGenerateMessage({ type: "error", text: error.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleClearSchedules = async () => {
+    if (!confirm("Are you sure you want to delete all schedules?")) return;
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(
+        "http://localhost:5000/admin/schedules/clear",
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to clear schedules");
+
+      setGenerateMessage({
+        type: "success",
+        text: `${data.message}. Deleted ${data.deleted_count} schedule(s).`,
+      });
+
+      setSchedules([]);
+    } catch (error) {
+      setGenerateMessage({ type: "error", text: error.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCreateModifySchedule = (scheduleId) => {
+    router.push(
+      `/Frontend/ScheduleManager/NewSchedule?schedule_id=${scheduleId}`
+    );
+  };
+
+  const handleSubmitSchedule = async (scheduleId) => {
+    if (!confirm("Are you sure you want to submit this schedule?")) return;
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(
+        `http://localhost:5000/schedules/${scheduleId}/submit`,
+        { method: "POST" }
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to submit schedule");
+
+      setGenerateMessage({ type: "success", text: data.message });
+
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      setGenerateMessage({ type: "error", text: error.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleRecallSchedule = async (scheduleId) => {
+    if (!confirm("Are you sure you want to recall this schedule?")) return;
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(
+        `http://localhost:5000/schedules/${scheduleId}/recall`,
+        { method: "POST" }
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to recall schedule");
+
+      setGenerateMessage({ type: "success", text: data.message });
+
+      const { data: schedulesData } = await supabase
+        .from("schedules")
+        .select("*")
+        .eq("academic_chair_id", currentUser)
+        .order("academic_year", { ascending: false });
+      setSchedules(schedulesData || []);
+    } catch (error) {
+      setGenerateMessage({ type: "error", text: error.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <div className="p-8 px-80">
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex flex-col mb-6">
         <h1 className="text-xl font-bold text-center mb-4">Manage Schedules</h1>
-        {/* Debug: Generate/Clear schedules */}
-        {/* ...reuse your existing generate/clear UI */}
+
+        {/* Generate / Clear Buttons */}
+        <div className="bg-gray-100 rounded-lg p-4 mb-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">
+            Debug: Generate Schedules
+          </h3>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              value={academicYear}
+              onChange={(e) => setAcademicYear(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md w-32"
+              placeholder="Year"
+            />
+            <button
+              onClick={handleGenerateSchedules}
+              disabled={generating}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {generating ? "Generating..." : "Generate Schedules"}
+            </button>
+            <button
+              onClick={handleClearSchedules}
+              disabled={generating}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              Clear All Schedules
+            </button>
+          </div>
+
+          {generateMessage && (
+            <div
+              className={`mt-3 p-3 rounded-md text-sm ${
+                generateMessage.type === "success"
+                  ? "bg-green-50 text-green-700"
+                  : "bg-red-50 text-red-700"
+              }`}
+            >
+              {generateMessage.text}
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Error */}
       {error && (
         <div className="mb-6 rounded-md p-4 bg-red-50 text-red-700">
           Error loading schedules: {error}
         </div>
       )}
 
+      {/* Loading */}
       {loading && (
         <div className="text-center py-8 text-gray-500">
           Loading schedules...
         </div>
       )}
 
+      {/* Schedule List */}
       {!loading && !error && (
         <div className="space-y-4">
           {schedules.map((schedule) => (
@@ -213,7 +379,7 @@ export default function ACScheduleManage() {
                 </div>
               </div>
 
-              {/* Courses / Sections */}
+              {/* Courses */}
               <div className="mb-4">
                 <ACProgramCourses
                   academicChairId={schedule.academic_chair_id}
@@ -280,11 +446,7 @@ export default function ACScheduleManage() {
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4 border-t border-gray-200">
                 <button
-                  onClick={() =>
-                    router.push(
-                      `/Frontend/ScheduleManager/NewSchedule?schedule_id=${schedule.id}`
-                    )
-                  }
+                  onClick={() => handleCreateModifySchedule(schedule.id)}
                   className={`button-primary text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer ${
                     schedule.submission_status === "submitted"
                       ? "bg-gray-500 hover:bg-gray-600"
