@@ -174,10 +174,11 @@ export default function Reports() {
     const avgContinuing = (semesterData.reduce((sum, semester) => sum + semester.continuing, 0) / numSems).toFixed(2);
     const avgGraduating = (semesterData.reduce((sum, semester) => sum + semester.graduated, 0) / numSems).toFixed(2);
     const avgEnrolled = (semesterData.reduce((sum, semester) => sum + (semester.newlyAdmitted + semester.continuing), 0) / numSems).toFixed(2);
-    const avgAdmissionRate = (semesterData.reduce((sum, semester) => sum + semester.admissionRate, 0) / numSems).toFixed(2);
+    const avgOfSemRates = (semesterData.reduce((sum, semester) => sum + semester.admissionRate, 0) / numSems).toFixed(2);
     const totalAdmitted = semesterData.reduce((sum, semester) => sum + semester.newlyAdmitted, 0);
     const totalApplied = semesterData.reduce((sum, semester) => sum + semester.applied, 0);
-    const overallAdmissionRate = ((totalAdmitted / totalApplied) * 100).toFixed(2);
+    const overallAggregateAdmitRate = ((totalAdmitted / totalApplied) * 100).toFixed(2);
+    const avgAdmitRatio = ((avgNewStudents / avgApplications) * 100).toFixed(2);
 
     // DOCUMENT FORMATTING  **Size computations, alignments, fonts, etc. for formatting purposes generated using Perplexity AI, based on sample documents created by Aariyana, uploaded to AI engine to ensure proper formatting and alignment settings achieved in final generated document**
 
@@ -198,11 +199,13 @@ export default function Reports() {
     doc.setFont("helvetica", "normal");
     doc.text(programInfo.currentAC, 48, yPos);
     yPos += 15;
+
     // Summary Stats Header
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text('Summary Statistics', 20, yPos);
     yPos += 10;
+
     // Associated Semesters
     doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
@@ -217,11 +220,86 @@ export default function Reports() {
       yPos += 5;
     });
     yPos += 8;
+
+    // Formula for enrolled students
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text('Enrolled Students = Newly Admitted + Continuing', 20, yPos);
+    yPos += 8;
+    // Avg app per semester
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Average Applications per Semester: `, 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${avgApplications}`, 155, yPos);
+    yPos += 6;
+    // Avg new students per semester
+    doc.setFont("helvetica", "normal");
+    doc.text(`Average New Students per Semester: `, 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${avgNewStudents}`, 135, yPos);
+    yPos += 6;
+    // Avg continuing per semester
+    doc.setFont("helvetica", "normal");
+    doc.text(`Average Continuing Students per Semester: `, 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${avgContinuing}`, 150, yPos);
+    yPos += 6;
+    // Avg graduating per semester
+    doc.setFont("helvetica", "normal");
+    doc.text(`Average Graduating Students per Semester: `, 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${avgGraduating}`, 150, yPos);
+    yPos += 6;
+    // Avg enrolled per semester
+    doc.setFont("helvetica", "normal");
+    doc.text(`Average Enrolled Students per Semester: `, 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${avgEnrolled}`, 145, yPos);
+    yPos += 10;
+
+    // Avg of Semester Admission Rates
+    doc.setFont("helvetica", "bold");
+    doc.text(`Average of Semester Admission Rates: ${avgOfSemRates}`, 20, yPos);
+    yPos += 5;
+    // Formula for calculation
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text('∑ Semester Admission Rates', 25, yPos);
+    yPos += 4;
+    doc.text('÷', 25, yPos);
+    yPos += 4;
+    doc.text('# of semesters with available data', 25, yPos);
+    yPos += 8;
+
+    // Avg admission ratio
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`Average Admission Ratio: ${avgAdmitRatio}`, 20, yPos);
+    yPos += 5;
+    // Formula for calculation
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text('Average New Students ÷ Average Applications × 100', 25, yPos);
+    yPos += 8;
+
+    // Overall Aggregate Admission Rate
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(`Overall Aggregate Admission Rate: ${overallAggregateAdmitRate}`, 20, yPos);
+    yPos += 5;
+    // Formula for calculation
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.text(`with ${totalAdmitted} students admitted out of ${totalApplied} total applications received`, 25, yPos);
+    yPos += 5;
     
-
-
-
-
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('(∑ New Students Across All Semesters ÷ ∑ Applications Across All Semesters) × 100', 25, yPos);
+    yPos += 15;
+    doc.setTextColor(0, 0, 0);
+  }
 
 
 
@@ -631,5 +709,4 @@ export default function Reports() {
     )}
     </div>
   );
-}
-}
+};
