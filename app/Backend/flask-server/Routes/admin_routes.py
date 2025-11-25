@@ -2,7 +2,7 @@
 # upload/download patterns were assisted or inspired by AI. All Supabase-specific logic, database schema, 
 # table mappings, and application-specific workflow were written independently.
 from flask import  jsonify, request
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename # shouldn't need this if not using temp folder structure
 from database import upload_table, fetch_table_data, save_uploaded_file, supabase_client, restore_file_from_url
 import os
 import io
@@ -86,12 +86,6 @@ def register_admin_routes(app):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-        # finally:
-        #     # cleanup temp file
-        #     if os.path.exists(temp_path):
-        #         os.remove(temp_path)
-
-
     
     # create route to GET data from database
     @app.route("/admin/data/<table_name>", methods=["GET"])
@@ -111,13 +105,15 @@ def register_admin_routes(app):
                 .eq("table_name", table_name) \
                 .order("uploaded_at", desc = True) \
                 .execute()
+            # this queries and filters the data in the database table uploaded_files
             
             files = response.data
+
             return jsonify({"uploads": files}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
         
-    # download an old file
+    # download an old file (STILL NEED TO IMPLEMENT IN FRONTEND)
     @app.route("/admin/uploads/download/<storage_path>", methods = ["GET"])
     def download_past_upload(storage_path):
         try:
