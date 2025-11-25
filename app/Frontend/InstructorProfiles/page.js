@@ -25,7 +25,7 @@ function AddInstructorModal({onClose, onSuccess}) {
   // Auto-generate a random instructor ID
   useEffect(() => {
     const generateInstructorID = () => {
-      const generatedId = Math.floor(1000 + Math.random() * 900000);
+      const generatedId = Math.floor(100000 + Math.random() * 900000);
       setFormData((prevData) => ({
         ...prevData,
         instructor_id: generatedId.toString(),
@@ -45,7 +45,7 @@ function AddInstructorModal({onClose, onSuccess}) {
 
       // ensure both names have actual values
       if (firstName.trim() && lastName.trim()) {
-        const generatedId = Math.floor(1000 + Math.random() * 900000);
+        const generatedId = Math.floor(100000 + Math.random() * 900000);
         updatedFormData.instructor_id = generatedId.toString();
       } else {
         updatedFormData.instructor_id = "";
@@ -71,54 +71,114 @@ function AddInstructorModal({onClose, onSuccess}) {
       updatedFormData.cch_target_ay2025 = cchTarget;
     }
     setFormData(updatedFormData);
+
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError("");
+  e.preventDefault();
+  console.log("🔥 SUBMIT CLICKED");
+  setIsSubmitting(true);
+  setError("");
 
-    try {
-      const response = await fetch(
-        "http://localhost:5000/admin/data/instructors",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to add instructor");
+  try {
+    console.log("📤 Sending data:", formData);
+    
+    const response = await fetch(
+      "http://localhost:5000/admin/data/instructors",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       }
+    );
 
-      // Clear the form for next time's use
-      setFormData({
-        instructor_name: "",
-        instructor_lastname: "",
-        instructor_id: "",
-        cch_target_ay2025: "",
-        contract_type: "",
-        instructor_status: "",
-        salaried_begin_date: "",
-        contract_end: "",
-        reporting_ac: "",
-      });
+    console.log("📥 Response received:", response.status);
+    const result = await response.json();
+    console.log("📝 Result:", result);
 
-      onSuccess();
-      onClose();
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setIsSubmitting(false);
+    if (!response.ok) {
+      console.log("❌ ERROR:", result.error);
+      throw new Error(result.error || "Failed to add instructor");
     }
+
+    console.log("✅ SUCCESS - Closing modal...");
+    
+    // Clear form
+    setFormData({
+      instructor_name: "",
+      instructor_lastname: "",
+      instructor_id: "",
+      cch_target_ay2025: "",
+      contract_type: "",
+      instructor_status: "",
+      salaried_begin_date: "",
+      contract_end: "",
+      reporting_ac: "",
+    });
+
+    console.log("🚪 Calling onClose()...");
+    onClose();
+    console.log("🔄 Calling onSuccess()...");
+    onSuccess();
+    console.log("✨ Done!");
+
+  } catch (error) {
+    console.log("💥 CATCH BLOCK:", error.message);
+    setError(error.message);
+  } finally {
+    setIsSubmitting(false);
   }
+};
+
+
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setIsSubmitting(true);
+  //   setError("");
+
+  //   try {
+  //     const response = await fetch(
+  //       "http://localhost:5000/admin/data/instructors",
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify(formData),
+  //       }
+  //     );
+
+  //     const result = await response.json();
+
+  //     if (!response.ok) {
+  //       throw new Error(result.error || "Failed to add instructor");
+  //     }
+
+  //     // Clear the form for next time's use
+  //     setFormData({
+  //       instructor_name: "",
+  //       instructor_lastname: "",
+  //       instructor_id: "",
+  //       cch_target_ay2025: "",
+  //       contract_type: "",
+  //       instructor_status: "",
+  //       salaried_begin_date: "",
+  //       contract_end: "",
+  //       reporting_ac: "",
+  //     });
+
+  //     onSuccess();
+  //     onClose();
+  //   } catch (error) {
+  //     setError(error.message);
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // }
   return (
-    <div className="fixed inset-0 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-150 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
     <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
     
     <form onSubmit={handleSubmit}>
@@ -361,8 +421,8 @@ export default function InstructorProfiles() {
           <AddInstructorModal
             onClose={() => setShowAddInstructorModal(false)}
             onSuccess={() => {
-              setShowAddInstructorModal(false);
               fetchInstructorData();
+              setShowAddInstructorModal(false);
             }}
           />
         )}
