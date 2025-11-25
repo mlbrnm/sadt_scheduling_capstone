@@ -119,6 +119,7 @@ export default function NewSchedule() {
       setLoadingSchedule(true);
       setError(null);
 
+      //used AI to help organize how to fetch the necessary data
       try {
         //Fetch schedule metadata
         const { data: scheduleMeta, error: metaError } = await supabase
@@ -173,13 +174,13 @@ export default function NewSchedule() {
 
         if (schCoursesError) console.error(schCoursesError);
 
-        // Map course_id => num_sections
+        // Map course_id to num_sections
         const courseSectionsMap = {};
         (schCoursesData || []).forEach((sc) => {
           courseSectionsMap[sc.course_id] = sc.num_sections;
         });
 
-        setCourseSections(courseSectionsMap); // ✅ store in state
+        setCourseSections(courseSectionsMap);
 
         //Build addedCoursesBySemester
         const addedCoursesBySemester = {
