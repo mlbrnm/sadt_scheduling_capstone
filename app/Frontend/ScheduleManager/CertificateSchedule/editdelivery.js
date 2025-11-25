@@ -10,6 +10,7 @@ export default function EditDelivery({
   onCancel,
   onAddSiblingDelivery,
   onAddSection,
+  onAddAllDeliveries,
   instructors,
 }) {
   /**
@@ -282,7 +283,7 @@ export default function EditDelivery({
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
-      <div>
+      <div className="bg-white rounded p-2">
         <span className="text-lg font-semibold">
           {drafts[0]?.course_name} ({drafts[0]?.course_code})
         </span>
@@ -502,6 +503,14 @@ export default function EditDelivery({
         >
           Add Section
         </button>
+        {onAddAllDeliveries && (
+          <button
+            className="px-3 py-2 ml-2 rounded-md bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+            onClick={onAddAllDeliveries}
+          >
+            Add All Deliveries
+          </button>
+        )}
       </div>
 
       {/* Save & Cancel Buttons */}

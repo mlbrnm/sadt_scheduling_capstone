@@ -469,11 +469,8 @@ def register_schedule_routes(app):
             if not schedules_response.data:
                 return jsonify({"schedules": []}), 200
             
-            # Filter schedules: submitted, recalled, or approved
-            filtered_schedules = [
-                s for s in schedules_response.data
-                if s.get("submission_status") in ["submitted", "recalled"] or s.get("approval_status") == "approved"
-            ]
+            # Use all schedules (no filtering)
+            filtered_schedules = schedules_response.data
             
             # Fetch all users to get academic chair names
             try:

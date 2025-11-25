@@ -57,6 +57,24 @@ export default function ScheduleManager() {
     fetchSchedules();
   }, []);
 
+  // Helper function to get submission status priority
+  const getStatusPriority = (status) => {
+    switch (status.toLowerCase()) {
+      case "submitted":
+        return 1;
+      case "recalled":
+        return 2;
+      case "approved":
+        return 3;
+      case "rejected":
+        return 4;
+      case "not submitted":
+        return 5;
+      default:
+        return 6;
+    }
+  };
+
   // Sorting the schedules
   const sortData = (data, option) => {
     if (!option) return data;
@@ -86,6 +104,15 @@ export default function ScheduleManager() {
           return data;
       }
     }
+    
+    // Then apply primary sort by submission status priority
+    sortedData.sort((a, b) => {
+      const priorityA = getStatusPriority(a.status);
+      const priorityB = getStatusPriority(b.status);
+      return priorityA - priorityB;
+    });
+    
+    return sortedData;
   };
 
   // Searching

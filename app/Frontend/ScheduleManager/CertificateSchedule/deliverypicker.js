@@ -25,8 +25,8 @@ export default function DeliveryPicker({
         Instructor: {row.assigned_instructor_name}
       </span>
     ) : (
-      <span className="text-sm font-semibold text-gray-800">
-        Instructor: Unassigned
+      <span className="text-sm font-semibold">
+        Instructor: <span className="text-red-500">Unassigned</span>
       </span>
     );
   };

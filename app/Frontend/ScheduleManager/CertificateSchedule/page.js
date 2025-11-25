@@ -1,4 +1,4 @@
-// BACKEND CHECK handoverNotes.md FILE AND REMOVE AFTER.
+// BACKEND CHECK handoverNotes.md FILE.
 "use client";
 import { useState, useEffect } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
@@ -9,11 +9,11 @@ import EditDelivery from "./editdelivery";
 import { calculateTotalHoursFromRow } from "./hoursUtil";
 
 export default function CertificateSchedule() {
-  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates - REPLACE WITH API CALL
-  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
+  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates
+  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
   const [isDeliveryPickerOpen, setIsDeliveryPickerOpen] = useState(false);
-  // Dropdowns state STATIC HARDCODED FOR NOW. BACKEND CHANGE THIS LATER!!!
+  // Dropdowns state STATIC HARDCODED FOR NOW.
   const [year, setYear] = useState("2026");
   const [semester, setSemester] = useState("Winter");
   const [program, setProgram] = useState("ISS");
@@ -27,11 +27,20 @@ export default function CertificateSchedule() {
       setError(null);
       try {
         // REPLACE WITH API CALL
-        // const response = await fetch("");
-        // const instructorData = await response.json();
         setInstructorsData(mockInstructors);
         setCertificatesData(
-          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // ADD deliveryId as INDEX IS FINE FOR NOW. BACKEND CHANGE THIS LATER!!!
+          mockCertificates.map((row) => ({
+            ...row,
+            // TEMPORARY FRONTEND ONLY ID
+            // USED AI Q: How to generate a random id using UUID in Next.js
+            deliveryId:
+              row.deliveryId ||
+              (typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${row.course_code || "COURSE"}-${row.section || "SEC"}-${
+                    row.start_date || "DATE"
+                  }-${Math.random().toString(36).slice(2, 8)}`),
+          }))
         );
       } catch (error) {
         setError("Failed to fetch data.");
@@ -260,6 +269,48 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds((prevIds) => [...prevIds, deliveryToAdd.deliveryId]);
   };
 
+  // Handler to add ALL deliveries for this Certificate (all sections)
+  const handleAddAllDeliveries = () => {
+    if (selectedDeliveryIds.length === 0) return;
+
+    // Use the FIRST selected delivery as the anchor
+    const anchorId = selectedDeliveryIds[0];
+    const anchorRow = certificatesData.find(
+      (row) => row.deliveryId === anchorId
+    );
+    if (!anchorRow) return;
+
+    const key = certificateGroupKey(anchorRow);
+
+    // Find all deliveries in the SAME certificate group (course_code, term, program, semester_code)
+    const certificateGroupDeliveries = certificatesData.filter(
+      (row) =>
+        row.course_code === key.course_code &&
+        row.term === key.term &&
+        row.program === key.program &&
+        row.semester_code === key.semester_code
+    );
+    if (certificateGroupDeliveries.length === 0) return;
+    const allDeliveryIds = certificateGroupDeliveries.map(
+      (row) => row.deliveryId
+    );
+
+    // Check if we already have them all
+    const alreadyHasAll = allDeliveryIds.every((id) =>
+      selectedDeliveryIds.includes(id)
+    );
+    if (alreadyHasAll) {
+      alert(
+        `All deliveries are already added for ${anchorRow.course_name} (${anchorRow.course_code}).`
+      );
+      return;
+    }
+    setSelectedDeliveryIds((prevIds) => {
+      const newIdsSet = new Set([...prevIds, ...allDeliveryIds]);
+      return Array.from(newIdsSet);
+    });
+  };
+
   // EDIT VIEW
   if (selectedDeliveryIds.length > 0) {
     // Find the actual selected delivery objects from selected IDs to send to EditDelivery
@@ -275,6 +326,7 @@ export default function CertificateSchedule() {
           onCancel={handleCancelEdit}
           onAddSiblingDelivery={handleAddSiblingDelivery}
           onAddSection={handleAddSection}
+          onAddAllDeliveries={handleAddAllDeliveries}
           instructors={instructorsData}
         />
       </div>
@@ -329,16 +381,35 @@ export default function CertificateSchedule() {
         </button>
       </div>
 
-      {/* Certificate Table */}
-      <CertificatesTable certificatesData={certificatesData} />
+      {/* Loading and Error States */}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+          <p>{error}</p>
+        </div>
+      )}
+      {/* Loading Spinner */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700" />
+          <span className="ml-2">Loading certificates...</span>
+        </div>
+      ) : (
+        !error && (
+          <>
+            {/* Certificate Table */}
+            <CertificatesTable certificatesData={certificatesData} />
 
-      {/* Delivery Picker Modal */}
-      {isDeliveryPickerOpen && (
-        <DeliveryPicker
-          certificatesData={certificatesData}
-          onSelectDelivery={handleSelectDelivery}
-          onClose={() => setIsDeliveryPickerOpen(false)}
-        />
+            {/* Delivery Picker Modal */}
+            {isDeliveryPickerOpen && (
+              <DeliveryPicker
+                certificatesData={certificatesData}
+                onSelectDelivery={handleSelectDelivery}
+                onClose={() => setIsDeliveryPickerOpen(false)}
+              />
+            )}
+          </>
+        )
       )}
     </div>
   );

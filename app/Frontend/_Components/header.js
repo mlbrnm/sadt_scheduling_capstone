@@ -76,6 +76,12 @@ export default function Header() {
     {
       label: "Schedule Manager",
       href: "/Frontend/ScheduleManager", // Goes to approval list rather than NewSchedule.
+      submenu: [
+        {
+          label: "Certificate Schedule",
+          href: "/Frontend/ScheduleManager/CertificateSchedule",
+        },
+      ],
     },
     { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
     { label: "Upload Data", href: "/Frontend/UploadData" },
@@ -124,13 +130,15 @@ export default function Header() {
             className="h-8"
           />
         </Link>
-        <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
       </div>
       {/* Middle: Navigation Links */}
-      {/* !!!WE SHOULD PROBABLY MAP THIS!!!*/}
-      <nav className="flex flex-1 justify-between items-stretch h-full">
+      <nav className="flex flex-1 justify-between items-stretch h-full border-l border-gray-300">
         {tabs.map((tab, index) => (
-          <div key={index} className="flex-1 h-full relative">
+          <div
+            key={index}
+            className="flex-1 h-full relative group border-r border-gray-300"
+          >
+            {/* Main tab link */}
             <Link
               href={tab.href}
               className="absolute inset-0 flex justify-center items-center
@@ -138,8 +146,27 @@ export default function Header() {
             >
               {tab.label}
             </Link>
-            {/* Vertical line divider */}
-            <div className="absolute right-0 top-0 bottom-0 w-px bg-gray-300"></div>
+
+            {/* Dropdown (only if submenu exists) */}
+            {tab.submenu && (
+              <div
+                className="absolute left-0 right-0 top-full
+                     background-headerfooter
+                     opacity-0 pointer-events-none
+                     group-hover:opacity-100 group-hover:pointer-events-auto
+                     z-50"
+              >
+                {tab.submenu.map((item, subIndex) => (
+                  <Link
+                    key={subIndex}
+                    href={item.href}
+                    className="block px-4 py-2 font-medium text-white hover:bg-[#00A3E0]"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </nav>
