@@ -120,7 +120,7 @@ export default function NewSchedule() {
       setError(null);
 
       try {
-        // 1️⃣ Fetch schedule metadata
+        //Fetch schedule metadata
         const { data: scheduleMeta, error: metaError } = await supabase
           .from("schedules")
           .select("academic_chair_id, submission_status, academic_year")
@@ -142,7 +142,7 @@ export default function NewSchedule() {
           }));
         }
 
-        // 2️⃣ Fetch assignments JSON
+        //Fetch assignments JSON
         const response = await fetch(
           `http://localhost:5000/schedules/${scheduleId}/json`
         );
@@ -165,7 +165,7 @@ export default function NewSchedule() {
           },
         }));
 
-        // 3️⃣ Fetch scheduled courses for this schedule
+        //Fetch scheduled courses for this schedule
         const { data: schCoursesData, error: schCoursesError } = await supabase
           .from("scheduled_courses")
           .select("course_id, term, num_sections")
@@ -181,7 +181,7 @@ export default function NewSchedule() {
 
         setCourseSections(courseSectionsMap); // ✅ store in state
 
-        // 4️⃣ Build addedCoursesBySemester
+        //Build addedCoursesBySemester
         const addedCoursesBySemester = {
           winter: [],
           springSummer: [],
@@ -213,11 +213,11 @@ export default function NewSchedule() {
             .filter((c) => courseIdsBySemester[sem].has(c.course_id))
             .map((c) => ({
               ...c,
-              num_sections: courseSectionsMap[c.course_id] || 0, // attach num_sections here
+              num_sections: courseSectionsMap[c.course_id] || 0,
             }));
         });
 
-        // 5️⃣ Build addedInstructors from assignments
+        //Build addedInstructors from assignments
         const instructorIds = new Set();
         Object.keys(data.assignments || {}).forEach((key) => {
           const parts = key.split("-");
@@ -229,7 +229,7 @@ export default function NewSchedule() {
           instructorIds.has(String(instr.instructor_id))
         );
 
-        // 6️⃣ Update state
+        // Update state
         setNewScheduleDraft((prev) => ({
           ...prev,
           addedCoursesBySemester,
@@ -568,6 +568,7 @@ export default function NewSchedule() {
   }, [newScheduleDraft.addedInstructors]);
 
   // Save handler
+  // Save handler
   const handleSave = async () => {
     setSaveStatus(null);
     if (!currentUserId) {
@@ -577,20 +578,25 @@ export default function NewSchedule() {
       });
       return;
     }
-    if (Object.keys(assignments).length === 0) {
-      setSaveStatus({
-        type: "error",
-        message:
-          "No assignments to save. Please assign courses to instructors.",
-      });
-      return;
-    }
 
     try {
+      // Prepare updated courses with the current section counts
+      const updatedAddedCoursesBySemester = {};
+      for (const [semester, courses] of Object.entries(
+        newScheduleDraft.addedCoursesBySemester
+      )) {
+        updatedAddedCoursesBySemester[semester] = courses.map((course) => ({
+          ...course,
+          num_sections:
+            courseSections[course.course_id] ?? course.num_sections ?? 1,
+        }));
+      }
+
       const payload = {
         academic_year: newScheduleDraft.metaData.year,
         academic_chair_id: currentUserId,
-        assignments,
+        assignments, // current instructor assignments
+        addedCoursesBySemester: updatedAddedCoursesBySemester,
       };
       if (scheduleId) payload.schedule_id = scheduleId;
 
@@ -606,7 +612,9 @@ export default function NewSchedule() {
 
       setSaveStatus({
         type: "success",
-        message: `Schedule saved successfully! ${data.sections_created} section(s) created.`,
+        message: `Schedule saved successfully! ${
+          data.sections_created || 0
+        } section(s) created.`,
       });
       setTimeout(() => setSaveStatus(null), 5000);
     } catch (err) {
