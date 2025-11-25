@@ -1,3 +1,6 @@
+// Note: Portions of this file were developed with assistance from AI tools for organization, debugging, and code suggestions.
+// All architectural decisions and final implementation were done by the developer.
+
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";

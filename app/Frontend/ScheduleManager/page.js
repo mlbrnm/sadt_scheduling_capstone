@@ -113,7 +113,6 @@ export default function ScheduleManager() {
   };
 
   // Get chip colour based on program type, status
-
   // Status colour conditional rendering
   const getStatusColour = (status) => {
     switch (status.toLowerCase()) {
