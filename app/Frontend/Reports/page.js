@@ -88,7 +88,7 @@ export default function Reports() {
   // MAKE SURE TO GENERATE THE RIGHT TYPE OF REPORT
   const handleGenerateReport = () => {
     if (selectedReportType === "Program") {
-      generateProgramReport();
+      generateProgramReportPDF();
     } else if (selectedReportType === "Instructor") {
       generateInstructorReport();
     } else if (selectedReportType === "Instructor Utilization") {
@@ -349,7 +349,7 @@ export default function Reports() {
   };
 
   //PDF VERSION of GENERATE PROGRAM REPORT with Actual Stats Computed
-  const generateProgramReportPDF = () => {
+  const generateProgramReportPDF = async () => {
     if (!dataForReport || dataForReport.length === 0) {
       setError("No data available for report generation.");
       // setIsLoading(false);
@@ -379,7 +379,7 @@ export default function Reports() {
     const overallAggregateAdmitRate = ((totalAdmitted / totalApplied) * 100).toFixed(2);
     const avgAdmitRatio = ((avgNewStudents / avgApplications) * 100).toFixed(2);
 
-    // DOCUMENT FORMATTING  **Size computations, alignments, fonts, etc. for formatting purposes generated using Perplexity AI, based on sample documents created by Aariyana, uploaded to AI engine to ensure proper formatting and alignment settings achieved in final generated document**
+    // DOCUMENT FORMATTING  **Skeleton code generated using Perplexity AI, based on sample documents created by Aariyana, uploaded to AI engine to ensure proper formatting and alignment settings achieved in final generated document. AI helped with the math for size computations, provided general measurements for font size, line spacing and alignments for layout. Aariyana customized the generated skeleton to fit needs and personalized to make sure reports generate aesthetically and as close as possible to the template documents she created.**
 
     // MAIN Header/Title
     let yPos = 20;
@@ -498,6 +498,40 @@ export default function Reports() {
     doc.text('(∑ New Students Across All Semesters ÷ ∑ Applications Across All Semesters) × 100', 25, yPos);
     yPos += 15;
     doc.setTextColor(0, 0, 0);
+
+    // Generate charts
+    const donutChartImage = await generateProgramReportDonutChart(totalAdmitted, totalApplied, overallAggregateAdmitRate);
+    const admitRateBarChartImage = await generateAdmitRatePerIndivSem(semesterData);
+    const admitEnrollBarChartImage = await generateAdmitEnrollByStudentType(semesterData);
+
+    // Add Donut Chart to PDF
+    // doc.addPage();
+    // yPos = 20;
+    doc.text('Summary Statistics', 105, yPos, { align: 'center' });
+    yPos += 10;
+    doc.addImage(donutChartImage, 'PNG', 55, yPos, 100, 100);
+    yPos += 110;
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "italic");
+    doc.text('Associated Semesters', 105, yPos, { align: "center" });
+    yPos += 8;
+    doc.setFont("helvetica", "bold");
+    semesterData.forEach((semester) => {
+      doc.text(`• ${semester.semester}`, 105, yPos, { align: "center" });
+      yPos += 6;
+    });
+    // Add Bar Charts to PDF
+    doc.addPage();
+    yPos = 20;
+    doc.addImage(admitRateBarChartImage, 'PNG', 10, yPos, 190, 95);
+    yPos += 105;
+    doc.addImage(admitEnrollBarChartImage, 'PNG', 10, yPos, 190, 95);
+
+    // Save the PDF
+    doc.save(`Program_Report_${programInfo.program.replace(/\s+/g, "_")}.pdf`);
+    setSuccessMessage("PDF Report generated successfully!");
+    setTimeout(() => setSuccessMessage(""), 5000); // Clear success message after 5 seconds
+    setError(null);
   }
 
 
@@ -575,51 +609,51 @@ export default function Reports() {
 
   // AI generated for debugging purposes ONLY --> will be changed back to original function above that's commented out once debugging is complete
   const generateInstructorReport = () => {
-  console.log("🔥 STARTING - Setting isLoading to TRUE");
-  setIsLoading(true);
-  
-  setTimeout(() => {
-    console.log("🔥 TIMEOUT STARTED");
+    console.log("🔥 STARTING - Setting isLoading to TRUE");
+    setIsLoading(true);
     
-    if (!dataForReport) {
-      setError("Invalid instructor data.");
+    setTimeout(() => {
+      console.log("🔥 TIMEOUT STARTED");
+      
+      if (!dataForReport) {
+        setError("Invalid instructor data.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!dataForReport?.teachingHistory) {
+        setError("No changes to data since previous report. Unable to generate new report.");
+        setIsLoading(false);
+        return;
+      }
+
+      // report generation logic here...
+      const reportData = [{
+        Section: "TEST",
+        Name: dataForReport.name || "Test Name",
+      }];
+      
+      setDataForReport(reportData);
+      setGenerationDetails({
+        fileName: `Test_Report.csv`,
+        generationTime: new Date().toLocaleString(),
+      });
+
+      // send report to be stored in history for future download if needed
+      const csvContent = convertToCSV(reportData);
+      const fileName = `Instructor_Report_${selectedInstructor.replace(
+        /\s+/g,
+        "_"
+      )}.csv`;
+      // newest first
+      setReportHistory((prevHistory) => [
+        { fileName, csvContent, generationTime: new Date().toLocaleString(), reportType: "Instructor", selectedItem: selectedInstructor }, ...prevHistory
+      ]);
+      
+      console.log("🔥 FINISHED - Setting isLoading to FALSE");
       setIsLoading(false);
-      return;
-    }
-
-    if (!dataForReport?.teachingHistory) {
-      setError("No changes to data since previous report. Unable to generate new report.");
-      setIsLoading(false);
-      return;
-    }
-
-    // report generation logic here...
-    const reportData = [{
-      Section: "TEST",
-      Name: dataForReport.name || "Test Name",
-    }];
-    
-    setDataForReport(reportData);
-    setGenerationDetails({
-      fileName: `Test_Report.csv`,
-      generationTime: new Date().toLocaleString(),
-    });
-
-    // send report to be stored in history for future download if needed
-    const csvContent = convertToCSV(reportData);
-    const fileName = `Instructor_Report_${selectedInstructor.replace(
-      /\s+/g,
-      "_"
-    )}.csv`;
-    // newest first
-    setReportHistory((prevHistory) => [
-      { fileName, csvContent, generationTime: new Date().toLocaleString(), reportType: "Instructor", selectedItem: selectedInstructor }, ...prevHistory
-    ]);
-    
-    console.log("🔥 FINISHED - Setting isLoading to FALSE");
-    setIsLoading(false);
-  }, 3000); // 3 second delay
-};
+    }, 3000); // 3 second delay
+  };
 
 
   // GENERATE INSTRUCTOR UTILIZATION REPORT
