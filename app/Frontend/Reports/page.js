@@ -5,7 +5,6 @@ import dummyProgramData from "./dummyprogramdata.json";
 import dummyutilizationData from "./dummyutilizationdata.json";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import { DOT_NEXT_ALIAS } from "next/dist/lib/constants";
 import { Chart } from "chart.js/auto";
 
 export default function Reports() {
@@ -352,12 +351,12 @@ export default function Reports() {
   const generatePDFHeader = (doc, reportType) => {
     // Date of Generation (today)
     const today = new Date();
-    const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const dateStr = today.toLocaleDateString('en-US');
     // Type of report
     doc.setFontSize(10);
     doc.text(`Report Type: ${reportType} Report`, 15, 10);
     // Place date on RHS
-    doc.text(`Date of Generation: ${dateStr}`, 175, 15, { align: "right" });
+    doc.text(`Generated On: ${dateStr}`, 175, 15, { align: "right" });
     // Horizontal line separator
     doc.setLineWidth(0.5);
     doc.setDrawColor(0, 0, 0);
@@ -395,11 +394,12 @@ export default function Reports() {
     const totalApplied = semesterData.reduce((sum, semester) => sum + semester.applied, 0);
     const overallAggregateAdmitRate = ((totalAdmitted / totalApplied) * 100).toFixed(2);
     const avgAdmitRatio = ((avgNewStudents / avgApplications) * 100).toFixed(2);
+    // Chart Generation
+    const donutChartImage = await generateProgramReportDonutChart(totalAdmitted, totalApplied, overallAggregateAdmitRate); //donut pie chart
+    const admitRateBarChartImage = await generateAdmitRatePerIndivSem(semesterData); // bar chart per individual semester
+    const admitEnrollBarChartImage = await generateAdmitEnrollByStudentType(semesterData); // bar chart by semester
 
     // DOCUMENT FORMATTING  **Skeleton code generated using Perplexity AI, based on sample documents created by Aariyana, uploaded to AI engine to ensure proper formatting and alignment settings achieved in final generated document. AI helped with the math for size computations, provided general measurements for font size, line spacing and alignments for layout. Aariyana customized the generated skeleton to fit needs and personalized to make sure reports generate aesthetically and as close as possible to the template documents she created.**
-
-    // Create 
-
     // _____________________START OF DOCUMENT_______________________
     // __________PAGE 1 OF DOCUMENT__________
     // Page Header
@@ -483,9 +483,6 @@ export default function Reports() {
     doc.text(`${avgEnrolled}`, 145, yPos);
     yPos += 10;
 
-    // Generate Donut Pie Chart
-    const donutChartImage = await generateProgramReportDonutChart(totalAdmitted, totalApplied, overallAggregateAdmitRate);  
-
     // Add donut pie chart to right side of page
     doc.addImage(donutChartImage, 'PNG', 115, yPos, 10, 80, 80);
 
@@ -532,20 +529,19 @@ export default function Reports() {
     doc.setTextColor(0, 0, 0);
 
     // __________PAGE 2 OF DOCUMENT__________
-
-    // Generate Bar charts
-    const admitRateBarChartImage = await generateAdmitRatePerIndivSem(semesterData);
-    const admitEnrollBarChartImage = await generateAdmitEnrollByStudentType(semesterData);
-
-    // Add Bar Charts to PDF
+    // Create new page with header setup
     doc.addPage();
+    generatePDFHeader(doc, "Program");
+    // Add Bar Charts to page
     yPos = 20;
     doc.addImage(admitRateBarChartImage, 'PNG', 10, yPos, 190, 95);
     yPos += 105;
     doc.addImage(admitEnrollBarChartImage, 'PNG', 10, yPos, 190, 95);
 
     // ___________________PAGE 3 OF DOCUMENT____________________
+    // Create new page with header setup
     doc.addPage();
+    generatePDFHeader(doc, "Program");
     yPos = 20;
     // Subsection Title Header
     doc.setFontSize(20);
