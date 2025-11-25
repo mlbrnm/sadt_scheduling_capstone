@@ -1,16 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
 import InstructorPicker from "./instructorpicker";
+import { calculateTotalHours, convertToMinutes } from "./hoursUtil";
+import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
+
 export default function EditDelivery({
   deliveries,
   onSave,
   onCancel,
   onAddSiblingDelivery,
   onAddSection,
+  onAddAllDeliveries,
   instructors,
 }) {
   /**
-   * NOTES FOR BACKEND
    * deliveries prop:
    * - Array of original delivery objects from CertificateSchedule
    * - Used to initialize drafts
@@ -22,7 +25,9 @@ export default function EditDelivery({
    * - Converted back to delivery shape on Save
    */
   const [drafts, setDrafts] = useState([]);
+  const [pickerForIndex, setPickerForIndex] = useState(null); // which row is currently picking instructor
   const [isInstructorPickerOpen, setIsInstructorPickerOpen] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Convert flags to boolean days
   const flagsToDays = (delivery) => ({
@@ -34,33 +39,32 @@ export default function EditDelivery({
     s: (delivery.s || "").toUpperCase() === "X",
   });
 
+  // Helper to create initial draft from delivery object
+  const makeDraftFromDelivery = (delivery) => ({
+    ...delivery,
+    start_date: delivery.start_date || "",
+    end_date: delivery.end_date || "",
+    start_time: delivery.start_time || "",
+    end_time: delivery.end_time || "",
+    days: flagsToDays(delivery),
+    assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+    assigned_instructor_name: delivery.assigned_instructor_name ?? null,
+    assigned_instructor_hours: delivery.assigned_instructor_hours ?? 0,
+    prev_assigned_instructor_id: delivery.assigned_instructor_id ?? null,
+  });
+
   // Initialize/append drafts when deliveries change
   useEffect(() => {
     setDrafts((prevDrafts) => {
       // if editor just opened
       if (prevDrafts.length === 0) {
-        return deliveries.map((delivery) => ({
-          ...delivery,
-          start_date: delivery.start_date || "",
-          end_date: delivery.end_date || "",
-          start_time: delivery.start_time || "",
-          end_time: delivery.end_time || "",
-          days: flagsToDays(delivery),
-        }));
+        return deliveries.map(makeDraftFromDelivery);
       }
       // Append newly added deliveries
       if (deliveries.length > prevDrafts.length) {
         const newDrafts = [...prevDrafts];
         for (let i = prevDrafts.length; i < deliveries.length; i++) {
-          const delivery = deliveries[i];
-          newDrafts.push({
-            ...delivery,
-            start_date: delivery.start_date || "",
-            end_date: delivery.end_date || "",
-            start_time: delivery.start_time || "",
-            end_time: delivery.end_time || "",
-            days: flagsToDays(delivery),
-          });
+          newDrafts.push(makeDraftFromDelivery(deliveries[i]));
         }
         return newDrafts;
       }
@@ -68,7 +72,7 @@ export default function EditDelivery({
     });
   }, [deliveries]);
 
-  // Update a specific field (start/end dates and time) in a draft
+  // Helper to update a specific field (start/end dates and time) in a draft
   const updateField = (deliveryIndex, propertyName, newValue) => {
     setDrafts((prevDrafts) => {
       const updatedDrafts = [...prevDrafts];
@@ -95,7 +99,130 @@ export default function EditDelivery({
     });
   };
 
+  // Open InstructorPicker for a specific delivery row
+  const openPickerForInstructor = (index) => {
+    setPickerForIndex(index);
+    setIsInstructorPickerOpen(true);
+  };
+
+  // Helper to set or clear instructor on a row in drafts
+  const setInstructorFor = (rowIndex, instructor) => {
+    setDrafts((prevDrafts) => {
+      const updatedDrafts = [...prevDrafts];
+      updatedDrafts[rowIndex] = {
+        ...prevDrafts[rowIndex],
+        assigned_instructor_id: instructor?.instructor_id ?? null,
+        assigned_instructor_name: instructor
+          ? `${instructor.instructor_name} ${instructor.instructor_lastName}`
+          : null,
+      };
+      return updatedDrafts;
+    });
+  };
+
+  // Handle adding instructor from InstructorPicker
+  const handleAddInstructor = (instructor) => {
+    if (pickerForIndex === null) return;
+    setInstructorFor(pickerForIndex, instructor);
+    setIsInstructorPickerOpen(false);
+    setPickerForIndex(null);
+  };
+
+  // Validate draft times
+  const validateDraft = (draft) => {
+    const draftErrors = {};
+
+    // DATE VALIDATION
+    const dateRegex = /^(0?[1-9]|1[0-2])\/(0?[1-9]|[12]\d|3[01])\/\d{4}$/;
+    const hasStartDate = !!draft.start_date;
+    const hasEndDate = !!draft.end_date;
+
+    // Both dates required
+    if (!hasStartDate) {
+      draftErrors.start_date = "Start Date required!";
+    }
+    if (!hasEndDate) {
+      draftErrors.end_date = "End Date required!";
+    }
+
+    // Invalid format checks
+    if (hasStartDate && !dateRegex.test(draft.start_date)) {
+      draftErrors.start_date = "Enter a valid date (MM/DD/YYYY)";
+    }
+    if (hasEndDate && !dateRegex.test(draft.end_date)) {
+      draftErrors.end_date = "Enter a valid date (MM/DD/YYYY)";
+    }
+
+    // Order check (only if both valid)
+    if (
+      hasStartDate &&
+      hasEndDate &&
+      !draftErrors.start_date &&
+      !draftErrors.end_date
+    ) {
+      const start = new Date(draft.start_date);
+      const end = new Date(draft.end_date);
+      if (end < start) {
+        draftErrors.end_date = "End Date must be After Start Date!";
+      }
+    }
+
+    // HOURS VALIDATION
+    const hasStart = !!draft.start_time;
+    const hasEnd = !!draft.end_time;
+
+    const start = hasStart ? convertToMinutes(draft.start_time) : null;
+    const end = hasEnd ? convertToMinutes(draft.end_time) : null;
+
+    // Both times required
+    if (!hasStart) {
+      draftErrors.start_time = "Start Time required!";
+    }
+    if (!hasEnd) {
+      draftErrors.end_time = "End Time required!";
+    }
+
+    // Invalid format checks
+    if (hasStart && start === null) {
+      draftErrors.start_time = "Enter a valid time (HH:MM)";
+    }
+    if (hasEnd && end === null) {
+      draftErrors.end_time = "Enter a valid time (HH:MM)";
+    }
+
+    // Order check (only if both valid)
+    if (
+      start != null &&
+      end != null &&
+      end <= start &&
+      !draftErrors.start_time &&
+      !draftErrors.end_time
+    ) {
+      draftErrors.end_time = "End Time must be After Start Time!";
+    }
+    return draftErrors;
+  };
+
+  // Handle saving edits
   const handleSaveEdit = () => {
+    const validationErrors = {};
+    // Validate each draft row
+    drafts.forEach((draft) => {
+      const draftErrors = validateDraft(draft);
+      if (Object.keys(draftErrors).length > 0) {
+        validationErrors[draft.deliveryId] = draftErrors;
+      }
+    });
+
+    // If any errors, set errors state and abort save
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    // Clear errors if validation passes
+    setErrors({});
+
     // Convert drafts back to delivery shape with 'X' from day booleans
     const updated = drafts.map((d) => ({
       ...d,
@@ -105,8 +232,37 @@ export default function EditDelivery({
       th: d.days.th ? "X" : "",
       f: d.days.f ? "X" : "",
       s: d.days.s ? "X" : "",
+      assigned_instructor_id: d.assigned_instructor_id ?? null,
+      assigned_instructor_name: d.assigned_instructor_name ?? null,
     }));
     onSave(updated);
+  };
+
+  // Calculate preview total hours for an instructor
+  const getPreviewTotalHours = (instructorId) => {
+    if (!instructorId) return null;
+
+    // Find instructor in original list to get their base hours
+    const base = Number(
+      instructors.find(
+        (instructor) => instructor.instructor_id === instructorId
+      )?.total_hours || 0
+    );
+
+    // Add snapshot hours that previously belonged to this instructor
+    const snapshotSum = drafts
+      .filter((draft) => draft.prev_assigned_instructor_id === instructorId)
+      .reduce(
+        (sum, draft) => sum + Number(draft.assigned_instructor_hours || 0),
+        0
+      );
+
+    // Add planned hours for drafts currently assigned to this instructor
+    const plannedSum = drafts
+      .filter((draft) => draft.assigned_instructor_id === instructorId)
+      .reduce((sum, draft) => sum + calculateTotalHours(draft), 0);
+
+    return base - snapshotSum + plannedSum;
   };
 
   // Group drafts by section
@@ -122,24 +278,17 @@ export default function EditDelivery({
 
   const sections = Object.keys(draftsBySection).sort();
 
-  // Handle adding instructor from InstructorPicker
-  // NOT IMPLEMENTED!!!
-  const handleAddInstructor = (instructor) => {
-    // ADD LOGIC TO ADD INSTRUCTOR TO DELIVERY DRAFT!!!
-    console.log("Adding instructor:", instructor);
-    setIsInstructorPickerOpen(false);
-  };
-
   // BACKEND DECIDE ON DATE FORMAT SO WE CAN CHANGE INPUT FROM TEXT TO DATE!!!
   // NEED TO FIGURE OUT HOW TO DO 24-HOUR TIME INPUT AS WELL!!!
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
-      <div>
+      <div className="bg-white rounded p-2">
         <span className="text-lg font-semibold">
           {drafts[0]?.course_name} ({drafts[0]?.course_code})
         </span>
       </div>
+
       {/* Delivery + Section */}
       {sections.map((section) => (
         <div key={section} className="rounded-lg border border-gray-200">
@@ -152,77 +301,117 @@ export default function EditDelivery({
               Add delivery
             </button>
           </div>
-
+          {/* Section */}
           <div className="divide-y divide-gray-300">
             {draftsBySection[section].map((draft) => {
               const index = drafts.findIndex(
                 (d) => d.deliveryId === draft.deliveryId
               );
+              const draftErrors = errors[draft.deliveryId] || {};
+              const previewHours = draft.assigned_instructor_id
+                ? getPreviewTotalHours(draft.assigned_instructor_id)
+                : null;
               return (
                 <div key={draft.deliveryId} className="bg-white p-4">
                   <div className="flex flex-row gap-4 mb-4">
                     {/* Start Date */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        Start Date
+                        Start Date:
                       </label>
                       <input
-                        type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
-                        className="border border-gray-300 rounded p-1 w-32"
+                        type="text" // CHANGE TO DATE INPUT WHEN BACKEND DECIDES ON FORMAT!!!
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.start_date
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.start_date}
                         onChange={(e) =>
                           updateField(index, "start_date", e.target.value)
                         }
                         placeholder="MM/DD/YYYY"
                       />
+                      {draftErrors.start_date && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.start_date}
+                        </span>
+                      )}
                     </div>
                     {/* End Date */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        End Date
+                        End Date:
                       </label>
                       <input
-                        type="text" // USING type="text" FOR NOW, USE "type=date" once format is decided in the backend!!!
-                        className="border border-gray-300 rounded p-1 w-32"
+                        type="text" // CHANGE TO DATE INPUT WHEN BACKEND DECIDES ON FORMAT!!!
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.end_date
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.end_date}
                         onChange={(e) =>
                           updateField(index, "end_date", e.target.value)
                         }
                         placeholder="MM/DD/YYYY"
                       />
+                      {draftErrors.end_date && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.end_date}
+                        </span>
+                      )}
                     </div>
                     {/* Start Time */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        Start Time
+                        Start Time:
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-32"
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.start_time
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.start_time}
                         onChange={(e) =>
                           updateField(index, "start_time", e.target.value)
                         }
                       />
+                      {draftErrors.start_time && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.start_time}
+                        </span>
+                      )}
                     </div>
                     {/* End Time */}
                     <div className="flex flex-col">
                       <label className="text-sm font-medium mb-1">
-                        End Time
+                        End Time:
                       </label>
                       <input
                         type="time"
-                        className="border border-gray-300 rounded p-1 w-32"
+                        className={`border rounded p-1 w-32 ${
+                          draftErrors.end_time
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-300"
+                        }`}
                         value={draft.end_time}
                         onChange={(e) =>
                           updateField(index, "end_time", e.target.value)
                         }
                       />
+                      {draftErrors.end_time && (
+                        <span className="mt-1 text-xs text-red-600">
+                          {draftErrors.end_time}
+                        </span>
+                      )}
                     </div>
                     {/* Days Selection */}
                     <div>
                       <label className="text-sm font-medium mb-1 block">
-                        Days
+                        Days:
                       </label>
                       <div className="flex flex-wrap gap-4">
                         {[
@@ -247,14 +436,56 @@ export default function EditDelivery({
                         ))}
                       </div>
                     </div>
-                    {/* Add Instructor Button */}
-                    <div className="mt-6">
-                      <button
-                        className="cursor-pointer hover:text-blue-600"
-                        onClick={() => setIsInstructorPickerOpen(true)}
-                      >
-                        + Add Instructor
-                      </button>
+                    {/* Add Instructor Button OR Instructor */}
+                    <div className="flex flex-col">
+                      <label className="text-sm font-medium">Instructor:</label>
+                      {draft.assigned_instructor_id ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="">
+                            {draft.assigned_instructor_name}
+                          </span>
+                          {previewHours !== null && (
+                            <span
+                              className={`px-1 py-1 rounded ${getUtilizationColor(
+                                {
+                                  contract_type: instructors.find(
+                                    (i) =>
+                                      i.instructor_id ===
+                                      draft.assigned_instructor_id
+                                  )?.contract_type,
+                                  total_hours: previewHours,
+                                }
+                              )}`}
+                            >
+                              {previewHours}h
+                            </span>
+                          )}
+
+                          <button
+                            className="text-sm font-semibold hover:text-blue-500 cursor-pointer"
+                            onClick={() => openPickerForInstructor(index)}
+                            title="Replace Instructor"
+                          >
+                            Replace
+                          </button>
+                          <button
+                            className="text-sm font-semibold hover:text-red-500 cursor-pointer"
+                            onClick={() => setInstructorFor(index, null)}
+                            title="Remove Instructor"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="">
+                          <button
+                            className="cursor-pointer hover:text-blue-600 mt-1"
+                            onClick={() => openPickerForInstructor(index)}
+                          >
+                            + Add Instructor
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -272,6 +503,14 @@ export default function EditDelivery({
         >
           Add Section
         </button>
+        {onAddAllDeliveries && (
+          <button
+            className="px-3 py-2 ml-2 rounded-md bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+            onClick={onAddAllDeliveries}
+          >
+            Add All Deliveries
+          </button>
+        )}
       </div>
 
       {/* Save & Cancel Buttons */}
@@ -295,7 +534,10 @@ export default function EditDelivery({
         <InstructorPicker
           instructors={instructors}
           onAddInstructor={handleAddInstructor}
-          onClose={() => setIsInstructorPickerOpen(false)}
+          onClose={() => {
+            setIsInstructorPickerOpen(false);
+            setPickerForIndex(null);
+          }}
         />
       )}
     </div>

@@ -1,3 +1,4 @@
+// BACKEND CHECK handoverNotes.md FILE.
 "use client";
 import { useState, useEffect } from "react";
 import mockCertificates from "./mockcertificates.json"; // MOCK DATA - REMOVE LATER
@@ -5,13 +6,14 @@ import mockInstructors from "./mockinstructors.json"; // MOCK DATA - REMOVE LATE
 import CertificatesTable from "./certificatestable";
 import DeliveryPicker from "./deliverypicker";
 import EditDelivery from "./editdelivery";
+import { calculateTotalHoursFromRow } from "./hoursUtil";
 
 export default function CertificateSchedule() {
-  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates - REPLACE WITH API CALL
-  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors - REPLACE WITH API CALL
+  const [certificatesData, setCertificatesData] = useState([]); // Currently holds Mock data for certificates
+  const [instructorsData, setInstructorsData] = useState([]); // Currently holds Mock data for instructors
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState([]);
   const [isDeliveryPickerOpen, setIsDeliveryPickerOpen] = useState(false);
-  // Dropdowns state STATIC HARDCODED FOR NOW!!!
+  // Dropdowns state STATIC HARDCODED FOR NOW.
   const [year, setYear] = useState("2026");
   const [semester, setSemester] = useState("Winter");
   const [program, setProgram] = useState("ISS");
@@ -25,11 +27,20 @@ export default function CertificateSchedule() {
       setError(null);
       try {
         // REPLACE WITH API CALL
-        // const response = await fetch("");
-        // const instructorData = await response.json();
         setInstructorsData(mockInstructors);
         setCertificatesData(
-          mockCertificates.map((row, idx) => ({ ...row, deliveryId: idx })) // ADD deliveryId INDEX IS FINE FOR NOW!!!
+          mockCertificates.map((row) => ({
+            ...row,
+            // TEMPORARY FRONTEND ONLY ID
+            // USED AI Q: How to generate a random id using UUID in Next.js
+            deliveryId:
+              row.deliveryId ||
+              (typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${row.course_code || "COURSE"}-${row.section || "SEC"}-${
+                    row.start_date || "DATE"
+                  }-${Math.random().toString(36).slice(2, 8)}`),
+          }))
         );
       } catch (error) {
         setError("Failed to fetch data.");
@@ -53,14 +64,95 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds([]);
   };
 
+  // Handler to save edited deliveries from EditDelivery component
+  // Computes hours changes by comparing before and after
   const handleSaveEdit = (updatedDeliveries) => {
+    // look up "before" rows
+    const beforeRows = {};
+    certificatesData.forEach((row) => {
+      beforeRows[row.deliveryId] = row;
+    });
+
+    // Hours changes by instructor_id
+    const hoursChangesByInstructor = {};
+    // Helper to add hours change
+    const addHoursChange = (instructorId, hoursChange) => {
+      if (!instructorId) return;
+      const key = String(instructorId);
+      const prev = Number(hoursChangesByInstructor[key]) || 0;
+      hoursChangesByInstructor[key] = prev + Number(hoursChange || 0);
+    };
+
+    // For each edited delivery, compare with before
+    updatedDeliveries.forEach((afterRow) => {
+      const beforeRow = beforeRows[afterRow.deliveryId];
+      if (!beforeRow) return;
+
+      const prevInstructor = beforeRow?.assigned_instructor_id ?? null;
+      const nextInstructor = afterRow.assigned_instructor_id ?? null;
+
+      // Use snapshot if available
+      const oldHours = prevInstructor
+        ? Number(
+            beforeRow.assigned_instructor_hours ??
+              calculateTotalHoursFromRow(beforeRow)
+          )
+        : 0;
+      const newHours = nextInstructor
+        ? calculateTotalHoursFromRow(afterRow)
+        : 0;
+
+      if (prevInstructor === nextInstructor) {
+        // Same instructor
+        // If an instructor is assigned, adjust by the difference in hours
+        if (prevInstructor) {
+          const hoursDifference = newHours - oldHours;
+          addHoursChange(prevInstructor, hoursDifference);
+        }
+        // If no instructor assigned, no hours change
+      } else {
+        // Different instructors
+        // Subtract old hours from previous instructor
+        if (prevInstructor) {
+          addHoursChange(prevInstructor, -oldHours);
+        }
+        // Add new hours to next instructor
+        if (nextInstructor) {
+          addHoursChange(nextInstructor, newHours);
+        }
+      }
+    });
+
     const updatedCertificates = certificatesData.map((row) => {
       const match = updatedDeliveries.find(
         (delivery) => delivery.deliveryId === row.deliveryId
       );
-      return match ? match : row;
+      if (!match) return row;
+
+      const nextInstructor = match.assigned_instructor_id ?? null;
+      const newSnapshot = nextInstructor
+        ? calculateTotalHoursFromRow(match)
+        : 0;
+
+      return {
+        ...row,
+        ...match,
+        // persist hours snapshot that were just applied on save
+        assigned_instructor_hours: newSnapshot,
+      };
     });
+
+    // Apply instructor hours changes to instructorsData
+    const updatedInstructors = instructorsData.map((instructor) => {
+      const instructorId = String(instructor.instructor_id);
+      const hoursChange = Number(hoursChangesByInstructor[instructorId] || 0);
+      if (!hoursChange) return instructor;
+      const currentHours = Number(instructor.total_hours) || 0;
+      return { ...instructor, total_hours: currentHours + hoursChange };
+    });
+
     setCertificatesData(updatedCertificates);
+    setInstructorsData(updatedInstructors);
     setSelectedDeliveryIds([]);
   };
 
@@ -177,6 +269,48 @@ export default function CertificateSchedule() {
     setSelectedDeliveryIds((prevIds) => [...prevIds, deliveryToAdd.deliveryId]);
   };
 
+  // Handler to add ALL deliveries for this Certificate (all sections)
+  const handleAddAllDeliveries = () => {
+    if (selectedDeliveryIds.length === 0) return;
+
+    // Use the FIRST selected delivery as the anchor
+    const anchorId = selectedDeliveryIds[0];
+    const anchorRow = certificatesData.find(
+      (row) => row.deliveryId === anchorId
+    );
+    if (!anchorRow) return;
+
+    const key = certificateGroupKey(anchorRow);
+
+    // Find all deliveries in the SAME certificate group (course_code, term, program, semester_code)
+    const certificateGroupDeliveries = certificatesData.filter(
+      (row) =>
+        row.course_code === key.course_code &&
+        row.term === key.term &&
+        row.program === key.program &&
+        row.semester_code === key.semester_code
+    );
+    if (certificateGroupDeliveries.length === 0) return;
+    const allDeliveryIds = certificateGroupDeliveries.map(
+      (row) => row.deliveryId
+    );
+
+    // Check if we already have them all
+    const alreadyHasAll = allDeliveryIds.every((id) =>
+      selectedDeliveryIds.includes(id)
+    );
+    if (alreadyHasAll) {
+      alert(
+        `All deliveries are already added for ${anchorRow.course_name} (${anchorRow.course_code}).`
+      );
+      return;
+    }
+    setSelectedDeliveryIds((prevIds) => {
+      const newIdsSet = new Set([...prevIds, ...allDeliveryIds]);
+      return Array.from(newIdsSet);
+    });
+  };
+
   // EDIT VIEW
   if (selectedDeliveryIds.length > 0) {
     // Find the actual selected delivery objects from selected IDs to send to EditDelivery
@@ -192,6 +326,7 @@ export default function CertificateSchedule() {
           onCancel={handleCancelEdit}
           onAddSiblingDelivery={handleAddSiblingDelivery}
           onAddSection={handleAddSection}
+          onAddAllDeliveries={handleAddAllDeliveries}
           instructors={instructorsData}
         />
       </div>
@@ -221,6 +356,8 @@ export default function CertificateSchedule() {
             onChange={(e) => setSemester(e.target.value)}
           >
             <option value="Winter">Winter</option>
+            <option value="Spr/Sum">Spr/Sum</option>
+            <option value="Fall">Fall</option>
           </select>
         </label>
         <label className="flex flex-col">
@@ -230,7 +367,9 @@ export default function CertificateSchedule() {
             value={program}
             onChange={(e) => setProgram(e.target.value)}
           >
-            <option value="ISS">ISS</option>
+            <option value="Information System Security">
+              Information System Security
+            </option>
           </select>
         </label>
         {/* Edit Course Button */}
@@ -238,20 +377,39 @@ export default function CertificateSchedule() {
           onClick={handleOpenPicker}
           className="button-primary hover:button-hover text-white cursor-pointer px-2 rounded-lg inline-block text-center"
         >
-          Edit Certificate
+          Edit Delivery
         </button>
       </div>
 
-      {/* Certificate Table */}
-      <CertificatesTable certificatesData={certificatesData} />
+      {/* Loading and Error States */}
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
+          <p>{error}</p>
+        </div>
+      )}
+      {/* Loading Spinner */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700" />
+          <span className="ml-2">Loading certificates...</span>
+        </div>
+      ) : (
+        !error && (
+          <>
+            {/* Certificate Table */}
+            <CertificatesTable certificatesData={certificatesData} />
 
-      {/* Delivery Picker Modal */}
-      {isDeliveryPickerOpen && (
-        <DeliveryPicker
-          certificatesData={certificatesData}
-          onSelectDelivery={handleSelectDelivery}
-          onClose={() => setIsDeliveryPickerOpen(false)}
-        />
+            {/* Delivery Picker Modal */}
+            {isDeliveryPickerOpen && (
+              <DeliveryPicker
+                certificatesData={certificatesData}
+                onSelectDelivery={handleSelectDelivery}
+                onClose={() => setIsDeliveryPickerOpen(false)}
+              />
+            )}
+          </>
+        )
       )}
     </div>
   );
