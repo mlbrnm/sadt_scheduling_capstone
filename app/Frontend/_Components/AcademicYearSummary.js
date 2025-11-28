@@ -12,12 +12,14 @@ export default function AcademicYearSummary() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("http://localhost:5000/api/academic-year-summary");
-        
+        const response = await fetch(
+          "http://localhost:5000/api/academic-year-summary"
+        );
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         setSummaryData(data || []);
       } catch (error) {
@@ -154,7 +156,9 @@ export default function AcademicYearSummary() {
             {/* Progress Bar */}
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-gray-600">Scheduling Progress</span>
+                <span className="text-xs text-gray-600">
+                  Scheduling Progress
+                </span>
                 <span
                   className={`text-xs font-semibold ${getProgressTextColor(
                     program.progress_percentage
@@ -168,7 +172,9 @@ export default function AcademicYearSummary() {
                   className={`h-2.5 rounded-full ${getProgressColor(
                     program.progress_percentage
                   )}`}
-                  style={{ width: `${Math.min(program.progress_percentage, 100)}%` }}
+                  style={{
+                    width: `${Math.min(program.progress_percentage, 100)}%`,
+                  }}
                 ></div>
               </div>
             </div>
@@ -192,7 +198,9 @@ export default function AcademicYearSummary() {
             {/* Academic Chairs */}
             {program.academic_chairs && program.academic_chairs.length > 0 && (
               <div className="pt-3 border-t border-gray-200">
-                <div className="text-xs text-gray-600 mb-1">Academic Chairs:</div>
+                <div className="text-xs text-gray-600 mb-1">
+                  Academic Chairs:
+                </div>
                 <div className="flex flex-wrap gap-1">
                   {program.academic_chairs.map((chair, index) => (
                     <span
