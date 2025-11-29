@@ -341,7 +341,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
 
 export default function InstructorProfiles() {
   //create the loading functional component for data loading from api
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   //this will store the instructor data from database table
   const [fetchedData, setFetchedData] = useState([]);
@@ -370,8 +370,6 @@ export default function InstructorProfiles() {
   // create function to populate the table list with instructor data from database
   const fetchInstructorData = async (table) => {
     try {
-      setIsLoading(true); //this will show the loading spinner
-
       //send request to API endpoint to get instructor info
       const response = await fetch(
         `http://localhost:5000/admin/data/instructors`
