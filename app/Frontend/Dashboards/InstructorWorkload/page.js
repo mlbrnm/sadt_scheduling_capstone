@@ -167,7 +167,7 @@ export default function InstructorWorkload() {
             <select
               value={selectedSemester}
               onChange={(e) => setSelectedSemester(e.target.value)}
-              className="text-md"
+              className="bg-white rounded p-2 text-md"
             >
               {mockSemesters.map((semester) => (
                 <option key={semester} value={semester}>
