@@ -149,3 +149,4 @@ app/Backend/flask-server/routes/__pycache__/
 .DS_Store
 
 app\Backend\flask-server\supabase_client.py
+supabase/.branches/_current_branch
