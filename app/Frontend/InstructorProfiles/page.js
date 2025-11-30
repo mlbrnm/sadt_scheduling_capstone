@@ -177,7 +177,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
   //   }
   // }
   return (
-    <div className="fixed inset-0 bg-slate-150 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-gray-800/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-4">
