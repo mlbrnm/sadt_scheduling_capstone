@@ -54,128 +54,202 @@ export default function IndivProfile() {
   const getStatusColor = (status) => {
     switch (status) {
       case "Active":
-        return "chip-active px-4 py-1 w-20 text-center rounded border";
+        return "chip-active px-4 py-1 w-24 text-center rounded border";
       case "Renew":
-        return "chip-renew px-4 py-1 w-20 text-center rounded border";
+        return "chip-renew px-4 py-1 w-24 text-center rounded border";
       case "Inactive":
-        return "chip-inactive px-4 py-1 w-20 text-center rounded border";
+        return "chip-inactive px-4 py-1 w-24 text-center rounded border";
       case "Expire":
-        return "chip-expire px-4 py-1 w-20 text-center rounded border";
+        return "chip-expire px-4 py-1 w-24 text-center rounded border";
       case "On Leave":
-        return "chip-onleave px-4 py-1 w-20 text-center rounded border";
+        return "chip-onleave px-4 py-1 w-24 text-center rounded border";
       default:
-        return "chip-blank px-4 py-1 w-20 text-center rounded border";
+        return "chip-blank px-4 py-1 w-24 text-center rounded border";
     }
   };
 
+  const fullName = `${instructorData?.instructor_name || ""} ${
+    instructorData?.instructor_lastname || ""
+  }`.trim();
+  const email = instructorData
+    ? `${instructorData.instructor_name}.${instructorData.instructor_lastname}@sait.ca`
+    : "-";
+
   return (
     /* MAIN CONTENT CONTAINER */
-    <div className="p-8">
-      {/* Top Half of Page Container */}
-      <div className="flex mb-4">
-        {/* Profile Pic */}
-        <div className="flex mb-4 border border-blue h-64 w-64 rounded-full items-center justify-center bg-gray-400 mr-10 mt-2 ml-12">
-          <Image
-            src="/default-avatar.jpg"
-            alt={`${instructorData?.instructor_name} ${instructorData?.instructor_lastname}`}
-            width={275}
-            height={300}
-            className="rounded-full object-cover"
-          />
-        </div>
-        {/* Basic Instructor Info */}
-        <div className="mt-6 mx-9">
-          <span className="text-5xl font-semibold">
-            {instructorData?.instructor_name}{" "}
-            {instructorData?.instructor_lastname}
-          </span>
-          <div className="flex items-center mt-5 ml-2">
-            <span className="text-lg mr-10">
-              ID: {instructorData?.instructor_id}
-            </span>
-            <span
-              className={`text-lg ${getStatusColor(
-                instructorData?.instructor_status
-              )}`}
-            >
-              {instructorData?.instructor_status || "-"}
-            </span>
-            <span className="text-lg ml-6">
-              Since: {instructorData?.salaried_begin_date || "-"}
-            </span>
+    <div className="p-8 bg-slate-50 min-h-[80vh] flex justify-center">
+      <div className="w-full max-w-6xl space-y-8">
+        {/* TOP CARD: PROFILE SUMMARY */}
+        <div className="bg-white rounded-2xl shadow-sm p-8 flex flex-col md:flex-row gap-8">
+          {/* Avatar */}
+          <div className="flex items-center justify-center">
+            <div className="h-40 w-40 md:h-52 md:w-52 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+              <Image
+                src="/default-avatar.jpg"
+                alt={fullName || "Instructor avatar"}
+                width={220}
+                height={220}
+                className="rounded-full object-cover h-full w-full"
+              />
+            </div>
           </div>
-          <div className=" mt-4 ml-2">
-            <span className="text-lg chip-contract-type border px-4 py-2 w-30 text-center rounded">
-              {instructorData?.contract_type || "-"}
-            </span>
-            <span className="text-lg ml-6">
-              CCH Target: {instructorData?.cch_target_ay2025 || "-"}
-            </span>
+
+          {/* Main Info */}
+          <div className="flex-1 space-y-4">
+            {/* Name + status row */}
+            <div>
+              <h1 className="text-3xl md:text-4xl font-semibold text-slate-900">
+                {fullName || "Unnamed Instructor"}
+              </h1>
+              <div className="mt-4 flex flex-wrap items-center gap-4">
+                <span className="text-sm md:text-base text-slate-600">
+                  ID:{" "}
+                  <span className="font-medium text-slate-800">
+                    {instructorData?.instructor_id || "-"}
+                  </span>
+                </span>
+
+                <span
+                  className={`text-sm md:text-base ${getStatusColor(
+                    instructorData?.instructor_status
+                  )}`}
+                >
+                  {instructorData?.instructor_status || "Status Unknown"}
+                </span>
+
+                <span className="text-sm md:text-base text-slate-600">
+                  Since:{" "}
+                  <span className="font-medium text-slate-800">
+                    {instructorData?.salaried_begin_date || "-"}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {/* Contract + Target + Reporting */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm md:text-base">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+                  Contract Type
+                </p>
+                <span className="inline-flex items-center rounded border chip-contract-type px-4 py-1 text-sm">
+                  {instructorData?.contract_type || "-"}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+                  CCH Target
+                </p>
+                <p className="font-medium">
+                  {instructorData?.cch_target_ay2025 || "-"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+                  Reports To
+                </p>
+                <p className="font-medium">
+                  {instructorData?.reporting_ac || "-"}
+                </p>
+              </div>
+            </div>
+
+            {/* Contract End + Contact Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+              {/* Contract Dates */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+                  Contract Dates
+                </p>
+                <p className="text-sm text-slate-700">
+                  Start:{" "}
+                  <span className="font-medium">
+                    {instructorData?.salaried_begin_date || "-"}
+                  </span>
+                </p>
+                <p className="text-sm text-slate-700">
+                  End:{" "}
+                  <span className="font-medium">
+                    {instructorData?.contract_end || "-"}
+                  </span>
+                </p>
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+                  Contact
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-slate-700">Email:</span>{" "}
+                  <span className="text-sait-red underline">{email}</span>
+                </p>
+                <p className="text-sm text-slate-700">
+                  <span className="font-medium">Office:</span> NN406
+                </p>
+                <p className="text-sm text-slate-700">
+                  <span className="font-medium">Phone:</span> 403-555-1234
+                  <span className="text-slate-500"> (ext. 9)</span>
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="text-lg mt-4 ml-2">
-            <span className="text-lg">
-              Reports To: {instructorData?.reporting_ac}
-            </span>
-            <span className="text-lg ml-6">
-              End Date: {instructorData?.contract_end || "-"}
-            </span>
+        </div>
+
+        {/* BOTTOM GRID: COURSES + NOTES */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {/* Current Courses */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col">
+            <h2 className="font-semibold text-lg text-slate-900">
+              Current Courses
+            </h2>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-sm text-slate-700">
+              <li>CPRG-211 A</li>
+              <li>CPRG-211 B</li>
+              <li>CPRG-304 B</li>
+              <li>CPRG-304 D</li>
+            </ul>
+            <div className="mt-3 text-sm font-semibold text-slate-800">
+              Total: 4
+            </div>
           </div>
-        </div>
-        <div className="mt-12 mx-12">
-          <ul>
-            <li className="text-xl ml-64 text-sait-red font-medium italic underline">
-              {instructorData?.instructor_name}.
-              {instructorData?.instructor_lastname}@sait.ca
-            </li>
-            <li className="text-lg ml-64 mt-3">Office: NN406</li>
-            <li className="text-lg ml-64 mt-3">Phone: 403-555-1234 (ext. 9)</li>
-          </ul>
-        </div>
-      </div>
-      {/* Bottom Half of Page Container */}
-      <div className="flex mt-10 mx-14 gap-48 justify-center">
-        {/* Current Courses */}
-        <div>
-          <span className="font-semibold text-xl">Current Courses</span>
-          <ul className="list-disc m-4">
-            <li className="text-lg mt-1">CPRG-211 A</li>
-            <li className="text-lg mt-1">CPRG-211 B</li>
-            <li className="text-lg mt-1">CPRG-304 B</li>
-            <li className="text-lg mt-1">CPRG-304 D</li>
-          </ul>
-          <span className="font-semibold text-xl ml-5">Total: 4</span>
-        </div>
-        {/* Eligible Courses */}
-        <div>
-          <span className="font-semibold text-xl">Eligible Courses</span>
-          <ul className="list-disc m-4">
-            <li className="text-lg mt-1">CPRG-211</li>
-            <li className="text-lg mt-1">CPRG-216</li>
-            <li className="text-lg mt-1">CPRG-304</li>
-            <li className="text-lg mt-1">CPSY 202</li>
-            <li className="text-lg mt-1">INTP-302</li>
-          </ul>
-        </div>
-        {/* Previously Taught */}
-        <div>
-          <span className="font-semibold text-xl">Previously Taught</span>
-          <ul className="list-disc m-4">
-            <li className="text-lg mt-1">CPRG-211</li>
-            <li className="text-lg mt-1">CPRG-304</li>
-            <li className="text-lg mt-1">INTP-302</li>
-          </ul>
-        </div>
-        {/* Notes/Comments Section*/}
-        <div>
-          <ul className="font-semibold text-xl">
-            Notes/Comments:
-            <li className="text-lg my-2 font-normal">
-              Work from home thursdays
-            </li>
-            <li className="text-lg mt-4 mb-2 font-normal">
-              PMP Certification in Progress
-            </li>
-          </ul>
+
+          {/* Eligible Courses */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col">
+            <h2 className="font-semibold text-lg text-slate-900">
+              Eligible Courses
+            </h2>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-sm text-slate-700">
+              <li>CPRG-211</li>
+              <li>CPRG-216</li>
+              <li>CPRG-304</li>
+              <li>CPSY 202</li>
+              <li>INTP-302</li>
+            </ul>
+          </div>
+
+          {/* Previously Taught */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col">
+            <h2 className="font-semibold text-lg text-slate-900">
+              Previously Taught
+            </h2>
+            <ul className="list-disc list-inside mt-3 space-y-1 text-sm text-slate-700">
+              <li>CPRG-211</li>
+              <li>CPRG-304</li>
+              <li>INTP-302</li>
+            </ul>
+          </div>
+
+          {/* Notes / Comments */}
+          <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col">
+            <h2 className="font-semibold text-lg text-slate-900">
+              Notes / Comments
+            </h2>
+            <ul className="mt-3 space-y-3 text-sm text-slate-700">
+              <li>Work from home Thursdays</li>
+              <li>PMP Certification in progress</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
