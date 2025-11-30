@@ -15,6 +15,21 @@ export default function Login() {
   const [stage, setStage] = useState("email"); // 'email' or 'password'
   const [redirecting, setRedirecting] = useState(false);
 
+  // Redirect to home if already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        router.push("/Frontend/Home");
+      }
+    };
+
+    checkSession();
+  }, []);
+
   // Calls the Edge Function to check the user's status and determines the next step.
   const checkEmail = async (e) => {
     e.preventDefault();
@@ -176,7 +191,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full rounded-md border border-transparent background-headerfooter px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
+                    className="w-full rounded-md border border-transparent background-headerfooter px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 cursor-pointer"
                   >
                     {loading ? "Checking..." : "Continue"}
                   </button>
@@ -230,14 +245,14 @@ export default function Login() {
                       setStage("email");
                       setMessage(""); // Clear previous message
                     }}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200 cursor-pointer"
                   >
                     Back
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="rounded-md border border-transparent background-headerfooter px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200"
+                    className="rounded-md border border-transparent background-headerfooter px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition-all duration-200 cursor-pointer"
                   >
                     {loading ? "Signing in..." : "Sign in"}
                   </button>
