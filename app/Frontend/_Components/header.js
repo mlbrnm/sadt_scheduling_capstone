@@ -83,7 +83,16 @@ export default function Header() {
         },
       ],
     },
-    { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
+    {
+      label: "Dashboards",
+      href: "/Frontend/Dashboards",
+      submenu: [
+        {
+          label: "Instructor Workload",
+          href: "/Frontend/Dashboards/InstructorWorkload",
+        },
+      ],
+    },
     { label: "Upload Data", href: "/Frontend/UploadData" },
     { label: "Instructor Profiles", href: "/Frontend/InstructorProfiles" },
     { label: "Reports", href: "/Frontend/Reports" },
@@ -94,7 +103,16 @@ export default function Header() {
     //Should work on dynamic home tabs
     //{ label: "Home", href: "/Frontend/Home" },
     { label: "Schedule Manager", href: "/Frontend/ACScheduleManager" },
-    { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
+    {
+      label: "Dashboards",
+      href: "/Frontend/Dashboards",
+      submenu: [
+        {
+          label: "Instructor Workload",
+          href: "/Frontend/Dashboards/InstructorWorkload",
+        },
+      ],
+    },
     { label: "Instructor Profiles", href: "/Frontend/InstructorProfiles" },
   ];
 
@@ -151,16 +169,17 @@ export default function Header() {
             {tab.submenu && (
               <div
                 className="absolute left-0 right-0 top-full
-                     background-headerfooter
-                     opacity-0 pointer-events-none
-                     group-hover:opacity-100 group-hover:pointer-events-auto
-                     z-50"
+               background-headerfooter
+               opacity-0 pointer-events-none
+               group-hover:opacity-100 group-hover:pointer-events-auto
+               z-50"
               >
                 {tab.submenu.map((item, subIndex) => (
                   <Link
                     key={subIndex}
                     href={item.href}
-                    className="block px-4 py-2 font-medium text-white hover:bg-[#00A3E0]"
+                    className="flex justify-center items-center px-4 py-2 
+                   font-medium text-white hover:bg-[#00A3E0] text-center"
                   >
                     {item.label}
                   </Link>
