@@ -77,7 +77,7 @@ export default function IndivProfile() {
 
   return (
     /* MAIN CONTENT CONTAINER */
-    <div className="p-8 bg-slate-50 min-h-[80vh] flex justify-center">
+    <div className="p-8 min-h-[80vh] flex justify-center">
       <div className="w-full max-w-6xl space-y-8">
         {/* TOP CARD: PROFILE SUMMARY */}
         <div className="bg-white rounded-2xl shadow-sm p-8 flex flex-col md:flex-row gap-8">
