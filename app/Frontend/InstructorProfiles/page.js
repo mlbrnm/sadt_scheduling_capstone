@@ -248,9 +248,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 required
               >
-                <option selected value="">
-                  Select Contract Type
-                </option>
+                <option value="">Select Contract Type</option>
                 <option value="Permanent">Permanent</option>
                 <option value="Temporary">Temporary</option>
                 <option value="Casual">Casual</option>
@@ -266,9 +264,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 required
               >
-                <option selected value="">
-                  Select Status
-                </option>
+                <option value="">Select Status</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="On Leave">On Leave</option>
