@@ -206,9 +206,10 @@ def register_schedule_routes(app):
                     program_courses = [c for c in courses_data if c["program_id"] == program["program_id"]]
                     ac_course_ids.extend([c["course_id"] for c in program_courses])
 
-                    # Split intakes into a list and normalize
+                    # Split intakes into a list and normalize (handle both comma and dash separators)
+                    import re
                     intakes = program.get("intakes") or ""
-                    intake_terms = [i.strip().lower() for i in intakes.split(",") if i.strip()]
+                    intake_terms = [i.strip().lower() for i in re.split(r'[,\-]', intakes) if i.strip()]
 
                     # Generate scheduled_courses for each term and course
                     for course in program_courses:

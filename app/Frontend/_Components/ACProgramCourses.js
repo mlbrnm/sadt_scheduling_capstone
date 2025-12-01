@@ -77,7 +77,9 @@ export default function ACProgramCourses({ academicChairId }) {
               courses: [],
             };
           }
-          if (course) programMap[course.program_id].courses.push(sc);
+          if (course && course.program_id) {
+            programMap[course.program_id].courses.push(sc);
+          }
         });
 
         setPrograms(Object.values(programMap));
