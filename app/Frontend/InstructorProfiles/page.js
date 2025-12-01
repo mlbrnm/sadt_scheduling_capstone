@@ -180,6 +180,9 @@ function AddInstructorModal({ onClose, onSuccess }) {
     <div className="fixed inset-0 bg-gray-800/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4">
         <form onSubmit={handleSubmit}>
+          <div>
+            <h2 className="text-2xl font-semibold mb-2">Add New Instructor</h2>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               {/*First Name Input */}
@@ -393,15 +396,27 @@ export default function InstructorProfiles() {
     fetchInstructorData();
   }, []);
 
+  // function to normalize strings by removing accents and converting to lowercase
+  const normalizeString = (string) => {
+    if (!string) return "";
+    return string
+      .normalize("NFD") //split letters and accents
+      .replace(/[\u0300-\u036f]/g, "") //remove accents
+      .toLowerCase();
+  };
+
+  // normalize the search query
+  const normalizedSearchQuery = normalizeString(searchQuery);
+
   // filter the search
   //converts row data into string and lower case for searchability
   //created using AI suggestions
-  const filteredData = fetchedData.filter((row) =>
-    Object.values(row)
-      .join(" ")
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const filteredData = fetchedData.filter((row) => {
+    const name = normalizeString(
+      `${row.instructor_name} ${row.instructor_lastname} ${row.instructor_id}`
+    );
+    return name.includes(normalizedSearchQuery);
+  });
 
   const viewProfile = (instructorId) => {
     router.push(
