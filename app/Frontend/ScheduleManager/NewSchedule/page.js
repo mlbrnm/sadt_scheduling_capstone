@@ -18,12 +18,9 @@ export default function NewSchedule() {
   const scheduleId = searchParams.get("schedule_id");
 
   const [newScheduleDraft, setNewScheduleDraft] = useState({
-    metaData: {
-      year: new Date().getFullYear(),
-      activeSemesters: { winter: true, springSummer: true, fall: true },
-    },
+    metaData: {},
     addedInstructors: [],
-    addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
+    addedCoursesBySemester: {},
   });
 
   const [instructorData, setInstructorData] = useState([]);
@@ -70,7 +67,7 @@ export default function NewSchedule() {
     })();
   }, []);
 
-  // Fetch instructors and courses
+  // Fetch instructors and courses for reference
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -91,12 +88,6 @@ export default function NewSchedule() {
 
         setInstructorData(instructorsData || []);
         setCourseData(coursesData || []);
-
-        // Initialize empty semesters
-        setNewScheduleDraft((prev) => ({
-          ...prev,
-          addedCoursesBySemester: { winter: [], springSummer: [], fall: [] },
-        }));
       } catch (err) {
         console.error(err);
         setError("Failed to fetch data: " + err.message);
@@ -108,135 +99,79 @@ export default function NewSchedule() {
     fetchData();
   }, []);
 
-  // Load existing schedule if it does exist
   useEffect(() => {
-    if (
-      !scheduleId ||
-      isLoading ||
-      !instructorData.length ||
-      !courseData.length
-    )
-      return;
+    if (!scheduleId || isLoading) return;
 
     const loadSchedule = async () => {
       setLoadingSchedule(true);
       setError(null);
 
-      //used AI to help organize how to fetch the necessary data
       try {
-        //Fetch schedule metadata
-        const { data: scheduleMeta, error: metaError } = await supabase
-          .from("schedules")
-          .select("academic_chair_id, submission_status, academic_year")
-          .eq("id", scheduleId)
-          .single();
-
-        if (metaError && metaError.code !== "PGRST116")
-          console.error(metaError);
-
-        if (scheduleMeta) {
-          setScheduleAcademicChairId(scheduleMeta.academic_chair_id);
-          setIsScheduleSubmitted(false);
-          setNewScheduleDraft((prev) => ({
-            ...prev,
-            metaData: {
-              ...prev.metaData,
-              year: scheduleMeta.academic_year || prev.metaData.year,
-            },
-          }));
-        }
-
-        //Fetch assignments JSON
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/json`
         );
         if (!response.ok) throw new Error("Failed to load schedule JSON");
         const data = await response.json();
-        setAssignments(data.assignments || []);
 
-        const activeSemestersFromBackend = data.metaData?.activeSemesters || {
-          winter: true,
-          springSummer: true,
-          fall: true,
-        };
+        const schedule = data.schedule || {};
+        const metaData = data.metaData || {};
+        const coursesBySemester = data.courses_by_semester || {};
 
+        // Set schedule metadata
+        setScheduleAcademicChairId(schedule.academic_chair_id || null);
+        setIsScheduleSubmitted(false);
+
+        // Safely set metaData
         setNewScheduleDraft((prev) => ({
           ...prev,
           metaData: {
             ...prev.metaData,
-            year: data.metaData?.year || prev.metaData.year,
-            activeSemesters: activeSemestersFromBackend,
+            year: metaData.year || prev.metaData.year,
+            activeSemesters: metaData.activeSemesters || {},
           },
         }));
 
-        //Fetch scheduled courses for this schedule
-        const { data: schCoursesData, error: schCoursesError } = await supabase
-          .from("scheduled_courses")
-          .select("course_id, term, num_sections")
-          .eq("schedule_id", scheduleId);
-
-        if (schCoursesError) console.error(schCoursesError);
-
-        // Map course_id to num_sections
-        const courseSectionsMap = {};
-        (schCoursesData || []).forEach((sc) => {
-          courseSectionsMap[sc.course_id] = sc.num_sections;
-        });
-
-        setCourseSections(courseSectionsMap);
-
-        //Build addedCoursesBySemester
-        const addedCoursesBySemester = {
-          winter: [],
-          springSummer: [],
-          fall: [],
-        };
-        const courseIdsBySemester = {
-          winter: new Set(),
-          springSummer: new Set(),
-          fall: new Set(),
-        };
-
-        (schCoursesData || []).forEach((sc) => {
-          const termParts = (sc.term || "")
-            .split(/[,|;-]+|\s-\s/)
-            .map((t) => t.trim().toLowerCase())
-            .filter(Boolean);
-
-          termParts.forEach((t) => {
-            if (t.includes("winter"))
-              courseIdsBySemester.winter.add(sc.course_id);
-            if (t.includes("spring"))
-              courseIdsBySemester.springSummer.add(sc.course_id);
-            if (t.includes("fall")) courseIdsBySemester.fall.add(sc.course_id);
+        // Build addedCoursesBySemester
+        const addedCoursesBySemester = {};
+        Object.entries(coursesBySemester).forEach(([semester, courses]) => {
+          addedCoursesBySemester[semester] = courses.map((c) => {
+            const numSections =
+              c.num_sections !== undefined
+                ? c.num_sections
+                : c.sections
+                ? c.sections.length
+                : 1;
+            return {
+              ...c,
+              sections: c.sections || [],
+              num_sections: numSections,
+            };
           });
         });
 
-        semester_list.forEach((sem) => {
-          addedCoursesBySemester[sem] = courseData
-            .filter((c) => courseIdsBySemester[sem].has(c.course_id))
-            .map((c) => ({
-              ...c,
-              num_sections: courseSectionsMap[c.course_id] || 0,
-            }));
-        });
-
-        //Build addedInstructors from assignments
-        const instructorIds = new Set();
-        Object.keys(data.assignments || {}).forEach((key) => {
-          const parts = key.split("-");
-          if (parts.length < 3) return;
-          instructorIds.add(String(parts[0]));
-        });
-
-        const addedInstructors = instructorData.filter((instr) =>
-          instructorIds.has(String(instr.instructor_id))
-        );
-
-        // Update state
         setNewScheduleDraft((prev) => ({
           ...prev,
           addedCoursesBySemester,
+        }));
+
+        // Build addedInstructors from sections
+        const instructorsMap = {};
+        Object.values(coursesBySemester).forEach((courses) => {
+          courses.forEach((c) => {
+            (c.sections || []).forEach((sec) => {
+              (sec.assigned_instructors || []).forEach((instr) => {
+                instructorsMap[instr.instructor_id] = true;
+              });
+            });
+          });
+        });
+
+        const addedInstructors = instructorData.filter(
+          (instr) => instructorsMap[instr.instructor_id]
+        );
+
+        setNewScheduleDraft((prev) => ({
+          ...prev,
           addedInstructors,
         }));
       } catch (err) {
@@ -248,131 +183,7 @@ export default function NewSchedule() {
     };
 
     loadSchedule();
-  }, [scheduleId, isLoading, instructorData, courseData]);
-
-  // Pre-populate instructors and courses based on AC programs
-  useEffect(() => {
-    if (
-      !scheduleAcademicChairId ||
-      !courseData.length ||
-      !instructorData.length ||
-      isLoading ||
-      loadingSchedule
-    ) {
-      return;
-    }
-
-    const prePopulateACPrograms = async () => {
-      try {
-        // Fetch all programs
-        const { data: allPrograms, error: programsError } = await supabase
-          .from("programs")
-          .select("*");
-
-        if (programsError) {
-          console.error("Error fetching programs:", programsError);
-          return;
-        }
-
-        // Filter programs for this academic chair
-        const filteredPrograms = (allPrograms || []).filter((program) =>
-          (program.academic_chair_ids || []).includes(scheduleAcademicChairId)
-        );
-        if (!filteredPrograms.length) return;
-
-        const programIds = filteredPrograms.map((p) => p.program_id);
-        const programAcronyms = filteredPrograms
-          .map((p) => p.acronym)
-          .filter(Boolean);
-
-        // Match instructors whose primary program matches AC programs
-        const matchingInstructors = instructorData.filter((instr) =>
-          programAcronyms.includes(instr.primary_program)
-        );
-
-        // Courses belonging to AC programs
-        const programCourses = courseData.filter((course) =>
-          programIds.includes(course.program_id)
-        );
-
-        // Build semester-specific courses based on program intakes
-        const coursesBySemester = {
-          winter: new Set(),
-          springSummer: new Set(),
-          fall: new Set(),
-        };
-        filteredPrograms.forEach((program) => {
-          const programCoursesForThisProgram = programCourses.filter(
-            (c) => c.program_id === program.program_id
-          );
-          const intakes = program.intakes || "";
-          const hasWinter = intakes.includes("Winter");
-          const hasSpring = intakes.includes("Spring");
-          const hasFall = intakes.includes("Fall");
-
-          programCoursesForThisProgram.forEach((course) => {
-            if (hasWinter) coursesBySemester.winter.add(course.course_id);
-            if (hasSpring) coursesBySemester.springSummer.add(course.course_id);
-            if (hasFall) coursesBySemester.fall.add(course.course_id);
-          });
-        });
-
-        // Map course IDs to course objects
-        const newCoursesBySemester = {};
-        semester_list.forEach((sem) => {
-          newCoursesBySemester[sem] = programCourses.filter((course) =>
-            coursesBySemester[sem].has(course.course_id)
-          );
-        });
-
-        // Merge into existing draft without duplicates
-        setNewScheduleDraft((prev) => {
-          const mergedCoursesBySemester = {};
-          semester_list.forEach((sem) => {
-            const existingCourses = prev.addedCoursesBySemester[sem] || [];
-            const acCourses = newCoursesBySemester[sem] || [];
-            mergedCoursesBySemester[sem] = [
-              ...existingCourses,
-              ...acCourses.filter(
-                (c) =>
-                  !existingCourses.some((ec) => ec.course_id === c.course_id)
-              ),
-            ];
-          });
-
-          // Merge instructors without duplicates
-          const mergedInstructors = [
-            ...prev.addedInstructors,
-            ...matchingInstructors.filter(
-              (i) =>
-                !prev.addedInstructors.some(
-                  (pi) => pi.instructor_id === i.instructor_id
-                )
-            ),
-          ];
-
-          return {
-            ...prev,
-            addedCoursesBySemester: mergedCoursesBySemester,
-            addedInstructors: mergedInstructors,
-          };
-        });
-      } catch (err) {
-        console.error(
-          "Error pre-populating AC program courses/instructors:",
-          err
-        );
-      }
-    };
-
-    prePopulateACPrograms();
-  }, [
-    scheduleAcademicChairId,
-    courseData,
-    instructorData,
-    isLoading,
-    loadingSchedule,
-  ]);
+  }, [scheduleId, isLoading, instructorData]);
 
   // Handler to update num_sections for a course in a semester
   const handleUpdateCourseSections = (course_id, semester, newCount) => {
@@ -478,30 +289,31 @@ export default function NewSchedule() {
   ) => {
     if (isScheduleSubmitted) return;
     const courseId = String(course.course_id);
-    const key = `${instructorId}-${courseId}-${semester}`;
+    const key = `${instructorId}-${courseId}-${semester}-${section}`;
 
     setAssignments((prev) => {
       const next = { ...prev };
 
       const unsetFromOthers = (comp) => {
         for (const [k, entry] of Object.entries(next)) {
-          const [iId, cId, sem] = k.split("-");
+          const [iId, cId, sem, sec] = k.split("-");
           if (
             cId !== courseId ||
             sem !== semester ||
-            iId === String(instructorId)
+            iId === String(instructorId) ||
+            sec !== section
           )
             continue;
 
           const sections = entry?.sections || {};
-          const secState = sections[section];
+          const secState = sections[sec];
           if (secState?.[comp]) {
             const newSecState = { ...secState, [comp]: false };
             const newSections = { ...sections };
             if (!newSecState.class && !newSecState.online) {
-              delete newSections[section];
+              delete newSections[sec];
             } else {
-              newSections[section] = newSecState;
+              newSections[sec] = newSecState;
             }
             const updatedEntry = { ...entry, sections: newSections };
             if (Object.keys(updatedEntry.sections).length === 0) {
@@ -572,7 +384,6 @@ export default function NewSchedule() {
   }, [newScheduleDraft.addedInstructors]);
 
   // Save handler
-  // Save handler
   const handleSave = async () => {
     setSaveStatus(null);
     if (!currentUserId) {
@@ -599,9 +410,11 @@ export default function NewSchedule() {
       const payload = {
         academic_year: newScheduleDraft.metaData.year,
         academic_chair_id: currentUserId,
-        assignments, // current instructor assignments
-        addedCoursesBySemester: updatedAddedCoursesBySemester,
+        addedCoursesBySemester: updatedAddedCoursesBySemester || {},
+        addedInstructors: newScheduleDraft.addedInstructors || [],
+        assignments: assignments || {}, // Include the assignments object
       };
+
       if (scheduleId) payload.schedule_id = scheduleId;
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/schedules/save`, {
@@ -745,7 +558,7 @@ export default function NewSchedule() {
       });
     } else if (instructorSortMode === "currentSemesterHours") {
       const { winter, springSummer, fall } =
-        newScheduleDraft.metaData.activeSemesters;
+        newScheduleDraft.metaData.activeSemesters || {};
       const allActive = winter && springSummer && fall;
       const currentSemester = allActive
         ? null
@@ -777,7 +590,7 @@ export default function NewSchedule() {
   const filteredCoursesBySemester = getFilteredCoursesBySemester();
   const sortedAndFilteredInstructors = getSortedAndFilteredInstructors();
   const visibleSemesters = semester_list.filter(
-    (sem) => newScheduleDraft.metaData.activeSemesters?.[sem]
+    (sem) => newScheduleDraft.metaData.activeSemesters?.[sem] ?? true
   );
 
   const topScrollerRef = useRef(null);
@@ -940,7 +753,6 @@ export default function NewSchedule() {
                 <AssignmentGrid
                   addedInstructors={sortedAndFilteredInstructors}
                   addedCoursesBySemester={filteredCoursesBySemester}
-                  assignments={assignments}
                   onToggleSection={toggleSection}
                   activeSemesters={newScheduleDraft.metaData.activeSemesters}
                   rowHeights={rowHeights}

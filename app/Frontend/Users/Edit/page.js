@@ -107,41 +107,27 @@ export default function EditUser() {
       setProgramsLoading(true);
       setProgramError(null);
 
-      // Get all programs from the programs table
-      const { data: programs, error } = await supabase
+      // Fetch assigned programs for this user
+      const { data: assignedPrograms, error: assignedError } = await supabase
         .from("programs")
-        .select("program_id, program, academic_chair_ids")
-        .order("program");
+        .select("program_id, program")
+        .eq("ac_id", userId);
 
-      if (error) throw error;
+      if (assignedError) throw assignedError;
 
-      if (!programs) {
-        setAssignedPrograms([]);
-        setUnassignedPrograms([]);
-        return;
-      }
+      // Fetch unassigned programs
+      const { data: unassignedPrograms, error: unassignedError } =
+        await supabase
+          .from("programs")
+          .select("program_id, program")
+          .is("ac_id", null)
+          .order("program");
 
-      // Categorize programs based on whether user ID is in academic_chair_ids array
-      const assigned = [];
-      const unassigned = [];
+      if (unassignedError) throw unassignedError;
 
-      programs.forEach((program) => {
-        const academicChairIds = program.academic_chair_ids || [];
-        if (academicChairIds.includes(userId)) {
-          assigned.push({
-            id: program.program_id,
-            name: program.program || "Unnamed Program",
-          });
-        } else {
-          unassigned.push({
-            id: program.program_id,
-            name: program.program || "Unnamed Program",
-          });
-        }
-      });
-
-      setAssignedPrograms(assigned);
-      setUnassignedPrograms(unassigned);
+      // Update state
+      setAssignedPrograms(assignedPrograms);
+      setUnassignedPrograms(unassignedPrograms);
     } catch (error) {
       console.error("Error fetching programs:", error);
       setProgramError("Failed to load programs: " + error.message);
@@ -150,33 +136,16 @@ export default function EditUser() {
     }
   };
 
-  // Add user to a program's academic chair
   const addUserToProgram = async (programId) => {
     try {
       setProgramOperationLoading(programId);
       setProgramError(null);
 
-      // Get current program data
-      const { data: program, error: fetchError } = await supabase
+      // Just update ac_id directly
+      const { error: updateError } = await supabase
         .from("programs")
-        .select("academic_chair_ids")
-        .eq("program_id", programId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Get current academic chair IDs array and add user ID
-      const currentIds = program.academic_chair_ids || [];
-      
-      // Only add if not already present
-      if (!currentIds.includes(userId)) {
-        const newAcademicChairIds = [...currentIds, userId];
-
-        // Update the program in database
-        const { error: updateError } = await supabase
-          .from("programs")
-          .update({ academic_chair_ids: newAcademicChairIds })
-          .eq("program_id", programId);
+        .update({ ac_id: userId })
+        .eq("program_id", programId);
 
         if (updateError) throw updateError;
       }
@@ -184,36 +153,22 @@ export default function EditUser() {
       // Refresh programs list
       await fetchPrograms();
     } catch (error) {
-      console.error("Error adding user to program:", error);
+      console.error("Error assigning program:", error);
       setProgramError("Failed to assign program: " + error.message);
     } finally {
       setProgramOperationLoading(null);
     }
   };
 
-  // Remove user from a program's academic chair
   const removeUserFromProgram = async (programId) => {
     try {
       setProgramOperationLoading(programId);
       setProgramError(null);
 
-      // Get current program data
-      const { data: program, error: fetchError } = await supabase
-        .from("programs")
-        .select("academic_chair_ids")
-        .eq("program_id", programId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Get current academic chair IDs array and remove user ID
-      const currentIds = program.academic_chair_ids || [];
-      const newAcademicChairIds = currentIds.filter((id) => id !== userId);
-
-      // Update the program in database
+      // Set ac_id to null
       const { error: updateError } = await supabase
         .from("programs")
-        .update({ academic_chair_ids: newAcademicChairIds })
+        .update({ ac_id: null })
         .eq("program_id", programId);
 
       if (updateError) throw updateError;
@@ -221,7 +176,7 @@ export default function EditUser() {
       // Refresh programs list
       await fetchPrograms();
     } catch (error) {
-      console.error("Error removing user from program:", error);
+      console.error("Error removing program assignment:", error);
       setProgramError("Failed to remove program assignment: " + error.message);
     } finally {
       setProgramOperationLoading(null);
@@ -636,10 +591,12 @@ export default function EditUser() {
                     ) : (
                       assignedPrograms.map((program) => (
                         <div
-                          key={program.id}
+                          key={program.program_id}
                           className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
                         >
-                          <span className="text-gray-900">{program.name}</span>
+                          <span className="text-gray-900">
+                            {program.program}
+                          </span>
                           <div className="flex items-center space-x-2">
                             <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
                               <svg
@@ -703,20 +660,24 @@ export default function EditUser() {
                     ) : (
                       unassignedPrograms.map((program) => (
                         <div
-                          key={program.id}
+                          key={program.program_id}
                           className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
                         >
-                          <span className="text-gray-900">{program.name}</span>
+                          <span className="text-gray-900">
+                            {program.program}
+                          </span>
                           <button
-                            onClick={() => addUserToProgram(program.id)}
-                            disabled={programOperationLoading === program.id}
+                            onClick={() => addUserToProgram(program.program_id)}
+                            disabled={
+                              programOperationLoading === program.program_id
+                            }
                             className={`w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors flex-shrink-0 ${
-                              programOperationLoading === program.id
+                              programOperationLoading === program.program_id
                                 ? "opacity-50 cursor-not-allowed"
                                 : ""
                             }`}
                           >
-                            {programOperationLoading === program.id ? (
+                            {programOperationLoading === program.program_id ? (
                               <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
                             ) : (
                               <svg
