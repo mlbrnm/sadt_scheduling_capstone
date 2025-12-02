@@ -75,8 +75,8 @@ export default function NewSchedule() {
 
       try {
         const [instructorsRes, coursesRes] = await Promise.all([
-          fetch("http://localhost:5000/api/instructors"),
-          fetch("http://localhost:5000/api/courses"),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructors`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`),
         ]);
 
         if (!instructorsRes.ok || !coursesRes.ok) {
@@ -108,7 +108,7 @@ export default function NewSchedule() {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/schedules/${scheduleId}/json`
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/json`
         );
         if (!response.ok) throw new Error("Failed to load schedule JSON");
         const data = await response.json();
@@ -417,7 +417,7 @@ export default function NewSchedule() {
 
       if (scheduleId) payload.schedule_id = scheduleId;
 
-      const response = await fetch("http://localhost:5000/schedules/save", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/schedules/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

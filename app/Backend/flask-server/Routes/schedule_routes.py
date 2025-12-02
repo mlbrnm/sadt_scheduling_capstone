@@ -273,6 +273,8 @@ def register_schedule_routes(app):
         - scheduled_courses records
         - sections for each scheduled_course (default: 1 section 'A')
         """
+        debug_log = {}
+        
         try:
             data = request.get_json()
             academic_year = data.get("academic_year")
@@ -312,6 +314,7 @@ def register_schedule_routes(app):
 
             created_schedules = []
             skipped_schedules = []
+            ac_processing_details = []
 
             for program in programs:
                 program_id = program["program_id"]
@@ -332,11 +335,18 @@ def register_schedule_routes(app):
                     .execute()
                 )
 
+                ac_detail["steps"].append({
+                    "step": "check_existing_schedule",
+                    "existing_schedules": existing.data
+                })
+
                 if existing.data:
                     skipped_schedules.append({
                         "program_id": program_id,
                         "reason": "Schedule already exists"
                     })
+                    ac_detail["steps"].append({"step": "skipped", "reason": "already_exists"})
+                    ac_processing_details.append(ac_detail)
                     continue
 
                 # Fetch program → courses mapping
@@ -416,13 +426,23 @@ def register_schedule_routes(app):
                     "courses_count": len(course_ids),
                     "schedule_id": schedule_id
                 })
+                
+                ac_detail["steps"].append({"step": "completed_successfully"})
+                ac_processing_details.append(ac_detail)
+
+            debug_log["5_processing_complete"] = {
+                "ac_processing_details": ac_processing_details,
+                "created_count": len(created_schedules),
+                "skipped_count": len(skipped_schedules)
+            }
 
             return jsonify({
                 "message": f"Schedule generation completed for AC {ac_name} in {academic_year}",
                 "created": len(created_schedules),
                 "skipped": len(skipped_schedules),
                 "created_schedules": created_schedules,
-                "skipped_schedules": skipped_schedules
+                "skipped_schedules": skipped_schedules,
+                "debug_log": debug_log
             }), 200
 
         except Exception as e:

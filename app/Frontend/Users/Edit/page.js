@@ -147,7 +147,8 @@ export default function EditUser() {
         .update({ ac_id: userId })
         .eq("program_id", programId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
 
       // Refresh programs list
       await fetchPrograms();
@@ -361,15 +362,8 @@ export default function EditUser() {
 
   return (
     <div className="p-8 px-80">
-      {/* Header Section */}
-      <div className="flex flex-col mb-6">
-        <h1 className="text-xl font-bold text-center mb-4">
-          Manage User Accounts
-        </h1>
-      </div>
-
       {/* Back Button */}
-      <div className="mb-8">
+      <div className="mb-4">
         <button
           onClick={handleBack}
           className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors cursor-pointer"
@@ -408,7 +402,10 @@ export default function EditUser() {
 
       {/* Loading State */}
       {loading && (
-        <div className="text-center py-8 text-gray-500">Loading user...</div>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
+          <span className="ml-3">Loading users...</span>
+        </div>
       )}
 
       {/* User not found */}

@@ -76,10 +76,24 @@ function AddInstructorModal({ onClose, onSuccess }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("🔥 SUBMIT CLICKED");
-    setIsSubmitting(true);
-    setError("");
+  e.preventDefault();
+  console.log("🔥 SUBMIT CLICKED");
+  setIsSubmitting(true);
+  setError("");
+
+  try {
+    console.log("📤 Sending data:", formData);
+    
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      }
+    );
 
     try {
       console.log("📤 Sending data:", formData);
@@ -139,7 +153,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
 
   //   try {
   //     const response = await fetch(
-  //       "http://localhost:5000/admin/data/instructors",
+  //       `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
   //       {
   //         method: "POST",
   //         headers: {
@@ -177,9 +191,12 @@ function AddInstructorModal({ onClose, onSuccess }) {
   //   }
   // }
   return (
-    <div className="fixed inset-0 bg-slate-150 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-800/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4">
         <form onSubmit={handleSubmit}>
+          <div>
+            <h2 className="text-2xl font-semibold mb-2">Add New Instructor</h2>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               {/*First Name Input */}
@@ -245,9 +262,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 required
               >
-                <option selected value="">
-                  Select Contract Type
-                </option>
+                <option value="">Select Contract Type</option>
                 <option value="Permanent">Permanent</option>
                 <option value="Temporary">Temporary</option>
                 <option value="Casual">Casual</option>
@@ -263,9 +278,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2"
                 required
               >
-                <option selected value="">
-                  Select Status
-                </option>
+                <option value="">Select Status</option>
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="On Leave">On Leave</option>
@@ -320,14 +333,14 @@ function AddInstructorModal({ onClose, onSuccess }) {
             <button
               type="button"
               onClick={onClose}
-              className="button-secondary px-4 py-2 rounded-lg"
+              className="button-secondary px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="button-primary px-4 py-2 rounded-lg"
+              className="button-primary px-4 py-2 rounded-lg text-white cursor-pointer"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Saving..." : "Save"}
@@ -372,7 +385,7 @@ export default function InstructorProfiles() {
     try {
       //send request to API endpoint to get instructor info
       const response = await fetch(
-        `http://localhost:5000/admin/data/instructors`
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`
       );
       const result = await response.json();
 
@@ -393,15 +406,27 @@ export default function InstructorProfiles() {
     fetchInstructorData();
   }, []);
 
+  // function to normalize strings by removing accents and converting to lowercase
+  const normalizeString = (string) => {
+    if (!string) return "";
+    return string
+      .normalize("NFD") //split letters and accents
+      .replace(/[\u0300-\u036f]/g, "") //remove accents
+      .toLowerCase();
+  };
+
+  // normalize the search query
+  const normalizedSearchQuery = normalizeString(searchQuery);
+
   // filter the search
   //converts row data into string and lower case for searchability
   //created using AI suggestions
-  const filteredData = fetchedData.filter((row) =>
-    Object.values(row)
-      .join(" ")
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
-  );
+  const filteredData = fetchedData.filter((row) => {
+    const name = normalizeString(
+      `${row.instructor_name} ${row.instructor_lastname} ${row.instructor_id}`
+    );
+    return name.includes(normalizedSearchQuery);
+  });
 
   const viewProfile = (instructorId) => {
     router.push(
@@ -412,7 +437,7 @@ export default function InstructorProfiles() {
   return (
     <div className="p-6 flex flex-col h-full overflow-hidden">
       {/* Title and Search Bar */}
-      <div className="flex justify-center items-center mb-4">
+      <div className="flex justify-end items-center mb-4">
         {/*Search Box */}
         <input
           type="text"
@@ -425,7 +450,7 @@ export default function InstructorProfiles() {
         {/*Add Instructor Button*/}
         <button
           onClick={() => setShowAddInstructorModal(true)}
-          className="ml-4 button-primary text-white px-4 py-2 rounded-lg cursor-pointer"
+          className="button-primary text-white px-4 py-2 rounded-lg cursor-pointer ml-80"
         >
           + Add New Instructor
         </button>
