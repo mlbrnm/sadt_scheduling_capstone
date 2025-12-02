@@ -15,7 +15,7 @@ export default function Home() {
       console.log("Supabase user:", user, "Error:", error);
       if (!user) return;
 
-      const response = await fetch("http://localhost:5000/user/info", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/info`, {
         headers: {
           "X-User-Id": user.id,
         },

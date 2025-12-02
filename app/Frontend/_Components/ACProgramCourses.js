@@ -9,7 +9,9 @@ export default function ACProgramCourses({ academicChairId }) {
   const [expandedPrograms, setExpandedPrograms] = useState({});
 
   useEffect(() => {
-    if (!academicChairId) return setLoading(false);
+    if (!academicChairId) {
+      return setLoading(false);
+    }
 
     const fetchData = async () => {
       try {
@@ -23,6 +25,7 @@ export default function ACProgramCourses({ academicChairId }) {
           .eq("academic_chair_id", academicChairId);
 
         if (schedulesError) throw schedulesError;
+
         if (!schedulesData?.length) {
           setPrograms([]);
           return;
@@ -48,6 +51,7 @@ export default function ACProgramCourses({ academicChairId }) {
           .in("schedule_id", scheduleIds);
 
         if (scheduledError) throw scheduledError;
+
         if (!scheduledData?.length) {
           setPrograms([]);
           return;
@@ -69,6 +73,7 @@ export default function ACProgramCourses({ academicChairId }) {
         const programMap = {};
         scheduledData.forEach((sc) => {
           const course = sc.courses;
+
           if (course?.program_id && !programMap[course.program_id]) {
             programMap[course.program_id] = {
               program_id: course.program_id,
@@ -77,10 +82,13 @@ export default function ACProgramCourses({ academicChairId }) {
               courses: [],
             };
           }
-          if (course) programMap[course.program_id].courses.push(sc);
+          if (course && course.program_id) {
+            programMap[course.program_id].courses.push(sc);
+          }
         });
 
-        setPrograms(Object.values(programMap));
+        const finalPrograms = Object.values(programMap);
+        setPrograms(finalPrograms);
       } catch (err) {
         console.error(err);
         setError(err.message);
