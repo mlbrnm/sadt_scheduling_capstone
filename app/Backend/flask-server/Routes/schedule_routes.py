@@ -23,71 +23,103 @@ def register_schedule_routes(app):
             # 1. Prepare scheduled_courses upsert
             # -------------------------------
             scheduled_courses_batch =[]
+            # -------------------------------
+            # 1. Upsert scheduled_courses with heavy logging (debug)
+            # -------------------------------
             for semester, courses in added_courses_by_semester.items():
                 for course in courses:
                     course_id = course["course_id"]
-                    num_sections = course.get("num_sections", 1)
+                    num_sections = int(course.get("num_sections", 1))
 
-                    # Check if scheduled_course exists for this schedule/course/term
+                    print("=== scheduled_course DEBUG ===")
+                    print("Processing:", {
+                        "schedule_id": schedule_id,
+                        "course_id": course_id,
+                        "term": semester,
+                        "desired_num_sections": num_sections
+                    })
+
+                    # Fetch exact match for this schedule/course/term
                     existing_resp = (
                         supabase_client.table("scheduled_courses")
-                        .select("scheduled_course_id")
+                        .select("scheduled_course_id,num_sections,term,schedule_id,course_id")
                         .eq("schedule_id", schedule_id)
                         .eq("course_id", course_id)
                         .eq("term", semester)
-                        .maybe_single()
                         .execute()
                     )
 
-                    if existing_resp.data:
-                        # Row exists → update if needed
-                        supabase_client.table("scheduled_courses").update({
-                            "num_sections": num_sections,
-                            "status": "sections_created"
-                        }).eq("scheduled_course_id", existing_resp.data["scheduled_course_id"]).execute()
+                    # print entire response object for inspection
+                    print("existing_resp raw:", existing_resp)
+
+                    rows = existing_resp.data or []
+                    print("existing_resp.data rows:", rows)
+
+                    if rows:
+                        # Because of unique constraint there should be exactly 1 row
+                        if len(rows) > 1:
+                            print("WARNING: more than one scheduled_course row found for this (should never happen):", rows)
+
+                        existing_row = rows[0]
+                        sc_id = existing_row.get("scheduled_course_id")
+                        current_num = existing_row.get("num_sections")
+                        print("Found scheduled_course:", {"scheduled_course_id": sc_id, "current_num_sections": current_num})
+
+                        if current_num != num_sections:
+                            print(f"Updating scheduled_course_id={sc_id} num_sections {current_num} -> {num_sections}")
+                            update_resp = supabase_client.table("scheduled_courses").update({
+                                "num_sections": num_sections,
+                                "status": "sections_created"
+                            }).eq("scheduled_course_id", sc_id).execute()
+                            print("update_resp:", update_resp)
+                        else:
+                            print("No update needed for scheduled_course_id", sc_id)
                     else:
-                        # Row doesn’t exist → insert
-                        supabase_client.table("scheduled_courses").insert({
+                        print("No existing scheduled_course row — inserting new one")
+                        insert_resp = supabase_client.table("scheduled_courses").insert({
                             "schedule_id": schedule_id,
                             "course_id": course_id,
                             "num_sections": num_sections,
                             "term": semester,
                             "status": "sections_created"
                         }).execute()
+                        print("insert_resp:", insert_resp)
 
-                # -------------------------------
-                # 2. Upsert sections manually
-                # -------------------------------
-                sections_batch = []
-                for sc in scheduled_courses_batch:
-                    num_sections = sc.get("num_sections", 1)
-                    for i in range(1, num_sections + 1):
-                        section_letter = chr(64 + i)  # 'A', 'B', etc.
+                    print("=== end scheduled_course DEBUG ===\n")
 
-                        # Check if section already exists
-                        existing_section = (
-                            supabase_client.table("sections")
-                            .select("id")
-                            .eq("schedule_id", sc["schedule_id"])
-                            .eq("course_id", sc["course_id"])
-                            .eq("term", sc["term"])
-                            .eq("section_letter", section_letter)
-                            .maybe_single()
-                            .execute()
-                        )
+            # -------------------------------
+            # 2. Upsert sections manually
+            # -------------------------------
+            sections_batch = []
+            for sc in scheduled_courses_batch:
+                num_sections = sc.get("num_sections", 1)
+                for i in range(1, num_sections + 1):
+                    section_letter = chr(64 + i)  # 'A', 'B', etc.
 
-                        if existing_section.data:
-                            # Already exists → skip or update if needed
-                            continue
-                        else:
-                            # Insert new section
-                            supabase_client.table("sections").insert({
-                                "schedule_id": sc["schedule_id"],
-                                "course_id": sc["course_id"],
-                                "term": sc["term"],
-                                "section_letter": section_letter,
-                                "delivery_mode": "both"
-                            }).execute()
+                    # Check if section already exists
+                    existing_section = (
+                        supabase_client.table("sections")
+                        .select("id")
+                        .eq("schedule_id", sc["schedule_id"])
+                        .eq("course_id", sc["course_id"])
+                        .eq("term", sc["term"])
+                        .eq("section_letter", section_letter)
+                        .maybe_single()
+                        .execute()
+                    )
+
+                    if existing_section.data:
+                        # Already exists → skip or update if needed
+                        continue
+                    else:
+                        # Insert new section
+                        supabase_client.table("sections").insert({
+                            "schedule_id": sc["schedule_id"],
+                            "course_id": sc["course_id"],
+                            "term": sc["term"],
+                            "section_letter": section_letter,
+                            "delivery_mode": "both"
+                        }).execute()
             # -------------------------------
             # 3. Prepare scheduled_instructors upsert
             # -------------------------------

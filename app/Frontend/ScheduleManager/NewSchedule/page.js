@@ -289,30 +289,31 @@ export default function NewSchedule() {
   ) => {
     if (isScheduleSubmitted) return;
     const courseId = String(course.course_id);
-    const key = `${instructorId}-${courseId}-${semester}`;
+    const key = `${instructorId}-${courseId}-${semester}-${section}`;
 
     setAssignments((prev) => {
       const next = { ...prev };
 
       const unsetFromOthers = (comp) => {
         for (const [k, entry] of Object.entries(next)) {
-          const [iId, cId, sem] = k.split("-");
+          const [iId, cId, sem, sec] = k.split("-");
           if (
             cId !== courseId ||
             sem !== semester ||
-            iId === String(instructorId)
+            iId === String(instructorId) ||
+            sec !== section
           )
             continue;
 
           const sections = entry?.sections || {};
-          const secState = sections[section];
+          const secState = sections[sec];
           if (secState?.[comp]) {
             const newSecState = { ...secState, [comp]: false };
             const newSections = { ...sections };
             if (!newSecState.class && !newSecState.online) {
-              delete newSections[section];
+              delete newSections[sec];
             } else {
-              newSections[section] = newSecState;
+              newSections[sec] = newSecState;
             }
             const updatedEntry = { ...entry, sections: newSections };
             if (Object.keys(updatedEntry.sections).length === 0) {
