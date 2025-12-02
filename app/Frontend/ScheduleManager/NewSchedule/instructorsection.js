@@ -68,7 +68,6 @@ export default function InstructorSection({
   // Filter instructors based on search term and if already added
   const filteredInstructors = instructors.filter((instructor) => {
     // Check if instructor is already added
-    // USED AI Q: How do I make sure the same instructor isn't added twice? (https://chat.deepseek.com/a/chat/s/d165c209-61dc-4b75-943f-4d97dfa24eb5)
     const isAlreadyAdded = addedInstructors.some(
       (i) => i.instructor_id === instructor.instructor_id
     );

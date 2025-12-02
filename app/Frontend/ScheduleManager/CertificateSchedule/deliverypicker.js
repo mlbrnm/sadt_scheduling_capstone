@@ -32,13 +32,7 @@ export default function DeliveryPicker({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-gray-800 opacity-50"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-800/50 backdrop-blur-xs">
       <div className="relative bg-white rounded-lg shadow-lg w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">Select A Delivery to Edit</h2>

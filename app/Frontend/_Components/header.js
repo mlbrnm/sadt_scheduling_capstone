@@ -213,7 +213,7 @@ export default function Header() {
           {/* User Profile Button with Popup */}
           <div className="profile-popup-container relative">
             <button
-              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
               onClick={() => setShowProfilePopup(!showProfilePopup)}
             >
               <svg
@@ -237,7 +237,7 @@ export default function Header() {
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                 <button
                   onClick={handleProfileClick}
-                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center cursor-pointer"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -257,7 +257,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center cursor-pointer"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
