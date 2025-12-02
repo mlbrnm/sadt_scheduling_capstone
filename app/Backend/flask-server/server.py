@@ -2,15 +2,19 @@ from flask import Flask
 from flask_cors import CORS
 from Routes import register_all_routes
 import database
+import os 
+
 
 app = Flask(__name__)
 # app is the variable name given to the Flask server application
 # Flask is a class that takes __name__ as a parameter in it's constructor
 # __name__ lets flask know where the application lives (in this case it lives in a file called server.py)
 
+FRONTENDURL = os.getenv("NEXT_PUBLIC_FRONTEND_URL", "http://localhost:3000")
+
 CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+        "origins": ["http://localhost:3000", "http://127.0.0.1:3000", FRONTENDURL],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "X-User-Email", "X-User-Id"]
     }
