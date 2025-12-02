@@ -276,7 +276,7 @@ export default function NewSchedule() {
 
         // Filter programs for this academic chair
         const filteredPrograms = (allPrograms || []).filter((program) =>
-          (program.academic_chair || "").includes(scheduleAcademicChairId)
+          (program.academic_chair_ids || []).includes(scheduleAcademicChairId)
         );
         if (!filteredPrograms.length) return;
 

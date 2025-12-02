@@ -56,7 +56,7 @@ export default function ACScheduleManage() {
         if (programsError) throw programsError;
 
         const programsData = allPrograms.filter((p) =>
-          (p.academic_chair || "").includes(currentUser)
+          (p.academic_chair_ids || []).includes(currentUser)
         );
         setPrograms(programsData || []);
 
@@ -169,9 +169,12 @@ export default function ACScheduleManage() {
           body: JSON.stringify({ academic_year: parseInt(academicYear) }),
         }
       );
+
       const data = await response.json();
-      if (!response.ok)
+
+      if (!response.ok) {
         throw new Error(data.error || "Failed to generate schedules");
+      }
 
       setGenerateMessage({
         type: "success",
@@ -184,6 +187,7 @@ export default function ACScheduleManage() {
         .select("*")
         .eq("academic_chair_id", currentUser)
         .order("academic_year", { ascending: false });
+
       setSchedules(schedulesData || []);
     } catch (error) {
       setGenerateMessage({ type: "error", text: error.message });
@@ -297,7 +301,7 @@ export default function ACScheduleManage() {
         {/* Generate / Clear Buttons */}
         <div className="bg-gray-100 rounded-lg p-4 mb-4">
           <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Debug: Generate Schedules
+            Generate Schedules
           </h3>
           <div className="flex items-center gap-3">
             <input
