@@ -2,11 +2,11 @@
 // search filtering logic, were developed with the assistance of
 "use client"; //confirm component runs on client side
 
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 // data that will be stored in the database for the new added instructor
-function AddInstructorModal({onClose, onSuccess}) {
+function AddInstructorModal({ onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     instructor_name: "",
     instructor_lastname: "",
@@ -17,7 +17,7 @@ function AddInstructorModal({onClose, onSuccess}) {
     salaried_begin_date: "",
     contract_end: "",
     reporting_ac: "",
-  })
+  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -39,9 +39,11 @@ function AddInstructorModal({onClose, onSuccess}) {
     let updatedFormData = { ...formData, [name]: value };
 
     // make sure id auto-generation happens only once both name fields are filled
-    if (name === 'instructor_name' || name === 'instructor_lastname') {
-      const firstName = name === 'instructor_name' ? value : formData.instructor_name;
-      const lastName = name === 'instructor_lastname' ? value : formData.instructor_lastname;
+    if (name === "instructor_name" || name === "instructor_lastname") {
+      const firstName =
+        name === "instructor_name" ? value : formData.instructor_name;
+      const lastName =
+        name === "instructor_lastname" ? value : formData.instructor_lastname;
 
       // ensure both names have actual values
       if (firstName.trim() && lastName.trim()) {
@@ -53,25 +55,24 @@ function AddInstructorModal({onClose, onSuccess}) {
     }
 
     // determine CCH target based on contract type
-    if (name === 'contract_type') {
+    if (name === "contract_type") {
       let cchTarget;
       switch (value) {
-        case 'Permanent':
-          cchTarget = '615';
+        case "Permanent":
+          cchTarget = "615";
           break;
-        case 'Temoporary':
-          cchTarget = '615';
+        case "Temoporary":
+          cchTarget = "615";
           break;
-        case 'Casual':
-          cchTarget = '800';
+        case "Casual":
+          cchTarget = "800";
           break;
         default:
-          cchTarget = '';
+          cchTarget = "";
       }
       updatedFormData.cch_target_ay2025 = cchTarget;
     }
     setFormData(updatedFormData);
-
   };
 
   const handleSubmit = async (e) => {
@@ -94,44 +95,56 @@ function AddInstructorModal({onClose, onSuccess}) {
       }
     );
 
-    console.log("📥 Response received:", response.status);
-    const result = await response.json();
-    console.log("📝 Result:", result);
+    try {
+      console.log("📤 Sending data:", formData);
 
-    if (!response.ok) {
-      console.log("❌ ERROR:", result.error);
-      throw new Error(result.error || "Failed to add instructor");
+      const response = await fetch(
+        "http://localhost:5000/admin/data/instructors",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      console.log("📥 Response received:", response.status);
+      const result = await response.json();
+      console.log("📝 Result:", result);
+
+      if (!response.ok) {
+        console.log("❌ ERROR:", result.error);
+        throw new Error(result.error || "Failed to add instructor");
+      }
+
+      console.log("✅ SUCCESS - Closing modal...");
+
+      // Clear form
+      setFormData({
+        instructor_name: "",
+        instructor_lastname: "",
+        instructor_id: "",
+        cch_target_ay2025: "",
+        contract_type: "",
+        instructor_status: "",
+        salaried_begin_date: "",
+        contract_end: "",
+        reporting_ac: "",
+      });
+
+      console.log("🚪 Calling onClose()...");
+      onClose();
+      console.log("🔄 Calling onSuccess()...");
+      onSuccess();
+      console.log("✨ Done!");
+    } catch (error) {
+      console.log("💥 CATCH BLOCK:", error.message);
+      setError(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    console.log("✅ SUCCESS - Closing modal...");
-    
-    // Clear form
-    setFormData({
-      instructor_name: "",
-      instructor_lastname: "",
-      instructor_id: "",
-      cch_target_ay2025: "",
-      contract_type: "",
-      instructor_status: "",
-      salaried_begin_date: "",
-      contract_end: "",
-      reporting_ac: "",
-    });
-
-    console.log("🚪 Calling onClose()...");
-    onClose();
-    console.log("🔄 Calling onSuccess()...");
-    onSuccess();
-    console.log("✨ Done!");
-
-  } catch (error) {
-    console.log("💥 CATCH BLOCK:", error.message);
-    setError(error.message);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   // const handleSubmit = async (e) => {
   //   e.preventDefault();
@@ -179,154 +192,170 @@ function AddInstructorModal({onClose, onSuccess}) {
   // }
   return (
     <div className="fixed inset-0 bg-slate-150 bg-opacity-75 backdrop-blur-md flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-    
-    <form onSubmit={handleSubmit}>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          {/*First Name Input */}
-          <label className="block mb-1 font-medium text-sm">First Name</label>
-          <input 
-          type='text'
-          name='instructor_name'
-          value={formData.instructor_name}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded px-3 py-2"
-          required
-          />
-        </div>
-        <div>
-          {/*Last Name Input */}
-          <label className="block mb-1 font-medium text-sm">Last Name</label>
-          <input 
-          type='text'
-          name='instructor_lastname'
-          value={formData.instructor_lastname}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded px-3 py-2"
-          required
-          />
-        </div>
-        {/* Display Instructor ID */}
-        {formData.instructor_id && (
-          <div className="col-span-2">
-            <div className="bg-gray-100 p-2 rounded">
-              <p className="text-sm">
-                <span className="font-medium">Instructor ID:</span> {formData.instructor_id}
-              </p>
+      <div className="bg-white rounded-lg shadow-sm max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              {/*First Name Input */}
+              <label className="block mb-1 font-medium text-sm">
+                First Name
+              </label>
+              <input
+                type="text"
+                name="instructor_name"
+                value={formData.instructor_name}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            <div>
+              {/*Last Name Input */}
+              <label className="block mb-1 font-medium text-sm">
+                Last Name
+              </label>
+              <input
+                type="text"
+                name="instructor_lastname"
+                value={formData.instructor_lastname}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            {/* Display Instructor ID */}
+            {formData.instructor_id && (
+              <div className="col-span-2">
+                <div className="bg-gray-100 p-2 rounded">
+                  <p className="text-sm">
+                    <span className="font-medium">Instructor ID:</span>{" "}
+                    {formData.instructor_id}
+                  </p>
+                </div>
+              </div>
+            )}
+            {/* CCH Target (greyed out - will autofill upon contract type selection) */}
+            <div>
+              <label className="block mb-1 font-medium text-sm">
+                CCH Target
+              </label>
+              <input
+                type="text"
+                name="cch_target_ay2025"
+                value={formData.cch_target_ay2025}
+                readOnly
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              {/*Contract Type Dropdown */}
+              <label className="block mb-1 font-medium text-sm">
+                Contract Type
+              </label>
+              <select
+                name="contract_type"
+                value={formData.contract_type}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                required
+              >
+                <option selected value="">
+                  Select Contract Type
+                </option>
+                <option value="Permanent">Permanent</option>
+                <option value="Temporary">Temporary</option>
+                <option value="Casual">Casual</option>
+              </select>
+            </div>
+            {/* Instructor Status Dropdown */}
+            <div>
+              <label className="block mb-1 font-medium text-sm"> Status</label>
+              <select
+                name="instructor_status"
+                value={formData.instructor_status}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                required
+              >
+                <option selected value="">
+                  Select Status
+                </option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Retired">Retired</option>
+                <option value="Renew">Renew</option>
+                <option value="Expire"> Expire</option>
+              </select>
+            </div>
+            {/* Start Date Input */}
+            <div>
+              <label className="block mb-1 font-medium text-sm">
+                Start Date
+              </label>
+              <input
+                type="date"
+                name="salaried_begin_date"
+                value={formData.salaried_begin_date}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            {/* End Date Input */}
+            <div>
+              <label className="block mb-1 font-medium text-sm">End Date</label>
+              <input
+                type="date"
+                name="contract_end"
+                value={formData.contract_end}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            {/* Reporting AC Input */}
+            <div className="col-span-2">
+              <label className="block mb-1 font-medium text-sm">
+                Reporting AC
+              </label>
+              <input
+                type="text"
+                name="reporting_ac"
+                value={formData.reporting_ac}
+                onChange={handleChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
             </div>
           </div>
-        )}
-        {/* CCH Target (greyed out - will autofill upon contract type selection) */}
-        <div>
-          <label className="block mb-1 font-medium text-sm">CCH Target</label>
-          <input
-          type='text'
-          name='cch_target_ay2025'
-          value={formData.cch_target_ay2025}
-          readOnly
-          className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
-          />
-        </div>
-        <div>
-          {/*Contract Type Dropdown */}
-          <label className="block mb-1 font-medium text-sm">Contract Type</label>
-          <select
-          name='contract_type'
-          value={formData.contract_type}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
-          required
-          >
-            <option selected value=''>Select Contract Type</option>
-            <option value='Permanent'>Permanent</option>
-            <option value='Temporary'>Temporary</option>
-            <option value='Casual'>Casual</option>
-          </select>
-        </div>
-        {/* Instructor Status Dropdown */}
-        <div>
-          <label className="block mb-1 font-medium text-sm"> Status</label>
-          <select
-          name='instructor_status'
-          value={formData.instructor_status}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
-          required
-          >
-            <option selected value=''>Select Status</option>
-            <option value='Active'>Active</option>
-            <option value='Inactive'>Inactive</option>
-            <option value='On Leave'>On Leave</option>
-            <option value='Retired'>Retired</option>
-            <option value='Renew'>Renew</option>
-            <option value='Expire'> Expire</option>
-          </select>
-        </div>
-        {/* Start Date Input */}
-        <div>
-          <label className="block mb-1 font-medium text-sm">Start Date</label>
-          <input
-          type='date'
-          name='salaried_begin_date'
-          value={formData.salaried_begin_date}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded px-3 py-2"
-          required
-          />
-        </div>
-        {/* End Date Input */}
-        <div>
-          <label className="block mb-1 font-medium text-sm">End Date</label>
-          <input
-          type='date'
-          name='contract_end'
-          value={formData.contract_end}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded px-3 py-2"
-          required
-          />
-        </div>
-        {/* Reporting AC Input */}
-        <div className="col-span-2">
-          <label className="block mb-1 font-medium text-sm">Reporting AC</label>
-          <input
-          type='text'
-          name='reporting_ac'
-          value={formData.reporting_ac}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded px-3 py-2"
-          required
-          />
-        </div>
+          {/* Form Buttons */}
+          <div className="flex justify-end gap-3 mt-6 p-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="button-secondary px-4 py-2 rounded-lg"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="button-primary px-4 py-2 rounded-lg"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </form>
       </div>
-      {/* Form Buttons */}
-      <div className="flex justify-end gap-3 mt-6 p-4">
-        <button
-          type="button"
-          onClick={onClose}
-          className="button-secondary px-4 py-2 rounded-lg"
-          disabled={isSubmitting}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="button-primary px-4 py-2 rounded-lg"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Saving..." : "Save"}
-        </button>
-      </div>
-    </form>
     </div>
-    </div>
-  ); 
-};
+  );
+}
 
 export default function InstructorProfiles() {
   //create the loading functional component for data loading from api
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   //this will store the instructor data from database table
   const [fetchedData, setFetchedData] = useState([]);
@@ -355,8 +384,6 @@ export default function InstructorProfiles() {
   // create function to populate the table list with instructor data from database
   const fetchInstructorData = async (table) => {
     try {
-      setIsLoading(true); //this will show the loading spinner
-
       //send request to API endpoint to get instructor info
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`
@@ -391,20 +418,20 @@ export default function InstructorProfiles() {
   );
 
   const viewProfile = (instructorId) => {
-    router.push(`/Frontend/InstructorProfiles/IndividualProfile?id=${instructorId}`);
+    router.push(
+      `/Frontend/InstructorProfiles/IndividualProfile?id=${instructorId}`
+    );
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 flex flex-col h-full overflow-hidden">
       {/* Title and Search Bar */}
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold">Instructor List</h1>
-
+      <div className="flex justify-center items-center mb-4">
         {/*Search Box */}
         <input
           type="text"
-          placeholder="Search..."
-          className="border-tertiary rounded-lg px-3 py-2 text-md text-primary w-1/3"
+          placeholder="Search Instructors by Name or ID..."
+          className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-md"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -412,7 +439,7 @@ export default function InstructorProfiles() {
         {/*Add Instructor Button*/}
         <button
           onClick={() => setShowAddInstructorModal(true)}
-          className="ml-4 button-primary text-white px-4 py-2 rounded-lg"
+          className="ml-4 button-primary text-white px-4 py-2 rounded-lg cursor-pointer"
         >
           + Add New Instructor
         </button>
@@ -432,10 +459,11 @@ export default function InstructorProfiles() {
       <div className="px-30 pt-6">
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-700"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
+            <span className="ml-3">Loading instructors...</span>
           </div>
         ) : filteredData.length > 0 ? (
-          <div className="bg-white rounded-lg overflow-auto max-h-180">
+          <div className="bg-white rounded-lg overflow-auto max-h-140">
             <table className="w-full bg-white">
               <thead className="bg-gray-50 sticky top-0">
                 <tr className="bg-gray-100">
@@ -464,7 +492,7 @@ export default function InstructorProfiles() {
                     <td className="py-3 px-6 border-b text-center text-sm">
                       <button
                         onClick={() => viewProfile(row.instructor_id)}
-                        className="text-blue-500 hover:underline"
+                        className="text-blue-500 hover:underline cursor-pointer"
                       >
                         View
                       </button>

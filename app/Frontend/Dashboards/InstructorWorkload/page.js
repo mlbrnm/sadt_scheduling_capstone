@@ -2,7 +2,6 @@
 import { useState } from "react";
 import mockdata from "./mockdata.json";
 import { getUtilizationColor } from "../../_Utils/utilizationColorsUtil";
-import AcademicYearSummary from "../../_Components/AcademicYearSummary";
 
 const tableHeaders = [
   "ID",
@@ -168,7 +167,7 @@ export default function InstructorWorkload() {
             <select
               value={selectedSemester}
               onChange={(e) => setSelectedSemester(e.target.value)}
-              className="text-md"
+              className="bg-white rounded p-2 text-md"
             >
               {mockSemesters.map((semester) => (
                 <option key={semester} value={semester}>
@@ -262,11 +261,6 @@ export default function InstructorWorkload() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Academic Year Scheduling Summary */}
-      <div className="mt-6">
-        <AcademicYearSummary />
       </div>
     </div>
   );
