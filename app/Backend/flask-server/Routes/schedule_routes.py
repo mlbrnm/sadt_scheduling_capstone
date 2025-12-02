@@ -149,10 +149,18 @@ def register_schedule_routes(app):
         Generate blank schedules for all Academic Chairs for a given academic year.
         Each course is scheduled for every intake (term) defined in its program's intakes.
         """
+        debug_log = {}
+        
         try:
             # Get academic year from request
             data = request.get_json()
             academic_year = data.get("academic_year")
+            
+            debug_log["1_request_received"] = {
+                "academic_year": academic_year,
+                "request_data": data
+            }
+            
             if not academic_year:
                 return jsonify({"error": "academic_year is required"}), 400
 
@@ -163,6 +171,12 @@ def register_schedule_routes(app):
                 .eq("is_deleted", False).execute()
 
             academic_chairs = ac_response.data
+            
+            debug_log["2_academic_chairs_fetched"] = {
+                "count": len(academic_chairs) if academic_chairs else 0,
+                "academic_chairs": academic_chairs
+            }
+            
             if not academic_chairs:
                 return jsonify({"message": "No Academic Chairs found"}), 200
 
@@ -171,30 +185,60 @@ def register_schedule_routes(app):
                 .select("program_id, intakes, academic_chair_ids").execute()
             programs_data = programs_response.data
 
+            debug_log["3_programs_fetched"] = {
+                "count": len(programs_data) if programs_data else 0,
+                "programs": programs_data
+            }
+
             courses_response = supabase_client.table("courses") \
                 .select("course_id, program_id").execute()
             courses_data = courses_response.data
+            
+            debug_log["4_courses_fetched"] = {
+                "count": len(courses_data) if courses_data else 0,
+                "courses": courses_data
+            }
 
             created_schedules = []
             skipped_schedules = []
+            ac_processing_details = []
 
             for ac in academic_chairs:
                 ac_id = ac["id"]
                 ac_name = f"{ac['first_name']} {ac['last_name']}"
+                
+                ac_detail = {
+                    "ac_id": ac_id,
+                    "ac_name": ac_name,
+                    "steps": []
+                }
 
                 # Check if schedule already exists for this AC and year
                 existing = supabase_client.table("schedules") \
                     .select("id").eq("academic_chair_id", ac_id).eq("academic_year", academic_year).execute()
+
+                ac_detail["steps"].append({
+                    "step": "check_existing_schedule",
+                    "existing_schedules": existing.data
+                })
 
                 if existing.data:
                     skipped_schedules.append({
                         "academic_chair": ac_name,
                         "reason": "Schedule already exists for this year"
                     })
+                    ac_detail["steps"].append({"step": "skipped", "reason": "already_exists"})
+                    ac_processing_details.append(ac_detail)
                     continue
 
                 # Find programs assigned to this AC
                 ac_programs = [p for p in programs_data if ac_id in (p.get("academic_chair_ids") or [])]
+                
+                ac_detail["steps"].append({
+                    "step": "find_assigned_programs",
+                    "programs_found": len(ac_programs),
+                    "programs": ac_programs
+                })
 
                 # Create comma-separated program IDs for the schedule
                 associated_programs_str = ",".join([p["program_id"] for p in ac_programs])
@@ -202,13 +246,23 @@ def register_schedule_routes(app):
                 # Gather courses for these programs
                 ac_course_ids = []
                 scheduled_courses_to_insert = []
+                program_intake_details = []
+                
                 for program in ac_programs:
                     program_courses = [c for c in courses_data if c["program_id"] == program["program_id"]]
                     ac_course_ids.extend([c["course_id"] for c in program_courses])
 
-                    # Split intakes into a list and normalize
+                    # Split intakes into a list and normalize (handle both comma and dash separators)
+                    import re
                     intakes = program.get("intakes") or ""
-                    intake_terms = [i.strip().lower() for i in intakes.split(",") if i.strip()]
+                    intake_terms = [i.strip().lower() for i in re.split(r'[,\-]', intakes) if i.strip()]
+                    
+                    program_intake_details.append({
+                        "program_id": program["program_id"],
+                        "raw_intakes": intakes,
+                        "parsed_intake_terms": intake_terms,
+                        "courses_count": len(program_courses)
+                    })
 
                     # Generate scheduled_courses for each term and course
                     for course in program_courses:
@@ -220,6 +274,13 @@ def register_schedule_routes(app):
                                 "status": "sections_created",
                                 "term": term
                             })
+
+                ac_detail["steps"].append({
+                    "step": "parse_intakes_and_create_scheduled_courses",
+                    "program_intake_details": program_intake_details,
+                    "scheduled_courses_to_create": len(scheduled_courses_to_insert),
+                    "sample_scheduled_courses": scheduled_courses_to_insert[:5] if scheduled_courses_to_insert else []
+                })
 
                 # Remove duplicates
                 ac_course_ids = list(set(ac_course_ids))
@@ -236,12 +297,27 @@ def register_schedule_routes(app):
                     "associated_programs": associated_programs_str,
                     "associated_courses": associated_courses_str
                 }
+                
+                ac_detail["steps"].append({
+                    "step": "create_schedule_record",
+                    "schedule_data": schedule_data
+                })
+                
                 schedule_response = supabase_client.table("schedules").insert(schedule_data).execute()
+                
                 if not schedule_response.data:
                     skipped_schedules.append({"academic_chair": ac_name, "reason": "Failed to create schedule"})
+                    ac_detail["steps"].append({"step": "failed", "reason": "schedule_creation_failed"})
+                    ac_processing_details.append(ac_detail)
                     continue
 
                 schedule_id = schedule_response.data[0]["id"]
+                
+                ac_detail["steps"].append({
+                    "step": "schedule_created",
+                    "schedule_id": schedule_id,
+                    "schedule_response": schedule_response.data[0]
+                })
 
                 # Fill schedule_id for each scheduled_course
                 for sc in scheduled_courses_to_insert:
@@ -249,7 +325,12 @@ def register_schedule_routes(app):
 
                 # Insert scheduled courses
                 if scheduled_courses_to_insert:
-                    supabase_client.table("scheduled_courses").insert(scheduled_courses_to_insert).execute()
+                    scheduled_courses_response = supabase_client.table("scheduled_courses").insert(scheduled_courses_to_insert).execute()
+                    ac_detail["steps"].append({
+                        "step": "scheduled_courses_inserted",
+                        "count": len(scheduled_courses_to_insert),
+                        "response_count": len(scheduled_courses_response.data) if scheduled_courses_response.data else 0
+                    })
 
                 created_schedules.append({
                     "academic_chair": ac_name,
@@ -257,17 +338,31 @@ def register_schedule_routes(app):
                     "programs_count": len(ac_programs),
                     "courses_count": len(ac_course_ids)
                 })
+                
+                ac_detail["steps"].append({"step": "completed_successfully"})
+                ac_processing_details.append(ac_detail)
+
+            debug_log["5_processing_complete"] = {
+                "ac_processing_details": ac_processing_details,
+                "created_count": len(created_schedules),
+                "skipped_count": len(skipped_schedules)
+            }
 
             return jsonify({
                 "message": f"Schedule generation completed for academic year {academic_year}",
                 "created": len(created_schedules),
                 "skipped": len(skipped_schedules),
                 "created_schedules": created_schedules,
-                "skipped_schedules": skipped_schedules
+                "skipped_schedules": skipped_schedules,
+                "debug_log": debug_log
             }), 200
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 500
+            debug_log["error"] = {
+                "message": str(e),
+                "type": type(e).__name__
+            }
+            return jsonify({"error": str(e), "debug_log": debug_log}), 500
 
     # @app.route("/admin/schedules/generate", methods=["POST"])
     # def generate_schedules():

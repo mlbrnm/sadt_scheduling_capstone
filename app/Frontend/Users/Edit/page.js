@@ -110,7 +110,7 @@ export default function EditUser() {
       // Get all programs from the programs table
       const { data: programs, error } = await supabase
         .from("programs")
-        .select("program_id, program, academic_chair")
+        .select("program_id, program, academic_chair_ids")
         .order("program");
 
       if (error) throw error;
@@ -121,12 +121,12 @@ export default function EditUser() {
         return;
       }
 
-      // Categorize programs based on whether user ID is in academic_chair field
+      // Categorize programs based on whether user ID is in academic_chair_ids array
       const assigned = [];
       const unassigned = [];
 
       programs.forEach((program) => {
-        const academicChairIds = parseAcademicChair(program.academic_chair);
+        const academicChairIds = program.academic_chair_ids || [];
         if (academicChairIds.includes(userId)) {
           assigned.push({
             id: program.program_id,
@@ -150,32 +150,6 @@ export default function EditUser() {
     }
   };
 
-  // Parse comma-separated academic chair IDs
-  const parseAcademicChair = (chairString) => {
-    if (!chairString || chairString.trim() === "") {
-      return [];
-    }
-    return chairString
-      .split(",")
-      .map((id) => id.trim())
-      .filter((id) => id !== "");
-  };
-
-  // Update academic chair field with new comma-separated IDs
-  const updateAcademicChair = (currentIds, userIdToAdd, userIdToRemove) => {
-    let ids = [...currentIds];
-    
-    if (userIdToAdd && !ids.includes(userIdToAdd)) {
-      ids.push(userIdToAdd);
-    }
-    
-    if (userIdToRemove) {
-      ids = ids.filter((id) => id !== userIdToRemove);
-    }
-    
-    return ids.join(",");
-  };
-
   // Add user to a program's academic chair
   const addUserToProgram = async (programId) => {
     try {
@@ -185,23 +159,27 @@ export default function EditUser() {
       // Get current program data
       const { data: program, error: fetchError } = await supabase
         .from("programs")
-        .select("academic_chair")
+        .select("academic_chair_ids")
         .eq("program_id", programId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      // Parse current academic chair IDs and add user ID
-      const currentIds = parseAcademicChair(program.academic_chair);
-      const newAcademicChair = updateAcademicChair(currentIds, userId, null);
+      // Get current academic chair IDs array and add user ID
+      const currentIds = program.academic_chair_ids || [];
+      
+      // Only add if not already present
+      if (!currentIds.includes(userId)) {
+        const newAcademicChairIds = [...currentIds, userId];
 
-      // Update the program in database
-      const { error: updateError } = await supabase
-        .from("programs")
-        .update({ academic_chair: newAcademicChair })
-        .eq("program_id", programId);
+        // Update the program in database
+        const { error: updateError } = await supabase
+          .from("programs")
+          .update({ academic_chair_ids: newAcademicChairIds })
+          .eq("program_id", programId);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
+      }
 
       // Refresh programs list
       await fetchPrograms();
@@ -222,20 +200,20 @@ export default function EditUser() {
       // Get current program data
       const { data: program, error: fetchError } = await supabase
         .from("programs")
-        .select("academic_chair")
+        .select("academic_chair_ids")
         .eq("program_id", programId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      // Parse current academic chair IDs and remove user ID
-      const currentIds = parseAcademicChair(program.academic_chair);
-      const newAcademicChair = updateAcademicChair(currentIds, null, userId);
+      // Get current academic chair IDs array and remove user ID
+      const currentIds = program.academic_chair_ids || [];
+      const newAcademicChairIds = currentIds.filter((id) => id !== userId);
 
       // Update the program in database
       const { error: updateError } = await supabase
         .from("programs")
-        .update({ academic_chair: newAcademicChair })
+        .update({ academic_chair_ids: newAcademicChairIds })
         .eq("program_id", programId);
 
       if (updateError) throw updateError;

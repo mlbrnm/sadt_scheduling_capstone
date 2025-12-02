@@ -76,10 +76,24 @@ function AddInstructorModal({ onClose, onSuccess }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("🔥 SUBMIT CLICKED");
-    setIsSubmitting(true);
-    setError("");
+  e.preventDefault();
+  console.log("🔥 SUBMIT CLICKED");
+  setIsSubmitting(true);
+  setError("");
+
+  try {
+    console.log("📤 Sending data:", formData);
+    
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      }
+    );
 
     try {
       console.log("📤 Sending data:", formData);
@@ -139,7 +153,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
 
   //   try {
   //     const response = await fetch(
-  //       "http://localhost:5000/admin/data/instructors",
+  //       `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
   //       {
   //         method: "POST",
   //         headers: {
@@ -372,7 +386,7 @@ export default function InstructorProfiles() {
     try {
       //send request to API endpoint to get instructor info
       const response = await fetch(
-        `http://localhost:5000/admin/data/instructors`
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`
       );
       const result = await response.json();
 
