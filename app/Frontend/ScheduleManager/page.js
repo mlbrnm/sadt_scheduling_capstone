@@ -38,7 +38,7 @@ export default function ScheduleManager() {
       setError(null);
       try {
         const response = await fetch(
-          "http://localhost:5000/admin/schedules/list"
+          `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/list`
         );
 
         if (!response.ok) {
@@ -193,7 +193,7 @@ export default function ScheduleManager() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/admin/schedules/${scheduleId}/approve`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/${scheduleId}/approve`,
         {
           method: "POST",
           headers: {
@@ -216,7 +216,7 @@ export default function ScheduleManager() {
 
       // Refresh the schedules list
       const refreshResponse = await fetch(
-        "http://localhost:5000/admin/schedules/list"
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/list`
       );
       const refreshData = await refreshResponse.json();
       setSchedulesData(refreshData.schedules || []);
@@ -251,7 +251,7 @@ export default function ScheduleManager() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/admin/schedules/${scheduleToReject.schedule_id}/reject`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/${scheduleToReject.schedule_id}/reject`,
         {
           method: "POST",
           headers: {
@@ -276,7 +276,7 @@ export default function ScheduleManager() {
 
       // Refresh the schedules list
       const refreshResponse = await fetch(
-        "http://localhost:5000/admin/schedules/list"
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/list`
       );
       const refreshData = await refreshResponse.json();
       setSchedulesData(refreshData.schedules || []);

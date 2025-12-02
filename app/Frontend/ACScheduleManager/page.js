@@ -162,7 +162,7 @@ export default function ACScheduleManage() {
       setGenerateMessage(null);
 
       const response = await fetch(
-        "http://localhost:5000/admin/schedules/generate",
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/generate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -204,7 +204,7 @@ export default function ACScheduleManage() {
       setGenerateMessage(null);
 
       const response = await fetch(
-        "http://localhost:5000/admin/schedules/clear",
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/clear`,
         {
           method: "DELETE",
         }
@@ -240,7 +240,7 @@ export default function ACScheduleManage() {
       setGenerateMessage(null);
 
       const response = await fetch(
-        `http://localhost:5000/schedules/${scheduleId}/submit`,
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/submit`,
         { method: "POST" }
       );
       const data = await response.json();
@@ -270,7 +270,7 @@ export default function ACScheduleManage() {
       setGenerateMessage(null);
 
       const response = await fetch(
-        `http://localhost:5000/schedules/${scheduleId}/recall`,
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/recall`,
         { method: "POST" }
       );
       const data = await response.json();

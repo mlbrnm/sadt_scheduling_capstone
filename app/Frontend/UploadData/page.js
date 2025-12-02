@@ -217,7 +217,7 @@ export default function UploadData() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`http://localhost:5000/admin/data/${table}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/data/${table}`);
       const result = await response.json();
 
       if (!response.ok) throw new Error(result.error || "Failed to fetch data");
@@ -302,7 +302,7 @@ export default function UploadData() {
       formData.append("file", file);
       //formData.append("table", table); //send table dynamically
       const response = await fetch(
-        `http://localhost:5000/admin/upload/${table}`, //uses table value to access correct backend route
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/upload/${table}`, //uses table value to access correct backend route
         {
           method: "POST",
           headers: {
@@ -357,7 +357,7 @@ export default function UploadData() {
       //const token = authorize_user();
 
       const response = await fetch(
-        `http://localhost:5000/admin/uploads/list/${selectedDataType.toLowerCase()}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/uploads/list/${selectedDataType.toLowerCase()}`,
         {
           method: "GET",
           headers: {
@@ -405,7 +405,7 @@ export default function UploadData() {
       setSuccessMessage("");
 
       const response = await fetch(
-        `http://localhost:5000/admin/uploads/restore/${version.dataType.toLowerCase()}/${
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/uploads/restore/${version.dataType.toLowerCase()}/${
           version.storagePath
         }`,
         {
@@ -446,7 +446,7 @@ export default function UploadData() {
 
   // const handleDownload = async (storagePath) => {
   //   const response = await fetch(
-  //     `http://localhost:5000/admin/uploads/download/${storagePath}`
+  //     `${process.env.NEXT_PUBLIC_API_URL}/admin/uploads/download/${storagePath}`
   //   );
   //   const data = await response.json();
   //   if (data.download_url) {
@@ -457,7 +457,7 @@ export default function UploadData() {
   const handleDownload = async (storagePath) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/admin/uploads/download/${storagePath}` //api location
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/uploads/download/${storagePath}` //api location
       );
       const blob = await response.blob(); //save the response as a blob (especially since it is a file)
       const url = window.URL.createObjectURL(blob); //make a temporary url to store the blob object
@@ -718,7 +718,7 @@ export default function UploadData() {
                               setIsLoading(true);
                               try {
                                 const response = await fetch(
-                                  `http://localhost:5000/admin/uploads/download/${version.storagePath}`
+                                  `${process.env.NEXT_PUBLIC_API_URL}/admin/uploads/download/${version.storagePath}`
                                 );
                                 const data = await response.json();
                                 if (data.download_url) {

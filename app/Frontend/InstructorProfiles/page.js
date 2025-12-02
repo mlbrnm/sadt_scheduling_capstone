@@ -84,7 +84,7 @@ function AddInstructorModal({onClose, onSuccess}) {
     console.log("📤 Sending data:", formData);
     
     const response = await fetch(
-      "http://localhost:5000/admin/data/instructors",
+      `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
       {
         method: "POST",
         headers: {
@@ -140,7 +140,7 @@ function AddInstructorModal({onClose, onSuccess}) {
 
   //   try {
   //     const response = await fetch(
-  //       "http://localhost:5000/admin/data/instructors",
+  //       `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
   //       {
   //         method: "POST",
   //         headers: {
@@ -359,7 +359,7 @@ export default function InstructorProfiles() {
 
       //send request to API endpoint to get instructor info
       const response = await fetch(
-        `http://localhost:5000/admin/data/instructors`
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`
       );
       const result = await response.json();
 
