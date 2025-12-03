@@ -421,11 +421,14 @@ export default function NewSchedule() {
 
       if (scheduleId) payload.schedule_id = scheduleId;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/schedules/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/save`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await response.json();
       if (!response.ok)
@@ -706,6 +709,11 @@ export default function NewSchedule() {
 
       <div className="flex flex-col">
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
+          <div className="flex justify-center items-center">
+            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow transition">
+              Auto-Assign Instructors
+            </button>
+          </div>
           <div className="col-start-2 row-start-1 min-w-0">
             <div
               ref={topScrollerRef}
