@@ -67,37 +67,86 @@ export default function NewSchedule() {
     })();
   }, []);
 
-  // Fetch instructors and courses for reference
+  //Fetch courses
+  // Fetch courses only
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCourses = async () => {
       setIsLoading(true);
       setError(null);
-
       try {
-        const [instructorsRes, coursesRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructors`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`),
-        ]);
-
-        if (!instructorsRes.ok || !coursesRes.ok) {
-          throw new Error("Failed to fetch data from server");
-        }
-
-        const instructorsData = await instructorsRes.json();
-        const coursesData = await coursesRes.json();
-
-        setInstructorData(instructorsData || []);
-        setCourseData(coursesData || []);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/courses`
+        );
+        if (!res.ok) throw new Error("Failed to fetch courses");
+        const data = await res.json();
+        setCourseData(data || []);
       } catch (err) {
         console.error(err);
-        setError("Failed to fetch data: " + err.message);
+        setError("Failed to fetch courses: " + err.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    fetchCourses();
   }, []);
+
+  //Fetch instructors based on courses in the schedule
+  // Fetch instructors for the current schedule
+  useEffect(() => {
+    if (!scheduleId) return;
+
+    const fetchInstructors = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/instructors`
+        );
+        const data = await res.json();
+
+        if (res.ok) {
+          setInstructorData(data.instructors || []);
+        } else {
+          console.error("Failed to fetch instructors:", data.error);
+        }
+      } catch (err) {
+        console.error("Error fetching instructors:", err);
+      }
+    };
+
+    fetchInstructors();
+  }, [scheduleId]);
+
+  // Fetch instructors and courses for reference
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     setIsLoading(true);
+  //     setError(null);
+
+  //     try {
+  //       const [instructorsRes, coursesRes] = await Promise.all([
+  //         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructors`),
+  //         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`),
+  //       ]);
+
+  //       if (!instructorsRes.ok || !coursesRes.ok) {
+  //         throw new Error("Failed to fetch data from server");
+  //       }
+
+  //       const instructorsData = await instructorsRes.json();
+  //       const coursesData = await coursesRes.json();
+
+  //       setInstructorData(instructorsData || []);
+  //       setCourseData(coursesData || []);
+  //     } catch (err) {
+  //       console.error(err);
+  //       setError("Failed to fetch data: " + err.message);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
 
   useEffect(() => {
     if (!scheduleId || isLoading) return;

@@ -300,7 +300,58 @@ def register_schedule_routes(app):
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-        
+    
+    @app.route("/schedules/<schedule_id>/instructors", methods=["GET"])
+    def get_instructors_for_schedule(schedule_id):
+        try:
+            # get scheduled courses for this schedule
+            scheduled_courses_resp = (
+                supabase_client.table("scheduled_courses")
+                .select("course_id")
+                .eq("schedule_id", schedule_id)
+                .execute()
+            )
+
+            scheduled_courses = scheduled_courses_resp.data or []
+            if not scheduled_courses:
+                return jsonify({"instructors": []}), 200
+
+            # Extract list of unique course_ids
+            course_ids = list({sc["course_id"] for sc in scheduled_courses})
+
+            # fetch instructors who are qualified for any of those courses
+            qualifications_resp = (
+                supabase_client.table("instructor_course_qualifications")
+                .select("instructor_id, course_id")
+                .in_("course_id", course_ids)
+                .execute()
+            )
+
+            qualifications = qualifications_resp.data or []
+            if not qualifications:
+                return jsonify({"instructors": []}), 200
+
+            # Extract unique instructor_ids
+            instructor_ids = list({q["instructor_id"] for q in qualifications})
+
+            # Step 3: fetch instructor profiles
+            instructors_resp = (
+                supabase_client.table("instructors")
+                .select("*")
+                .in_("instructor_id", instructor_ids)
+                .execute()
+            )
+
+            instructors = instructors_resp.data or []
+
+            return jsonify({
+                "instructors": instructors,
+                "course_ids": course_ids,
+            }), 200
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
 
     @app.route("/admin/schedules/generate", methods=["POST"])
     def generate_schedules():
