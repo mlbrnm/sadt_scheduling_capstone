@@ -141,14 +141,13 @@ export default function EditUser() {
       setProgramOperationLoading(programId);
       setProgramError(null);
 
-      // Just update ac_id directly
+      // Update ac_id directly
       const { error: updateError } = await supabase
         .from("programs")
         .update({ ac_id: userId })
         .eq("program_id", programId);
 
-        if (updateError) throw updateError;
-      }
+      if (updateError) throw updateError;
 
       // Refresh programs list
       await fetchPrograms();
