@@ -147,8 +147,7 @@ export default function EditUser() {
         .update({ ac_id: userId })
         .eq("program_id", programId);
 
-        if (updateError) throw updateError;
-      }
+      if (updateError) throw updateError;
 
       // Refresh programs list
       await fetchPrograms();
