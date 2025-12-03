@@ -204,10 +204,13 @@ export default function NewSchedule() {
       };
     });
 
-    // Also update courseSections state for easy lookup if needed elsewhere
+    // Update courseSections per term
     setCourseSections((prev) => ({
       ...prev,
-      [course_id]: newCount,
+      [semester]: {
+        ...(prev[semester] || {}),
+        [course_id]: newCount,
+      },
     }));
   };
 
@@ -403,10 +406,11 @@ export default function NewSchedule() {
         updatedAddedCoursesBySemester[semester] = courses.map((course) => ({
           ...course,
           num_sections:
-            courseSections[course.course_id] ?? course.num_sections ?? 1,
+            courseSections[semester]?.[course.course_id] ??
+            course.num_sections ??
+            1,
         }));
       }
-
       const payload = {
         academic_year: newScheduleDraft.metaData.year,
         academic_chair_id: currentUserId,
