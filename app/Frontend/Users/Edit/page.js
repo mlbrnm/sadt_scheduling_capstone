@@ -24,11 +24,11 @@ export default function EditUser() {
   const [resetMessage, setResetMessage] = useState(null);
   const [deleteMessage, setDeleteMessage] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [assignedPrograms, setAssignedPrograms] = useState([]);
-  const [unassignedPrograms, setUnassignedPrograms] = useState([]);
+  const [assignedProgram, setAssignedProgram] = useState(null);
+  const [availablePrograms, setAvailablePrograms] = useState([]);
   const [programsLoading, setProgramsLoading] = useState(false);
   const [programError, setProgramError] = useState(null);
-  const [programOperationLoading, setProgramOperationLoading] = useState(null);
+  const [programOperationLoading, setProgramOperationLoading] = useState(false);
 
   // Pull in user data from Supabase
   const fetchUser = async () => {
@@ -107,7 +107,7 @@ export default function EditUser() {
       setProgramsLoading(true);
       setProgramError(null);
 
-      // Fetch assigned programs for this user
+      // Fetch the single assigned program for this user
       const { data: assignedPrograms, error: assignedError } = await supabase
         .from("programs")
         .select("program_id, program")
@@ -115,19 +115,22 @@ export default function EditUser() {
 
       if (assignedError) throw assignedError;
 
-      // Fetch unassigned programs
-      const { data: unassignedPrograms, error: unassignedError } =
-        await supabase
-          .from("programs")
-          .select("program_id, program")
-          .is("ac_id", null)
-          .order("program");
+      // Since ac_id is now a single UUID, there should only be one or zero programs
+      const assignedProgram = assignedPrograms && assignedPrograms.length > 0 
+        ? assignedPrograms[0] 
+        : null;
 
-      if (unassignedError) throw unassignedError;
+      // Fetch all programs that are either unassigned OR assigned to this user
+      const { data: allPrograms, error: allProgramsError } = await supabase
+        .from("programs")
+        .select("program_id, program")
+        .order("program");
+
+      if (allProgramsError) throw allProgramsError;
 
       // Update state
-      setAssignedPrograms(assignedPrograms);
-      setUnassignedPrograms(unassignedPrograms);
+      setAssignedProgram(assignedProgram);
+      setAvailablePrograms(allPrograms || []);
     } catch (error) {
       console.error("Error fetching programs:", error);
       setProgramError("Failed to load programs: " + error.message);
@@ -136,18 +139,28 @@ export default function EditUser() {
     }
   };
 
-  const addUserToProgram = async (programId) => {
+  const assignProgramToUser = async (programId) => {
     try {
-      setProgramOperationLoading(programId);
+      setProgramOperationLoading(true);
       setProgramError(null);
 
-      // Update ac_id directly
-      const { error: updateError } = await supabase
+      // First, unassign any currently assigned program for this AC
+      if (assignedProgram) {
+        const { error: unassignError } = await supabase
+          .from("programs")
+          .update({ ac_id: null })
+          .eq("program_id", assignedProgram.program_id);
+
+        if (unassignError) throw unassignError;
+      }
+
+      // Then assign the new program to this AC
+      const { error: assignError } = await supabase
         .from("programs")
         .update({ ac_id: userId })
         .eq("program_id", programId);
 
-      if (updateError) throw updateError;
+      if (assignError) throw assignError;
 
       // Refresh programs list
       await fetchPrograms();
@@ -155,20 +168,22 @@ export default function EditUser() {
       console.error("Error assigning program:", error);
       setProgramError("Failed to assign program: " + error.message);
     } finally {
-      setProgramOperationLoading(null);
+      setProgramOperationLoading(false);
     }
   };
 
-  const removeUserFromProgram = async (programId) => {
+  const unassignProgramFromUser = async () => {
+    if (!assignedProgram) return;
+
     try {
-      setProgramOperationLoading(programId);
+      setProgramOperationLoading(true);
       setProgramError(null);
 
       // Set ac_id to null
       const { error: updateError } = await supabase
         .from("programs")
         .update({ ac_id: null })
-        .eq("program_id", programId);
+        .eq("program_id", assignedProgram.program_id);
 
       if (updateError) throw updateError;
 
@@ -178,7 +193,7 @@ export default function EditUser() {
       console.error("Error removing program assignment:", error);
       setProgramError("Failed to remove program assignment: " + error.message);
     } finally {
-      setProgramOperationLoading(null);
+      setProgramOperationLoading(false);
     }
   };
 
@@ -577,53 +592,18 @@ export default function EditUser() {
                   </div>
                 )}
 
-                {/* Assigned Programs */}
+                {/* Currently Assigned Program */}
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Assigned Programs
+                    Assigned Program
                   </h3>
-                  <div className="space-y-3">
-                    {assignedPrograms.length === 0 && !programsLoading ? (
-                      <div className="text-gray-500 text-sm italic">
-                        No programs assigned
-                      </div>
-                    ) : (
-                      assignedPrograms.map((program) => (
-                        <div
-                          key={program.program_id}
-                          className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
-                        >
-                          <span className="text-gray-900">
-                            {program.program}
-                          </span>
-                          <div className="flex items-center space-x-2">
-                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-white"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth="3"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            </div>
-                            <button
-                              onClick={() => removeUserFromProgram(program.id)}
-                              disabled={programOperationLoading === program.id}
-                              className={`w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors ${
-                                programOperationLoading === program.id
-                                  ? "opacity-50 cursor-not-allowed"
-                                  : ""
-                              }`}
-                            >
-                              {programOperationLoading === program.id ? (
-                                <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-                              ) : (
+                  {!programsLoading && (
+                    <div className="pr-2">
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        {assignedProgram ? (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                                 <svg
                                   className="w-4 h-4 text-white"
                                   fill="none"
@@ -634,68 +614,79 @@ export default function EditUser() {
                                   <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    d="M6 18L18 6M6 6l12 12"
+                                    d="M5 13l4 4L19 7"
                                   />
                                 </svg>
-                              )}
+                              </div>
+                              <span className="text-gray-900 font-medium">
+                                {assignedProgram.program}
+                              </span>
+                            </div>
+                            <button
+                              onClick={unassignProgramFromUser}
+                              disabled={programOperationLoading}
+                              className={`text-sm text-red-600 hover:text-red-800 font-medium transition-colors ${
+                                programOperationLoading
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }`}
+                            >
+                              {programOperationLoading ? "Unassigning..." : "Unassign"}
                             </button>
                           </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                        ) : (
+                          <div className="text-gray-500 text-sm italic">
+                            No program assigned
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Unassigned Programs */}
+                {/* Available Programs */}
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Unassigned Programs
+                    Available Programs
                   </h3>
-                  <div className="space-y-3">
-                    {unassignedPrograms.length === 0 && !programsLoading ? (
+                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
+                    {availablePrograms.length === 0 && !programsLoading ? (
                       <div className="text-gray-500 text-sm italic">
-                        All programs are assigned
+                        No programs available
                       </div>
                     ) : (
-                      unassignedPrograms.map((program) => (
-                        <div
-                          key={program.program_id}
-                          className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200"
-                        >
-                          <span className="text-gray-900">
-                            {program.program}
-                          </span>
-                          <button
-                            onClick={() => addUserToProgram(program.program_id)}
-                            disabled={
-                              programOperationLoading === program.program_id
-                            }
-                            className={`w-6 h-6 bg-gray-400 rounded-full flex items-center justify-center hover:bg-gray-500 transition-colors flex-shrink-0 ${
-                              programOperationLoading === program.program_id
-                                ? "opacity-50 cursor-not-allowed"
-                                : ""
+                      availablePrograms.map((program) => {
+                        const isCurrentlyAssigned = assignedProgram?.program_id === program.program_id;
+                        const isAssignedToOther = !isCurrentlyAssigned && assignedProgram !== null;
+                        
+                        return (
+                          <div
+                            key={program.program_id}
+                            className={`flex items-center justify-between gap-4 bg-white p-4 rounded-lg border transition-colors ${
+                              isCurrentlyAssigned
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:border-gray-300"
                             }`}
                           >
-                            {programOperationLoading === program.program_id ? (
-                              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                              <svg
-                                className="w-4 h-4 text-white"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth="3"
-                                stroke="currentColor"
+                            <span className={`text-gray-900 flex-1 ${isCurrentlyAssigned ? "font-medium" : ""}`}>
+                              {program.program}
+                            </span>
+                            {!isCurrentlyAssigned && (
+                              <button
+                                onClick={() => assignProgramToUser(program.program_id)}
+                                disabled={programOperationLoading}
+                                className={`px-4 py-1.5 text-sm rounded-lg font-medium transition-colors flex-shrink-0 ${
+                                  programOperationLoading
+                                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                                }`}
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M12 6v12m6-6H6"
-                                />
-                              </svg>
+                                {programOperationLoading ? "Assigning..." : "Assign"}
+                              </button>
                             )}
-                          </button>
-                        </div>
-                      ))
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>

@@ -151,3 +151,4 @@ app/Backend/flask-server/routes/__pycache__/
 app\Backend\flask-server\supabase_client.py
 supabase/.branches/_current_branch
 .env_general
+.env_melbo
