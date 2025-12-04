@@ -100,13 +100,13 @@ export default function CourseSection({
                     {course.course?.course_code}
                   </span>
                   <span>{course.course?.course_name}</span>
-                  <span>{course.course?.delivery_method}</span>
+                  {/* <span>{course.course?.delivery_method}</span>
                   <span>{`Online: ${course.course?.online_hrs || 0}hrs`}</span>
-                  <span>{`Class: ${course.course?.class_hrs || 0}hrs`}</span>
+                  <span>{`Class: ${course.course?.class_hrs || 0}hrs`}</span> */}
 
                   {/* Section Controls */}
                   <div className="flex flex-col items-center mt-1 gap-1">
-                    {course.sections?.map((sec) => (
+                    {/* {course.sections?.map((sec) => (
                       <div
                         key={sec.id}
                         className="flex flex-col items-center border px-1 py-1 rounded w-full bg-gray-100"
@@ -119,7 +119,7 @@ export default function CourseSection({
                             .join(", ") || "None"}
                         </span>
                       </div>
-                    ))}
+                    ))} */}
 
                     <div className="flex items-center gap-2 mt-1">
                       Sections: {course.num_sections}

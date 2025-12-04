@@ -67,37 +67,85 @@ export default function NewSchedule() {
     })();
   }, []);
 
-  // Fetch instructors and courses for reference
+  //Fetch courses
+  // Fetch courses only
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCourses = async () => {
       setIsLoading(true);
       setError(null);
-
       try {
-        const [instructorsRes, coursesRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructors`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`),
-        ]);
-
-        if (!instructorsRes.ok || !coursesRes.ok) {
-          throw new Error("Failed to fetch data from server");
-        }
-
-        const instructorsData = await instructorsRes.json();
-        const coursesData = await coursesRes.json();
-
-        setInstructorData(instructorsData || []);
-        setCourseData(coursesData || []);
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/courses`
+        );
+        if (!res.ok) throw new Error("Failed to fetch courses");
+        const data = await res.json();
+        setCourseData(data || []);
       } catch (err) {
         console.error(err);
-        setError("Failed to fetch data: " + err.message);
+        setError("Failed to fetch courses: " + err.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
+    fetchCourses();
   }, []);
+
+  //Fetch instructors based on courses in the schedule
+  useEffect(() => {
+    if (!scheduleId) return;
+
+    const fetchInstructors = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/instructors`
+        );
+        const data = await res.json();
+
+        if (res.ok) {
+          setInstructorData(data.instructors || []);
+        } else {
+          console.error("Failed to fetch instructors:", data.error);
+        }
+      } catch (err) {
+        console.error("Error fetching instructors:", err);
+      }
+    };
+
+    fetchInstructors();
+  }, [scheduleId]);
+
+  // Fetch instructors and courses for reference
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     setIsLoading(true);
+  //     setError(null);
+
+  //     try {
+  //       const [instructorsRes, coursesRes] = await Promise.all([
+  //         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructors`),
+  //         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`),
+  //       ]);
+
+  //       if (!instructorsRes.ok || !coursesRes.ok) {
+  //         throw new Error("Failed to fetch data from server");
+  //       }
+
+  //       const instructorsData = await instructorsRes.json();
+  //       const coursesData = await coursesRes.json();
+
+  //       setInstructorData(instructorsData || []);
+  //       setCourseData(coursesData || []);
+  //     } catch (err) {
+  //       console.error(err);
+  //       setError("Failed to fetch data: " + err.message);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
 
   useEffect(() => {
     if (!scheduleId || isLoading) return;
@@ -204,10 +252,13 @@ export default function NewSchedule() {
       };
     });
 
-    // Also update courseSections state for easy lookup if needed elsewhere
+    // Update courseSections per term
     setCourseSections((prev) => ({
       ...prev,
-      [course_id]: newCount,
+      [semester]: {
+        ...(prev[semester] || {}),
+        [course_id]: newCount,
+      },
     }));
   };
 
@@ -403,10 +454,11 @@ export default function NewSchedule() {
         updatedAddedCoursesBySemester[semester] = courses.map((course) => ({
           ...course,
           num_sections:
-            courseSections[course.course_id] ?? course.num_sections ?? 1,
+            courseSections[semester]?.[course.course_id] ??
+            course.num_sections ??
+            1,
         }));
       }
-
       const payload = {
         academic_year: newScheduleDraft.metaData.year,
         academic_chair_id: currentUserId,
@@ -417,11 +469,14 @@ export default function NewSchedule() {
 
       if (scheduleId) payload.schedule_id = scheduleId;
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/schedules/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/save`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await response.json();
       if (!response.ok)
@@ -702,6 +757,11 @@ export default function NewSchedule() {
 
       <div className="flex flex-col">
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
+          <div className="flex justify-center items-center">
+            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow transition">
+              Auto-Assign Instructors
+            </button>
+          </div>
           <div className="col-start-2 row-start-1 min-w-0">
             <div
               ref={topScrollerRef}
