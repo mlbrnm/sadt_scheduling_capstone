@@ -7,6 +7,7 @@ export default function ACProgramCourses({ academicChairId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedPrograms, setExpandedPrograms] = useState({});
+  const [sectionsData, setSectionsData] = useState({});
 
   useEffect(() => {
     if (!academicChairId) {
@@ -56,6 +57,33 @@ export default function ACProgramCourses({ academicChairId }) {
           setPrograms([]);
           return;
         }
+
+        // Fetch sections data to determine instructor assignments
+        const { data: sectionsDataRaw, error: sectionsError } = await supabase
+          .from("sections")
+          .select("id, schedule_id, course_id, term, instructor_id")
+          .in("schedule_id", scheduleIds);
+
+        if (sectionsError) throw sectionsError;
+
+        // Build a map of sections grouped by scheduled_course_id + term
+        const sectionsMap = {};
+        if (sectionsDataRaw) {
+          sectionsDataRaw.forEach((section) => {
+            const key = `${section.schedule_id}_${section.course_id}_${section.term}`;
+            if (!sectionsMap[key]) {
+              sectionsMap[key] = {
+                total: 0,
+                withInstructor: 0,
+              };
+            }
+            sectionsMap[key].total++;
+            if (section.instructor_id !== null) {
+              sectionsMap[key].withInstructor++;
+            }
+          });
+        }
+        setSectionsData(sectionsMap);
 
         // Fetch all program names for mapping
         const { data: programsData, error: programsError } = await supabase
@@ -111,19 +139,40 @@ export default function ACProgramCourses({ academicChairId }) {
     const terms = scheduledCourse.term || "";
     const semesters = [];
     if (terms.toLowerCase().includes("winter"))
-      semesters.push({ key: "winter", label: "W" });
+      semesters.push({ key: "Winter", label: "W" });
     if (terms.toLowerCase().includes("spring"))
-      semesters.push({ key: "springSummer", label: "S" });
+      semesters.push({ key: "Spring", label: "S" });
     if (terms.toLowerCase().includes("fall"))
-      semesters.push({ key: "fall", label: "F" });
+      semesters.push({ key: "Fall", label: "F" });
     return semesters;
   };
 
-  const getScheduledCourseStatus = (scheduledCourse, semester) => {
-    const sections = scheduledCourse.num_sections || 0;
-    if (sections >= 6) return "complete";
-    if (sections > 0) return "partial";
-    return "unassigned";
+  const getScheduledCourseStatus = (scheduledCourse, termKey) => {
+    // Build key to look up sections data
+    const key = `${scheduledCourse.schedule_id}_${scheduledCourse.course_id}_${termKey}`;
+    const sectionInfo = sectionsData[key];
+
+    // Case 1: No sections exist for this course
+    if (!sectionInfo || sectionInfo.total === 0) {
+      return { status: "no_sections", total: 0, withInstructor: 0 };
+    }
+
+    // Case 2: Sections exist
+    const total = sectionInfo.total;
+    const withInstructor = sectionInfo.withInstructor;
+
+    // All sections have instructors
+    if (withInstructor === total && total > 0) {
+      return { status: "complete", total, withInstructor };
+    }
+    // Some sections have instructors
+    else if (withInstructor > 0) {
+      return { status: "partial", total, withInstructor };
+    }
+    // No sections have instructors
+    else {
+      return { status: "unassigned", total, withInstructor };
+    }
   };
 
   if (!academicChairId) return null;
@@ -183,15 +232,15 @@ export default function ACProgramCourses({ academicChairId }) {
         <div className="flex items-center gap-3 text-xs text-gray-600">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-gray-400"></div>{" "}
-            <span>No assignments</span>
+            <span>No sections / No instructors</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-yellow-400"></div>{" "}
-            <span>Partial (1-5 sections)</span>
+            <span>Partial</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-green-400"></div>{" "}
-            <span>Complete (6/6 sections)</span>
+            <span>Complete</span>
           </div>
         </div>
       </div>
@@ -260,27 +309,34 @@ export default function ACProgramCourses({ academicChairId }) {
 
                             <div className="flex items-center gap-1 mt-2">
                               {semesters.map((sem) => {
-                                const status = getScheduledCourseStatus(
+                                const statusInfo = getScheduledCourseStatus(
                                   sc,
                                   sem.key
                                 );
-                                const dotColor =
-                                  status === "complete"
-                                    ? "bg-green-400"
-                                    : status === "partial"
-                                    ? "bg-yellow-400"
-                                    : "bg-gray-400";
+                                
+                                let dotColor = "bg-gray-400";
+                                let tooltipText = "";
+                                
+                                if (statusInfo.status === "no_sections") {
+                                  dotColor = "bg-gray-400";
+                                  tooltipText = `${sem.label}: Admin has not yet assigned sections`;
+                                } else if (statusInfo.status === "complete") {
+                                  dotColor = "bg-green-400";
+                                  tooltipText = `${sem.label}: Complete (${statusInfo.withInstructor}/${statusInfo.total} sections assigned)`;
+                                } else if (statusInfo.status === "partial") {
+                                  dotColor = "bg-yellow-400";
+                                  tooltipText = `${sem.label}: Partial (${statusInfo.withInstructor}/${statusInfo.total} sections assigned)`;
+                                } else {
+                                  // unassigned - sections exist but no instructors
+                                  dotColor = "bg-gray-400";
+                                  tooltipText = `${sem.label}: No instructors assigned (0/${statusInfo.total} sections)`;
+                                }
+                                
                                 return (
                                   <div
                                     key={sem.key}
                                     className="flex items-center gap-0.5"
-                                    title={`${sem.label}: ${
-                                      status === "complete"
-                                        ? "Complete (6/6)"
-                                        : status === "partial"
-                                        ? "Partial (1-5)"
-                                        : "No assignments"
-                                    }`}
+                                    title={tooltipText}
                                   >
                                     <div
                                       className={`w-3 h-3 rounded-full ${dotColor}`}
