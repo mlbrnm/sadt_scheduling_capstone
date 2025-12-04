@@ -92,7 +92,6 @@ export default function NewSchedule() {
   }, []);
 
   //Fetch instructors based on courses in the schedule
-  // Fetch instructors for the current schedule
   useEffect(() => {
     if (!scheduleId) return;
 
