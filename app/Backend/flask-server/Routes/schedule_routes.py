@@ -318,6 +318,14 @@ def register_schedule_routes(app):
 
             for program in programs:
                 program_id = program["program_id"]
+                
+                # Initialize ac_detail for this program
+                ac_detail = {
+                    "ac_id": ac_id,
+                    "program_id": program_id,
+                    "steps": []
+                }
+                
                 intakes_raw = program.get("intakes") or ""
                 intake_terms = [
                     i.strip().lower()
@@ -386,6 +394,11 @@ def register_schedule_routes(app):
                 scheduled_courses_to_insert = []
                 sections_to_insert = []
 
+                print(f"\n=== DEBUG: Building scheduled_courses for program_id={program_id} ===")
+                print(f"course_ids: {course_ids}")
+                print(f"intake_terms: {intake_terms}")
+                print(f"schedule_id: {schedule_id}")
+
                 for course_id in course_ids:
                     for term in intake_terms:
 
@@ -398,28 +411,69 @@ def register_schedule_routes(app):
                         }
                         scheduled_courses_to_insert.append(scheduled_course)
 
+                print(f"\n=== DEBUG: Prepared scheduled_courses_to_insert ===")
+                print(f"Total records to insert: {len(scheduled_courses_to_insert)}")
+                print(f"Records: {scheduled_courses_to_insert}")
+
                 # Insert all scheduled_courses at once
-                sc_insert_res = supabase_client.table("scheduled_courses").insert(scheduled_courses_to_insert).execute()
+                try:
+                    print(f"\n=== DEBUG: Attempting to insert scheduled_courses ===")
+                    sc_insert_res = supabase_client.table("scheduled_courses").insert(scheduled_courses_to_insert).execute()
+                    
+                    print(f"\n=== DEBUG: Insert response ===")
+                    print(f"sc_insert_res type: {type(sc_insert_res)}")
+                    print(f"sc_insert_res.data: {sc_insert_res.data}")
+                    print(f"Number of records inserted: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
+                    
+                    if hasattr(sc_insert_res, 'error') and sc_insert_res.error:
+                        print(f"ERROR in sc_insert_res: {sc_insert_res.error}")
+                        
+                except Exception as insert_error:
+                    print(f"\n=== DEBUG: EXCEPTION during scheduled_courses insert ===")
+                    print(f"Error type: {type(insert_error)}")
+                    print(f"Error message: {str(insert_error)}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
 
                 # generate sections for each scheduled_course we just created
-                for sc in sc_insert_res.data:
-                    sections_to_insert.append({
-                        "schedule_id": schedule_id,
-                        "course_id": sc["course_id"],
-                        "term": sc["term"],
-                        "section_letter": "A",
-                        "delivery_mode": "In-Person",  
-                        "timeslots": [],    
-                        "instructor_id": None,
-                        "semester_id": None,
-                        "weekly_hours_required": None,
-                        "sessions_per_week": None,
-                        "scheduled_course_id": sc["scheduled_course_id"]
-                    })
+                print(f"\n=== DEBUG: Generating sections ===")
+                print(f"Number of scheduled_courses to create sections for: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
+                
+                if sc_insert_res.data:
+                    for sc in sc_insert_res.data:
+                        print(f"Creating section for scheduled_course_id={sc.get('scheduled_course_id')}, course_id={sc.get('course_id')}, term={sc.get('term')}")
+                        sections_to_insert.append({
+                            "schedule_id": schedule_id,
+                            "course_id": sc["course_id"],
+                            "term": sc["term"],
+                            "section_letter": "A",
+                            "delivery_mode": "In-Person",  
+                            "timeslots": [],    
+                            "instructor_id": None,
+                            "semester_id": None,
+                            "weekly_hours_required": None,
+                            "sessions_per_week": None,
+                            "scheduled_course_id": sc["scheduled_course_id"]
+                        })
+                else:
+                    print("WARNING: sc_insert_res.data is empty or None - no sections will be created!")
 
                 # Insert all sections at once
+                print(f"\n=== DEBUG: Inserting sections ===")
+                print(f"Total sections to insert: {len(sections_to_insert)}")
+                
                 if sections_to_insert:
-                    supabase_client.table("sections").insert(sections_to_insert).execute()
+                    try:
+                        sections_insert_res = supabase_client.table("sections").insert(sections_to_insert).execute()
+                        print(f"Sections inserted successfully: {len(sections_insert_res.data) if sections_insert_res.data else 0}")
+                        print(f"sections_insert_res.data: {sections_insert_res.data}")
+                    except Exception as sections_error:
+                        print(f"ERROR inserting sections: {sections_error}")
+                        import traceback
+                        traceback.print_exc()
+                else:
+                    print("No sections to insert (sections_to_insert is empty)")
 
                 created_schedules.append({
                     "program_id": program_id,
