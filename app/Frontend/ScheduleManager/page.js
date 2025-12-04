@@ -104,14 +104,14 @@ export default function ScheduleManager() {
           return data;
       }
     }
-    
+
     // Then apply primary sort by submission status priority
     sortedData.sort((a, b) => {
       const priorityA = getStatusPriority(a.status);
       const priorityB = getStatusPriority(b.status);
       return priorityA - priorityB;
     });
-    
+
     return sortedData;
   };
 
@@ -304,9 +304,9 @@ export default function ScheduleManager() {
       <div className="flex flex-row items-center justify-center gap-10 pb-8">
         {/* Filter/Sort Container */}
         <div className="text-lg text-bold flex items-center gap-1">
-          Sort by
+          Sort by:
           <select
-            className="px-3 py-2 mx-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-xs text-gray-500"
+            className="bg-white px-3 py-2 mx-3 rounded-lg focus:outline-offset-1 w-xs"
             onChange={handleSortChange}
             value={sortOption}
           >
@@ -332,11 +332,10 @@ export default function ScheduleManager() {
         </div>
         {/* Search */}
         <div className="text-lg text-bold flex items-center gap-1">
-          Search
           <input
             type="text"
             placeholder="Enter search criteria (e.g. keyword, status...)"
-            className="px-3 py-2 ml-3 background-primary rounded-lg border border-tertiary focus:outline-offset-1 focus:outline-2 focus:border-tertiary w-3xl"
+            className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-xl"
             value={searchParams}
             onChange={handleSearchChange}
           />
@@ -357,110 +356,92 @@ export default function ScheduleManager() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="mb-4 p-4 bg-blue-50 text-blue-700 rounded-md flex items-center justify-center">
-          <svg
-            className="animate-spin h-5 w-5 mr-3"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-          Loading schedules...
-        </div>
-      )}
-
       {/* Table Container */}
-      <div className="bg-gray-100 m-0 rounded-lg shadow-md">
-        <div className="h-[calc(100vh-269px)] overflow-y-auto overflow-x-hidden">
-          <table className="table-auto min-w-full">
-            <thead className="bg-gray-300 sticky top-0">
-              <tr className="grid grid-cols-5 gap-8 py-3 text-left font-sm pl-6">
-                <th>Date Submitted</th>
-                <th>Title</th>
-                <th>Program(s)</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedData.length === 0 && !isLoading ? (
-                <tr>
-                  <td colSpan="5" className="text-center py-8 text-gray-500">
-                    No schedules found.
-                  </td>
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-700"></div>
+          <span className="ml-3">Loading schedules...</span>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg overflow-hidden">
+          <div className="h-[calc(100vh-269px)] overflow-y-auto overflow-x-hidden">
+            <table className="table-auto min-w-full">
+              <thead className="bg-gray-50 sticky top-0">
+                <tr className="grid grid-cols-5 gap-8 py-3 text-left text-sm pl-6 font-semibold text-gray-500 uppercase">
+                  <th>Date Submitted</th>
+                  <th>Title</th>
+                  <th>Program(s)</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ) : (
-                displayedData.map((schedule, index) => (
-                  <tr
-                    key={index}
-                    className="grid grid-cols-5 gap-8 py-3 border-b pl-6"
-                  >
-                    <td className="mt-1 self-center">
-                      {formatDate(schedule.date_submitted)}
-                    </td>
-                    <td className="mt-1 self-center">{schedule.title}</td>
-                    <td className="mt-1 self-center">
-                      {schedule.programs.length > 0 ? (
-                        schedule.programs.map((program, idx) => (
-                          <div key={idx}>{program}</div>
-                        ))
-                      ) : (
-                        <span className="text-gray-400 italic">
-                          No programs
-                        </span>
-                      )}
-                    </td>
-                    <td className="mt-1.5 self-center">
-                      <span className={getStatusColour(schedule.status)}>
-                        {schedule.status}
-                      </span>
-                    </td>
-                    <td className="flex gap-2 self-center">
-                      <button
-                        className="button-primary text-white px-4 py-1.5 rounded hover:button-hover active:button-clicked"
-                        onClick={() => handleView(schedule.schedule_id)}
-                      >
-                        View
-                      </button>
-                      {schedule.status === "Submitted" && (
-                        <>
-                          <button
-                            className="bg-green-600 text-white px-4 py-1.5 rounded hover:bg-green-700 active:bg-green-800"
-                            onClick={() => handleApprove(schedule.schedule_id)}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className="bg-red-600 text-white px-4 py-1.5 rounded hover:bg-red-700 active:bg-red-800"
-                            onClick={() => handleRejectClick(schedule)}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
+              </thead>
+              <tbody>
+                {displayedData.length === 0 && !isLoading ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-8 text-gray-500">
+                      No schedules found.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  displayedData.map((schedule, index) => (
+                    <tr
+                      key={index}
+                      className="grid grid-cols-5 gap-8 py-3 border-b pl-6"
+                    >
+                      <td className="mt-1 self-center">
+                        {formatDate(schedule.date_submitted)}
+                      </td>
+                      <td className="mt-1 self-center">{schedule.title}</td>
+                      <td className="mt-1 self-center">
+                        {schedule.programs.length > 0 ? (
+                          schedule.programs.map((program, idx) => (
+                            <div key={idx}>{program}</div>
+                          ))
+                        ) : (
+                          <span className="text-gray-400 italic">
+                            No programs
+                          </span>
+                        )}
+                      </td>
+                      <td className="mt-1.5 self-center">
+                        <span className={getStatusColour(schedule.status)}>
+                          {schedule.status}
+                        </span>
+                      </td>
+                      <td className="flex gap-2 self-center">
+                        <button
+                          className="button-primary text-white px-4 py-1.5 rounded hover:button-hover active:button-clicked cursor-pointer"
+                          onClick={() => handleView(schedule.schedule_id)}
+                        >
+                          View
+                        </button>
+                        {schedule.status === "Submitted" && (
+                          <>
+                            <button
+                              className="bg-green-600 text-white px-4 py-1.5 rounded hover:bg-green-700 active:bg-green-800"
+                              onClick={() =>
+                                handleApprove(schedule.schedule_id)
+                              }
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="bg-red-600 text-white px-4 py-1.5 rounded hover:bg-red-700 active:bg-red-800"
+                              onClick={() => handleRejectClick(schedule)}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rejection Modal */}
       {showRejectModal && (

@@ -475,11 +475,7 @@ export default function UploadData() {
   };
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl text-center font-bold mb-6">
-        Upload Institutional Data
-      </h1>
-
+    <div className="p-4">
       {/* Data Type Selection Buttons */}
       <div className="flex justify-center gap-4 mb-8">
         {dataTypes.map((type) => (
@@ -640,7 +636,7 @@ export default function UploadData() {
                     ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-black">
                   {previewData.rows?.map((row, index) => (
                     <tr key={index}>
                       {previewData.headers.map((header) => (

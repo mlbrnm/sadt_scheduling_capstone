@@ -166,7 +166,10 @@ export default function ACScheduleManage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ academic_year: parseInt(academicYear) }),
+          body: JSON.stringify({
+            ac_id: currentUser,
+            academic_year: parseInt(academicYear),
+          }),
         }
       );
 

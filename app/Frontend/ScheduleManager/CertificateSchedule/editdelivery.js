@@ -266,7 +266,6 @@ export default function EditDelivery({
   };
 
   // Group drafts by section
-  // USED AI Q: How to group things in Next.js using reduce (GROUP THINGS USING REDUCE)
   const draftsBySection = drafts.reduce((acc, draft) => {
     const key = draft.section || "-";
     if (!acc[key]) {
@@ -505,7 +504,7 @@ export default function EditDelivery({
         </button>
         {onAddAllDeliveries && (
           <button
-            className="px-3 py-2 ml-2 rounded-md bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+            className="px-3 py-2 ml-2 rounded-md button-primary text-white cursor-pointer"
             onClick={onAddAllDeliveries}
           >
             Add All Deliveries

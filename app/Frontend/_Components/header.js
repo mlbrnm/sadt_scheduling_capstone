@@ -83,7 +83,16 @@ export default function Header() {
         },
       ],
     },
-    { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
+    {
+      label: "Dashboards",
+      href: "/Frontend/Dashboards",
+      submenu: [
+        {
+          label: "Instructor Workload",
+          href: "/Frontend/Dashboards/InstructorWorkload",
+        },
+      ],
+    },
     { label: "Upload Data", href: "/Frontend/UploadData" },
     { label: "Instructor Profiles", href: "/Frontend/InstructorProfiles" },
     { label: "Reports", href: "/Frontend/Reports" },
@@ -94,7 +103,16 @@ export default function Header() {
     //Should work on dynamic home tabs
     //{ label: "Home", href: "/Frontend/Home" },
     { label: "Schedule Manager", href: "/Frontend/ACScheduleManager" },
-    { label: "Dashboards", href: "/Frontend/Dashboards/InstructorWorkload" },
+    {
+      label: "Dashboards",
+      href: "/Frontend/Dashboards",
+      submenu: [
+        {
+          label: "Instructor Workload",
+          href: "/Frontend/Dashboards/InstructorWorkload",
+        },
+      ],
+    },
     { label: "Instructor Profiles", href: "/Frontend/InstructorProfiles" },
   ];
 
@@ -151,16 +169,17 @@ export default function Header() {
             {tab.submenu && (
               <div
                 className="absolute left-0 right-0 top-full
-                     background-headerfooter
-                     opacity-0 pointer-events-none
-                     group-hover:opacity-100 group-hover:pointer-events-auto
-                     z-50"
+               background-headerfooter
+               opacity-0 pointer-events-none
+               group-hover:opacity-100 group-hover:pointer-events-auto
+               z-50"
               >
                 {tab.submenu.map((item, subIndex) => (
                   <Link
                     key={subIndex}
                     href={item.href}
-                    className="block px-4 py-2 font-medium text-white hover:bg-[#00A3E0]"
+                    className="flex justify-center items-center px-4 py-2 
+                   font-medium text-white hover:bg-[#00A3E0] text-center"
                   >
                     {item.label}
                   </Link>
@@ -194,7 +213,7 @@ export default function Header() {
           {/* User Profile Button with Popup */}
           <div className="profile-popup-container relative">
             <button
-              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
               onClick={() => setShowProfilePopup(!showProfilePopup)}
             >
               <svg
@@ -218,7 +237,7 @@ export default function Header() {
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                 <button
                   onClick={handleProfileClick}
-                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center cursor-pointer"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -238,7 +257,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center"
+                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors flex items-center cursor-pointer"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

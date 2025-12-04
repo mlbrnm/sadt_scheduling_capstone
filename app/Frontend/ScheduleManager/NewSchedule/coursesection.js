@@ -9,6 +9,7 @@ const courseListHeaders = [
   "Delivery",
   "Online",
   "Class",
+  "Sections",
 ];
 
 export default function CourseSection({
@@ -18,6 +19,7 @@ export default function CourseSection({
   onRemoveCourse,
   addedCourses,
   onUpdateCourseSections,
+  onAssignInstructor,
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,7 +31,7 @@ export default function CourseSection({
 
   const handleRemoveCourse = (course) => {
     const confirmRemove = window.confirm(
-      `Are you sure you want to remove ${course.course_name}?`
+      `Are you sure you want to remove ${course.course?.course_name || ""}?`
     );
     if (confirmRemove) {
       onRemoveCourse(course, semester);
@@ -40,15 +42,12 @@ export default function CourseSection({
     const isAlreadyAdded = addedCourses.some(
       (c) => c.course_id === course.course_id
     );
-
-    const matchesName = course.course_name
+    const matchesName = (course.course?.course_name || "")
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-
-    const matchesCode = course.course_code
+    const matchesCode = (course.course?.course_code || "")
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-
     return (matchesName || matchesCode) && !isAlreadyAdded;
   });
 
@@ -59,7 +58,6 @@ export default function CourseSection({
 
   return (
     <div>
-      {/* Added Courses */}
       <div className="bg-gray-50 w-full">
         <ul className="flex flex-nowrap">
           {coursesWithAdd.map((course) => (
@@ -72,12 +70,18 @@ export default function CourseSection({
                 }
                 handleRemoveCourse(course);
               }}
-              className={`p-2 text-sm cursor-pointer hover:bg-green-100 flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 shrink-0 text-center
-                    ${course.__isAdd ? "border-dashed" : "hover:bg-red-100"}`}
+              className={`p-2 text-sm cursor-pointer flex flex-col justify-between items-center group border border-gray-300 w-36 h-36 shrink-0 text-center
+                ${
+                  course.__isAdd
+                    ? "border-dashed hover:bg-green-100"
+                    : "hover:bg-red-100"
+                }`}
               title={
                 course.__isAdd
                   ? "Add Course"
-                  : `Click to remove ${course.course_code} - ${course.course_name}`
+                  : `Click to remove ${course.course?.course_code || ""} - ${
+                      course.course?.course_name || ""
+                    }`
               }
             >
               {course.__isAdd ? (
@@ -92,43 +96,63 @@ export default function CourseSection({
                 </>
               ) : (
                 <>
-                  <span className="font-semibold">{course.course_code}</span>
-                  <span>{course.course_name}</span>
-                  <span>{course.delivery_method}</span>
-                  <span>{`Online: ${course.online_hrs}hrs`}</span>
-                  <span>{`Class: ${course.class_hrs}hrs`}</span>
+                  <span className="font-semibold">
+                    {course.course?.course_code}
+                  </span>
+                  <span>{course.course?.course_name}</span>
+                  <span>{course.course?.delivery_method}</span>
+                  <span>{`Online: ${course.course?.online_hrs || 0}hrs`}</span>
+                  <span>{`Class: ${course.course?.class_hrs || 0}hrs`}</span>
+
                   {/* Section Controls */}
-                  <span className="flex items-center justify-center gap-2 mt-1">
-                    Sections: {course.num_sections}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdateCourseSections(
-                          course.course_id,
-                          semester,
-                          course.num_sections + 1
-                        );
-                      }}
-                      className="px-1 bg-gray-200 rounded hover:bg-gray-300"
-                    >
-                      +
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (course.num_sections > 1) {
+                  <div className="flex flex-col items-center mt-1 gap-1">
+                    {course.sections?.map((sec) => (
+                      <div
+                        key={sec.id}
+                        className="flex flex-col items-center border px-1 py-1 rounded w-full bg-gray-100"
+                      >
+                        <span>Section {sec.section_letter}</span>
+                        <span className="text-xs">
+                          Instructors:{" "}
+                          {sec.assigned_instructors
+                            ?.map((i) => i.instructor_id)
+                            .join(", ") || "None"}
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-2 mt-1">
+                      Sections: {course.num_sections}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
                           onUpdateCourseSections(
                             course.course_id,
                             semester,
-                            course.num_sections - 1
+                            course.num_sections + 1
                           );
-                        }
-                      }}
-                      className="px-1 bg-gray-200 rounded hover:bg-gray-300"
-                    >
-                      –
-                    </button>
-                  </span>
+                        }}
+                        className="px-1 bg-gray-200 rounded hover:bg-gray-300"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (course.num_sections > 1) {
+                            onUpdateCourseSections(
+                              course.course_id,
+                              semester,
+                              course.num_sections - 1
+                            );
+                          }
+                        }}
+                        className="px-1 bg-gray-200 rounded hover:bg-gray-300"
+                      >
+                        –
+                      </button>
+                    </div>
+                  </div>
                 </>
               )}
             </li>
@@ -184,7 +208,10 @@ export default function CourseSection({
                 <tbody className="bg-white divide-y">
                   {filteredCourses.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-4 text-sm text-center">
+                      <td
+                        colSpan={courseListHeaders.length}
+                        className="px-6 py-4 text-sm text-center"
+                      >
                         {searchTerm
                           ? "No courses match your search."
                           : "All available courses have been added."}
@@ -201,22 +228,22 @@ export default function CourseSection({
                           {course.course_id}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.course_name}
+                          {course.course?.course_name}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.program_major}
+                          {course.course?.program_major}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.contact_hours} h
+                          {course.course?.contact_hours || 0} h
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {course.delivery_method}
+                          {course.course?.delivery_method}
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {`${course.online_hrs} h`}
+                          {course.course?.online_hrs || 0} h
                         </td>
                         <td className="px-3 py-2 text-sm border-b border-gray-300">
-                          {`${course.class_hrs} h`}
+                          {course.course?.class_hrs || 0} h
                         </td>
                       </tr>
                     ))

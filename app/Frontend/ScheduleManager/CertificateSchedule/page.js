@@ -32,7 +32,6 @@ export default function CertificateSchedule() {
           mockCertificates.map((row) => ({
             ...row,
             // TEMPORARY FRONTEND ONLY ID
-            // USED AI Q: How to generate a random id using UUID in Next.js
             deliveryId:
               row.deliveryId ||
               (typeof crypto !== "undefined" && crypto.randomUUID
@@ -230,7 +229,6 @@ export default function CertificateSchedule() {
     if (certificateGroupDeliveries.length === 0) return;
 
     // Find the actual selected delivery objects from selected IDs
-    // USED AI Q: In Next.js how to get unique values in an array? (USING SET TO FILTER OUT DUPLICATES)
     const selectedDeliveries = selectedDeliveryIds
       .map((id) => certificatesData.find((row) => row.deliveryId === id))
       .filter(Boolean);
