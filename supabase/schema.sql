@@ -155,6 +155,19 @@ CREATE TABLE IF NOT EXISTS "public"."instructors" (
 ALTER TABLE "public"."instructors" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."program_courses" (
+    "program_id" "text" NOT NULL,
+    "course_id" character varying NOT NULL
+);
+
+
+ALTER TABLE "public"."program_courses" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."program_courses" IS 'Join table linking programs to their courses. Courses remain even if a program is deleted.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."programs" (
     "program_id" "text" NOT NULL,
     "group" character varying(255),
@@ -171,7 +184,7 @@ CREATE TABLE IF NOT EXISTS "public"."programs" (
     "uploaded_by" character varying(255),
     "delivery" "text",
     "status" "text",
-    "academic_chair_ids" "uuid"[]
+    "ac_id" "uuid"
 );
 
 
@@ -228,6 +241,19 @@ CREATE TABLE IF NOT EXISTS "public"."scheduled_courses" (
 ALTER TABLE "public"."scheduled_courses" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."scheduled_instructors" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "schedule_id" "uuid" NOT NULL,
+    "section_id" "uuid" NOT NULL,
+    "instructor_id" real NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."scheduled_instructors" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."schedules" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "academic_year" integer NOT NULL,
@@ -240,7 +266,8 @@ CREATE TABLE IF NOT EXISTS "public"."schedules" (
     "associated_courses" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "terms" "text"[]
+    "terms" "text"[],
+    "program_id" "text"
 );
 
 
@@ -328,7 +355,8 @@ CREATE TABLE IF NOT EXISTS "public"."sections" (
     "semester_id" character varying(50),
     "instructor_id" real,
     "weekly_hours_required" numeric(4,2),
-    "sessions_per_week" integer
+    "sessions_per_week" integer,
+    "scheduled_course_id" "uuid"
 );
 
 
@@ -417,6 +445,11 @@ ALTER TABLE ONLY "public"."instructors"
 
 
 
+ALTER TABLE ONLY "public"."program_courses"
+    ADD CONSTRAINT "program_courses_pkey" PRIMARY KEY ("program_id", "course_id");
+
+
+
 ALTER TABLE ONLY "public"."programs"
     ADD CONSTRAINT "programs_pkey" PRIMARY KEY ("program_id");
 
@@ -429,6 +462,11 @@ ALTER TABLE ONLY "public"."schedule_submission_log"
 
 ALTER TABLE ONLY "public"."scheduled_courses"
     ADD CONSTRAINT "scheduled_courses_pkey" PRIMARY KEY ("scheduled_course_id");
+
+
+
+ALTER TABLE ONLY "public"."scheduled_instructors"
+    ADD CONSTRAINT "scheduled_instructors_pkey" PRIMARY KEY ("id");
 
 
 
@@ -464,6 +502,21 @@ ALTER TABLE ONLY "public"."timeslots"
 
 ALTER TABLE ONLY "public"."uploaded_files"
     ADD CONSTRAINT "uploaded_files_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."scheduled_courses"
+    ADD CONSTRAINT "uq_scheduled_course" UNIQUE ("schedule_id", "course_id", "term");
+
+
+
+ALTER TABLE ONLY "public"."scheduled_instructors"
+    ADD CONSTRAINT "uq_scheduled_instructor" UNIQUE ("schedule_id", "section_id", "instructor_id");
+
+
+
+ALTER TABLE ONLY "public"."sections"
+    ADD CONSTRAINT "uq_section" UNIQUE ("schedule_id", "course_id", "term", "section_letter");
 
 
 
@@ -521,8 +574,23 @@ ALTER TABLE ONLY "public"."courses"
 
 
 
+ALTER TABLE ONLY "public"."scheduled_instructors"
+    ADD CONSTRAINT "fk_instructor" FOREIGN KEY ("instructor_id") REFERENCES "public"."instructors"("instructor_id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."schedulesmodified"
     ADD CONSTRAINT "fk_program" FOREIGN KEY ("program_id") REFERENCES "public"."programs"("program_id");
+
+
+
+ALTER TABLE ONLY "public"."scheduled_instructors"
+    ADD CONSTRAINT "fk_schedule" FOREIGN KEY ("schedule_id") REFERENCES "public"."schedules"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."scheduled_instructors"
+    ADD CONSTRAINT "fk_section" FOREIGN KEY ("section_id") REFERENCES "public"."sections"("id") ON DELETE CASCADE;
 
 
 
@@ -533,6 +601,11 @@ ALTER TABLE ONLY "public"."sections"
 
 ALTER TABLE ONLY "public"."sections"
     ADD CONSTRAINT "fk_sections_instructor" FOREIGN KEY ("instructor_id") REFERENCES "public"."instructors"("instructor_id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."sections"
+    ADD CONSTRAINT "fk_sections_scheduled_course" FOREIGN KEY ("scheduled_course_id") REFERENCES "public"."scheduled_courses"("scheduled_course_id") ON DELETE CASCADE;
 
 
 
@@ -553,6 +626,21 @@ ALTER TABLE ONLY "public"."instructor_course_qualifications"
 
 ALTER TABLE ONLY "public"."instructor_course_qualifications"
     ADD CONSTRAINT "instructor_course_qualifications_instructor_id_fkey" FOREIGN KEY ("instructor_id") REFERENCES "public"."instructors"("instructor_id");
+
+
+
+ALTER TABLE ONLY "public"."program_courses"
+    ADD CONSTRAINT "program_courses_course_id_fkey" FOREIGN KEY ("course_id") REFERENCES "public"."courses"("course_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."program_courses"
+    ADD CONSTRAINT "program_courses_program_id_fkey" FOREIGN KEY ("program_id") REFERENCES "public"."programs"("program_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."programs"
+    ADD CONSTRAINT "programs_ac_id_fkey" FOREIGN KEY ("ac_id") REFERENCES "public"."users"("id");
 
 
 
@@ -578,6 +666,11 @@ ALTER TABLE ONLY "public"."schedule_submission_log"
 
 ALTER TABLE ONLY "public"."schedules"
     ADD CONSTRAINT "schedules_academic_chair_id_fkey" FOREIGN KEY ("academic_chair_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."schedules"
+    ADD CONSTRAINT "schedules_program_id_fkey" FOREIGN KEY ("program_id") REFERENCES "public"."programs"("program_id") ON DELETE CASCADE;
 
 
 
@@ -672,6 +765,10 @@ CREATE POLICY "Allow authenticated users to read instructors" ON "public"."instr
 
 
 
+CREATE POLICY "Allow authenticated users to read program_courses" ON "public"."program_courses" FOR SELECT USING (("auth"."role"() IS NOT NULL));
+
+
+
 CREATE POLICY "Allow authenticated users to read programs" ON "public"."programs" FOR SELECT USING (("auth"."role"() IS NOT NULL));
 
 
@@ -720,6 +817,10 @@ CREATE POLICY "Service role can delete instructors" ON "public"."instructors" FO
 
 
 
+CREATE POLICY "Service role can delete program_courses" ON "public"."program_courses" FOR DELETE USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
 CREATE POLICY "Service role can delete programs" ON "public"."programs" FOR DELETE USING (("auth"."role"() = 'service_role'::"text"));
 
 
@@ -753,6 +854,10 @@ CREATE POLICY "Service role can insert instructor_course_qualifications" ON "pub
 
 
 CREATE POLICY "Service role can insert instructors" ON "public"."instructors" FOR INSERT WITH CHECK (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "Service role can insert program_courses" ON "public"."program_courses" FOR INSERT WITH CHECK (("auth"."role"() = 'service_role'::"text"));
 
 
 
@@ -805,6 +910,10 @@ CREATE POLICY "Service role can update instructor_course_qualifications" ON "pub
 
 
 CREATE POLICY "Service role can update instructors" ON "public"."instructors" FOR UPDATE USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "Service role can update program_courses" ON "public"."program_courses" FOR UPDATE USING (("auth"."role"() = 'service_role'::"text"));
 
 
 
@@ -886,6 +995,9 @@ ALTER TABLE "public"."instructor_course_qualifications" ENABLE ROW LEVEL SECURIT
 
 
 ALTER TABLE "public"."instructors" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."program_courses" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."programs" ENABLE ROW LEVEL SECURITY;
@@ -1132,6 +1244,12 @@ GRANT ALL ON TABLE "public"."instructors" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."program_courses" TO "anon";
+GRANT ALL ON TABLE "public"."program_courses" TO "authenticated";
+GRANT ALL ON TABLE "public"."program_courses" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."programs" TO "anon";
 GRANT ALL ON TABLE "public"."programs" TO "authenticated";
 GRANT ALL ON TABLE "public"."programs" TO "service_role";
@@ -1153,6 +1271,12 @@ GRANT ALL ON TABLE "public"."schedule_submission_log" TO "service_role";
 GRANT ALL ON TABLE "public"."scheduled_courses" TO "anon";
 GRANT ALL ON TABLE "public"."scheduled_courses" TO "authenticated";
 GRANT ALL ON TABLE "public"."scheduled_courses" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."scheduled_instructors" TO "anon";
+GRANT ALL ON TABLE "public"."scheduled_instructors" TO "authenticated";
+GRANT ALL ON TABLE "public"."scheduled_instructors" TO "service_role";
 
 
 

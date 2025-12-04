@@ -7,6 +7,7 @@ export default function ACProgramCourses({ academicChairId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedPrograms, setExpandedPrograms] = useState({});
+  const [sectionsData, setSectionsData] = useState({});
 
   useEffect(() => {
     if (!academicChairId) {
@@ -57,6 +58,33 @@ export default function ACProgramCourses({ academicChairId }) {
           return;
         }
 
+        // Fetch sections data to determine instructor assignments
+        const { data: sectionsDataRaw, error: sectionsError } = await supabase
+          .from("sections")
+          .select("id, schedule_id, course_id, term, instructor_id")
+          .in("schedule_id", scheduleIds);
+
+        if (sectionsError) throw sectionsError;
+
+        // Build a map of sections grouped by scheduled_course_id + term
+        const sectionsMap = {};
+        if (sectionsDataRaw) {
+          sectionsDataRaw.forEach((section) => {
+            const key = `${section.schedule_id}_${section.course_id}_${section.term}`;
+            if (!sectionsMap[key]) {
+              sectionsMap[key] = {
+                total: 0,
+                withInstructor: 0,
+              };
+            }
+            sectionsMap[key].total++;
+            if (section.instructor_id !== null) {
+              sectionsMap[key].withInstructor++;
+            }
+          });
+        }
+        setSectionsData(sectionsMap);
+
         // Fetch all program names for mapping
         const { data: programsData, error: programsError } = await supabase
           .from("programs")
@@ -69,25 +97,47 @@ export default function ACProgramCourses({ academicChairId }) {
           programNameMap[p.program_id] = p.program;
         });
 
-        // Map programs to scheduled courses
+        // Map programs to scheduled courses and group by course_code
         const programMap = {};
         scheduledData.forEach((sc) => {
           const course = sc.courses;
 
-          if (course?.program_id && !programMap[course.program_id]) {
-            programMap[course.program_id] = {
-              program_id: course.program_id,
-              program_name:
-                programNameMap[course.program_id] || course.program_id,
-              courses: [],
-            };
-          }
-          if (course && course.program_id) {
-            programMap[course.program_id].courses.push(sc);
+          if (course?.program_id) {
+            if (!programMap[course.program_id]) {
+              programMap[course.program_id] = {
+                program_id: course.program_id,
+                program_name:
+                  programNameMap[course.program_id] || course.program_id,
+                courseMap: {}, // Will group by course_code
+              };
+            }
+            
+            // Group by course_code to combine duplicate courses
+            const courseCode = course.course_code;
+            if (!programMap[course.program_id].courseMap[courseCode]) {
+              programMap[course.program_id].courseMap[courseCode] = {
+                course_code: course.course_code,
+                course_name: course.course_name,
+                course_id: course.course_id,
+                credits: course.credits,
+                scheduledCourses: [], // All scheduled_course records for this course
+              };
+            }
+            
+            // Add this scheduled_course to the group
+            programMap[course.program_id].courseMap[courseCode].scheduledCourses.push(sc);
           }
         });
 
-        const finalPrograms = Object.values(programMap);
+        // Convert courseMap to courses array for each program
+        const finalPrograms = Object.values(programMap).map((program) => ({
+          ...program,
+          courses: Object.values(program.courseMap),
+        }));
+        
+        // Remove the temporary courseMap property
+        finalPrograms.forEach((program) => delete program.courseMap);
+        
         setPrograms(finalPrograms);
       } catch (err) {
         console.error(err);
@@ -107,23 +157,52 @@ export default function ACProgramCourses({ academicChairId }) {
     }));
   };
 
-  const getRelevantSemesters = (scheduledCourse) => {
-    const terms = scheduledCourse.term || "";
+  const getRelevantSemesters = (groupedCourse) => {
+    // Collect all unique semesters from all scheduledCourses in the group
+    const semesterSet = new Set();
+    
+    groupedCourse.scheduledCourses.forEach((sc) => {
+      const terms = sc.term || "";
+      if (terms.toLowerCase().includes("winter")) semesterSet.add("Winter");
+      if (terms.toLowerCase().includes("spring")) semesterSet.add("Spring");
+      if (terms.toLowerCase().includes("fall")) semesterSet.add("Fall");
+    });
+    
+    // Convert to array with proper ordering: Fall, Winter, Spring
     const semesters = [];
-    if (terms.toLowerCase().includes("winter"))
-      semesters.push({ key: "winter", label: "W" });
-    if (terms.toLowerCase().includes("spring"))
-      semesters.push({ key: "springSummer", label: "S" });
-    if (terms.toLowerCase().includes("fall"))
-      semesters.push({ key: "fall", label: "F" });
+    if (semesterSet.has("Fall")) semesters.push({ key: "Fall", label: "F" });
+    if (semesterSet.has("Winter")) semesters.push({ key: "Winter", label: "W" });
+    if (semesterSet.has("Spring")) semesters.push({ key: "Spring", label: "S" });
+    
     return semesters;
   };
 
-  const getScheduledCourseStatus = (scheduledCourse, semester) => {
-    const sections = scheduledCourse.num_sections || 0;
-    if (sections >= 6) return "complete";
-    if (sections > 0) return "partial";
-    return "unassigned";
+  const getScheduledCourseStatus = (scheduledCourse, termKey) => {
+    // Build key to look up sections data
+    const key = `${scheduledCourse.schedule_id}_${scheduledCourse.course_id}_${termKey}`;
+    const sectionInfo = sectionsData[key];
+
+    // Case 1: No sections exist for this course
+    if (!sectionInfo || sectionInfo.total === 0) {
+      return { status: "no_sections", total: 0, withInstructor: 0 };
+    }
+
+    // Case 2: Sections exist
+    const total = sectionInfo.total;
+    const withInstructor = sectionInfo.withInstructor;
+
+    // All sections have instructors
+    if (withInstructor === total && total > 0) {
+      return { status: "complete", total, withInstructor };
+    }
+    // Some sections have instructors
+    else if (withInstructor > 0) {
+      return { status: "partial", total, withInstructor };
+    }
+    // No sections have instructors
+    else {
+      return { status: "unassigned", total, withInstructor };
+    }
   };
 
   if (!academicChairId) return null;
@@ -183,15 +262,15 @@ export default function ACProgramCourses({ academicChairId }) {
         <div className="flex items-center gap-3 text-xs text-gray-600">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-gray-400"></div>{" "}
-            <span>No assignments</span>
+            <span>No sections / No instructors</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-yellow-400"></div>{" "}
-            <span>Partial (1-5 sections)</span>
+            <span>Partial</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full bg-green-400"></div>{" "}
-            <span>Complete (6/6 sections)</span>
+            <span>Complete</span>
           </div>
         </div>
       </div>
@@ -238,49 +317,64 @@ export default function ACProgramCourses({ academicChairId }) {
                 <div className="bg-white p-3">
                   {program.courses.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {program.courses.map((sc) => {
-                        const course = sc.courses;
-                        const semesters = getRelevantSemesters(sc);
+                      {program.courses.map((groupedCourse) => {
+                        const semesters = getRelevantSemesters(groupedCourse);
                         return (
                           <div
-                            key={sc.scheduled_course_id}
+                            key={groupedCourse.course_code}
                             className="p-2 bg-gray-50 rounded border border-gray-200"
                           >
                             <div className="font-medium text-sm text-gray-900">
-                              {course.course_code}
+                              {groupedCourse.course_code}
                             </div>
                             <div className="text-xs text-gray-600 line-clamp-2">
-                              {course.course_name}
+                              {groupedCourse.course_name}
                             </div>
-                            {course.credits && (
+                            {groupedCourse.credits && (
                               <div className="text-xs text-gray-500 mt-1">
-                                Credits: {course.credits}
+                                Credits: {groupedCourse.credits}
                               </div>
                             )}
 
                             <div className="flex items-center gap-1 mt-2">
                               {semesters.map((sem) => {
-                                const status = getScheduledCourseStatus(
-                                  sc,
-                                  sem.key
+                                // Find the scheduled_course for this semester
+                                const scheduledCourse = groupedCourse.scheduledCourses.find(
+                                  (sc) => sc.term && sc.term.toLowerCase().includes(sem.key.toLowerCase())
                                 );
-                                const dotColor =
-                                  status === "complete"
-                                    ? "bg-green-400"
-                                    : status === "partial"
-                                    ? "bg-yellow-400"
-                                    : "bg-gray-400";
+                                
+                                let dotColor = "bg-gray-400";
+                                let tooltipText = "";
+                                
+                                if (scheduledCourse) {
+                                  const statusInfo = getScheduledCourseStatus(
+                                    scheduledCourse,
+                                    sem.key
+                                  );
+                                  
+                                  if (statusInfo.status === "no_sections") {
+                                    dotColor = "bg-gray-400";
+                                    tooltipText = `${sem.label}: Admin has not yet assigned sections`;
+                                  } else if (statusInfo.status === "complete") {
+                                    dotColor = "bg-green-400";
+                                    tooltipText = `${sem.label}: Complete (${statusInfo.withInstructor}/${statusInfo.total} sections assigned)`;
+                                  } else if (statusInfo.status === "partial") {
+                                    dotColor = "bg-yellow-400";
+                                    tooltipText = `${sem.label}: Partial (${statusInfo.withInstructor}/${statusInfo.total} sections assigned)`;
+                                  } else {
+                                    // unassigned - sections exist but no instructors
+                                    dotColor = "bg-gray-400";
+                                    tooltipText = `${sem.label}: No instructors assigned (0/${statusInfo.total} sections)`;
+                                  }
+                                } else {
+                                  tooltipText = `${sem.label}: No data`;
+                                }
+                                
                                 return (
                                   <div
                                     key={sem.key}
                                     className="flex items-center gap-0.5"
-                                    title={`${sem.label}: ${
-                                      status === "complete"
-                                        ? "Complete (6/6)"
-                                        : status === "partial"
-                                        ? "Partial (1-5)"
-                                        : "No assignments"
-                                    }`}
+                                    title={tooltipText}
                                   >
                                     <div
                                       className={`w-3 h-3 rounded-full ${dotColor}`}
