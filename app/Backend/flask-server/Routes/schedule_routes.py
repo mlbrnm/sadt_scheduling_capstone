@@ -356,10 +356,13 @@ def register_schedule_routes(app):
     @app.route("/admin/schedules/generate", methods=["POST"])
     def generate_schedules():
         """
-        Generate schedules for an AC, automatically creating:
+        Generate schedules for one or all ACs, automatically creating:
         - schedule record
         - scheduled_courses records
         - sections for each scheduled_course (default: 1 section 'A')
+        
+        If ac_id is provided, generates for that AC only.
+        If ac_id is not provided, generates for all active ACs.
         """
         debug_log = {}
         
@@ -370,222 +373,269 @@ def register_schedule_routes(app):
 
             if not academic_year:
                 return jsonify({"error": "academic_year is required"}), 400
-            if not ac_id:
-                return jsonify({"error": "ac_id is required"}), 400
 
-            # Validate AC
-            ac_response = (
-                supabase_client.table("users")
-                .select("id, first_name, last_name")
-                .eq("id", ac_id)
-                .eq("role", "AC")
-                .eq("is_deleted", False)
-                .single()
-                .execute()
-            )
-            if not ac_response.data:
-                return jsonify({"error": "AC not found"}), 404
-
-            ac = ac_response.data
-            ac_name = f"{ac['first_name']} {ac['last_name']}"
-
-            # Fetch programs for this AC
-            programs_response = (
-                supabase_client.table("programs")
-                .select("program_id, intakes")
-                .eq("ac_id", ac_id)
-                .execute()
-            )
-            programs = programs_response.data
-            if not programs:
-                return jsonify({"message": "No programs found for this AC"}), 200
-
-            created_schedules = []
-            skipped_schedules = []
-            ac_processing_details = []
-
-            for program in programs:
-                program_id = program["program_id"]
-                
-                # Initialize ac_detail for this program
-                ac_detail = {
-                    "ac_id": ac_id,
-                    "program_id": program_id,
-                    "steps": []
-                }
-                
-                intakes_raw = program.get("intakes") or ""
-                intake_terms = [
-                    i.strip().lower()
-                    for i in intakes_raw.split("-")
-                    if i.strip()
-                ]
-
-                # Check if schedule already exists
-                existing = (
-                    supabase_client.table("schedules")
-                    .select("id")
-                    .eq("academic_chair_id", ac_id)
-                    .eq("program_id", program_id)
-                    .eq("academic_year", academic_year)
+            # Determine which ACs to process
+            if ac_id:
+                # Single AC mode
+                ac_response = (
+                    supabase_client.table("users")
+                    .select("id, first_name, last_name")
+                    .eq("id", ac_id)
+                    .eq("role", "AC")
+                    .eq("is_deleted", False)
+                    .single()
                     .execute()
                 )
-
-                ac_detail["steps"].append({
-                    "step": "check_existing_schedule",
-                    "existing_schedules": existing.data
-                })
-
-                if existing.data:
-                    skipped_schedules.append({
-                        "program_id": program_id,
-                        "reason": "Schedule already exists"
-                    })
-                    ac_detail["steps"].append({"step": "skipped", "reason": "already_exists"})
-                    ac_processing_details.append(ac_detail)
-                    continue
-
-                # Fetch program → courses mapping
-                program_courses_resp = (
-                    supabase_client.table("program_courses")
-                    .select("course_id")
-                    .eq("program_id", program_id)
+                if not ac_response.data:
+                    return jsonify({"error": "AC not found"}), 404
+                academic_chairs = [ac_response.data]
+            else:
+                # All ACs mode
+                ac_response = (
+                    supabase_client.table("users")
+                    .select("id, first_name, last_name")
+                    .eq("role", "AC")
+                    .eq("is_deleted", False)
                     .execute()
                 )
-                program_courses = program_courses_resp.data
-                course_ids = [c["course_id"] for c in program_courses]
+                academic_chairs = ac_response.data or []
+                
+                if not academic_chairs:
+                    return jsonify({"message": "No Academic Chairs found"}), 200
 
-                # Create schedule entry
-                schedule_data = {
-                    "academic_year": academic_year,
-                    "academic_chair_id": ac_id,
-                    "completion_status": "not_started",
-                    "submission_status": "not_submitted",
-                    "approval_status": "pending",
-                    "time_slots_attached": "not_attached",
-                    "associated_programs": program_id,
-                    "associated_courses": ",".join(course_ids),
-                    "program_id": program_id,
-                    "terms": intake_terms
-                }
-                schedule_res = supabase_client.table("schedules").insert(schedule_data).execute()
-                if not schedule_res.data:
-                    skipped_schedules.append({
-                        "program_id": program_id,
-                        "reason": "Failed to create schedule"
+            # Track results across all ACs
+            all_created_schedules = []
+            all_skipped_schedules = []
+            ac_summaries = []
+
+            # Process each AC
+            for ac in academic_chairs:
+                ac_id = ac["id"]
+                ac_name = f"{ac['first_name']} {ac['last_name']}"
+
+                # Fetch programs for this AC
+                programs_response = (
+                    supabase_client.table("programs")
+                    .select("program_id, intakes")
+                    .eq("ac_id", ac_id)
+                    .execute()
+                )
+                programs = programs_response.data
+                if not programs:
+                    ac_summaries.append({
+                        "ac_id": ac_id,
+                        "ac_name": ac_name,
+                        "created": 0,
+                        "skipped": 0,
+                        "message": "No programs found"
                     })
                     continue
 
-                schedule_id = schedule_res.data[0]["id"]
+                created_schedules = []
+                skipped_schedules = []
+                ac_processing_details = []
 
-                # Prepare scheduled_courses + sections
-                scheduled_courses_to_insert = []
-                sections_to_insert = []
-
-                print(f"\n=== DEBUG: Building scheduled_courses for program_id={program_id} ===")
-                print(f"course_ids: {course_ids}")
-                print(f"intake_terms: {intake_terms}")
-                print(f"schedule_id: {schedule_id}")
-
-                for course_id in course_ids:
-                    for term in intake_terms:
-
-                        scheduled_course = {
-                            "schedule_id": schedule_id,
-                            "course_id": course_id,
-                            "num_sections": 1,
-                            "status": "sections_created",
-                            "term": term
-                        }
-                        scheduled_courses_to_insert.append(scheduled_course)
-
-                print(f"\n=== DEBUG: Prepared scheduled_courses_to_insert ===")
-                print(f"Total records to insert: {len(scheduled_courses_to_insert)}")
-                print(f"Records: {scheduled_courses_to_insert}")
-
-                # Insert all scheduled_courses at once
-                try:
-                    print(f"\n=== DEBUG: Attempting to insert scheduled_courses ===")
-                    sc_insert_res = supabase_client.table("scheduled_courses").insert(scheduled_courses_to_insert).execute()
+                for program in programs:
+                    program_id = program["program_id"]
                     
-                    print(f"\n=== DEBUG: Insert response ===")
-                    print(f"sc_insert_res type: {type(sc_insert_res)}")
-                    print(f"sc_insert_res.data: {sc_insert_res.data}")
-                    print(f"Number of records inserted: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
+                    # Initialize ac_detail for this program
+                    ac_detail = {
+                        "ac_id": ac_id,
+                        "program_id": program_id,
+                        "steps": []
+                    }
                     
-                    if hasattr(sc_insert_res, 'error') and sc_insert_res.error:
-                        print(f"ERROR in sc_insert_res: {sc_insert_res.error}")
-                        
-                except Exception as insert_error:
-                    print(f"\n=== DEBUG: EXCEPTION during scheduled_courses insert ===")
-                    print(f"Error type: {type(insert_error)}")
-                    print(f"Error message: {str(insert_error)}")
-                    import traceback
-                    traceback.print_exc()
-                    raise
+                    intakes_raw = program.get("intakes") or ""
+                    intake_terms = [
+                        i.strip().lower()
+                        for i in intakes_raw.split("-")
+                        if i.strip()
+                    ]
 
-                # generate sections for each scheduled_course we just created
-                print(f"\n=== DEBUG: Generating sections ===")
-                print(f"Number of scheduled_courses to create sections for: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
-                
-                if sc_insert_res.data:
-                    for sc in sc_insert_res.data:
-                        print(f"Creating section for scheduled_course_id={sc.get('scheduled_course_id')}, course_id={sc.get('course_id')}, term={sc.get('term')}")
-                        sections_to_insert.append({
-                            "schedule_id": schedule_id,
-                            "course_id": sc["course_id"],
-                            "term": sc["term"],
-                            "section_letter": "A",
-                            "delivery_mode": "In-Person",  
-                            "timeslots": [],    
-                            "instructor_id": None,
-                            "semester_id": None,
-                            "weekly_hours_required": None,
-                            "sessions_per_week": None,
-                            "scheduled_course_id": sc["scheduled_course_id"]
+                    # Check if schedule already exists
+                    existing = (
+                        supabase_client.table("schedules")
+                        .select("id")
+                        .eq("academic_chair_id", ac_id)
+                        .eq("program_id", program_id)
+                        .eq("academic_year", academic_year)
+                        .execute()
+                    )
+
+                    ac_detail["steps"].append({
+                        "step": "check_existing_schedule",
+                        "existing_schedules": existing.data
+                    })
+
+                    if existing.data:
+                        skipped_schedules.append({
+                            "program_id": program_id,
+                            "reason": "Schedule already exists"
                         })
-                else:
-                    print("WARNING: sc_insert_res.data is empty or None - no sections will be created!")
+                        ac_detail["steps"].append({"step": "skipped", "reason": "already_exists"})
+                        ac_processing_details.append(ac_detail)
+                        continue
 
-                # Insert all sections at once
-                print(f"\n=== DEBUG: Inserting sections ===")
-                print(f"Total sections to insert: {len(sections_to_insert)}")
-                
-                if sections_to_insert:
+                    # Fetch program → courses mapping
+                    program_courses_resp = (
+                        supabase_client.table("program_courses")
+                        .select("course_id")
+                        .eq("program_id", program_id)
+                        .execute()
+                    )
+                    program_courses = program_courses_resp.data
+                    course_ids = [c["course_id"] for c in program_courses]
+
+                    # Create schedule entry
+                    schedule_data = {
+                        "academic_year": academic_year,
+                        "academic_chair_id": ac_id,
+                        "completion_status": "not_started",
+                        "submission_status": "not_submitted",
+                        "approval_status": "pending",
+                        "time_slots_attached": "not_attached",
+                        "associated_programs": program_id,
+                        "associated_courses": ",".join(course_ids),
+                        "program_id": program_id,
+                        "terms": intake_terms
+                    }
+                    schedule_res = supabase_client.table("schedules").insert(schedule_data).execute()
+                    if not schedule_res.data:
+                        skipped_schedules.append({
+                            "program_id": program_id,
+                            "reason": "Failed to create schedule"
+                        })
+                        continue
+
+                    schedule_id = schedule_res.data[0]["id"]
+
+                    # Prepare scheduled_courses + sections
+                    scheduled_courses_to_insert = []
+                    sections_to_insert = []
+
+                    print(f"\n=== DEBUG: Building scheduled_courses for program_id={program_id} ===")
+                    print(f"course_ids: {course_ids}")
+                    print(f"intake_terms: {intake_terms}")
+                    print(f"schedule_id: {schedule_id}")
+
+                    for course_id in course_ids:
+                        for term in intake_terms:
+
+                            scheduled_course = {
+                                "schedule_id": schedule_id,
+                                "course_id": course_id,
+                                "num_sections": 1,
+                                "status": "sections_created",
+                                "term": term
+                            }
+                            scheduled_courses_to_insert.append(scheduled_course)
+
+                    print(f"\n=== DEBUG: Prepared scheduled_courses_to_insert ===")
+                    print(f"Total records to insert: {len(scheduled_courses_to_insert)}")
+                    print(f"Records: {scheduled_courses_to_insert}")
+
+                    # Insert all scheduled_courses at once
                     try:
-                        sections_insert_res = supabase_client.table("sections").insert(sections_to_insert).execute()
-                        print(f"Sections inserted successfully: {len(sections_insert_res.data) if sections_insert_res.data else 0}")
-                        print(f"sections_insert_res.data: {sections_insert_res.data}")
-                    except Exception as sections_error:
-                        print(f"ERROR inserting sections: {sections_error}")
+                        print(f"\n=== DEBUG: Attempting to insert scheduled_courses ===")
+                        sc_insert_res = supabase_client.table("scheduled_courses").insert(scheduled_courses_to_insert).execute()
+                        
+                        print(f"\n=== DEBUG: Insert response ===")
+                        print(f"sc_insert_res type: {type(sc_insert_res)}")
+                        print(f"sc_insert_res.data: {sc_insert_res.data}")
+                        print(f"Number of records inserted: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
+                        
+                        if hasattr(sc_insert_res, 'error') and sc_insert_res.error:
+                            print(f"ERROR in sc_insert_res: {sc_insert_res.error}")
+                            
+                    except Exception as insert_error:
+                        print(f"\n=== DEBUG: EXCEPTION during scheduled_courses insert ===")
+                        print(f"Error type: {type(insert_error)}")
+                        print(f"Error message: {str(insert_error)}")
                         import traceback
                         traceback.print_exc()
-                else:
-                    print("No sections to insert (sections_to_insert is empty)")
+                        raise
 
-                created_schedules.append({
-                    "program_id": program_id,
-                    "courses_count": len(course_ids),
-                    "schedule_id": schedule_id
-                })
+                    # generate sections for each scheduled_course we just created
+                    print(f"\n=== DEBUG: Generating sections ===")
+                    print(f"Number of scheduled_courses to create sections for: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
+                    
+                    if sc_insert_res.data:
+                        for sc in sc_insert_res.data:
+                            print(f"Creating section for scheduled_course_id={sc.get('scheduled_course_id')}, course_id={sc.get('course_id')}, term={sc.get('term')}")
+                            sections_to_insert.append({
+                                "schedule_id": schedule_id,
+                                "course_id": sc["course_id"],
+                                "term": sc["term"],
+                                "section_letter": "A",
+                                "delivery_mode": "In-Person",  
+                                "timeslots": [],    
+                                "instructor_id": None,
+                                "semester_id": None,
+                                "weekly_hours_required": None,
+                                "sessions_per_week": None,
+                                "scheduled_course_id": sc["scheduled_course_id"]
+                            })
+                    else:
+                        print("WARNING: sc_insert_res.data is empty or None - no sections will be created!")
+
+                    # Insert all sections at once
+                    print(f"\n=== DEBUG: Inserting sections ===")
+                    print(f"Total sections to insert: {len(sections_to_insert)}")
+                    
+                    if sections_to_insert:
+                        try:
+                            sections_insert_res = supabase_client.table("sections").insert(sections_to_insert).execute()
+                            print(f"Sections inserted successfully: {len(sections_insert_res.data) if sections_insert_res.data else 0}")
+                            print(f"sections_insert_res.data: {sections_insert_res.data}")
+                        except Exception as sections_error:
+                            print(f"ERROR inserting sections: {sections_error}")
+                            import traceback
+                            traceback.print_exc()
+                    else:
+                        print("No sections to insert (sections_to_insert is empty)")
+
+                    created_schedules.append({
+                        "program_id": program_id,
+                        "courses_count": len(course_ids),
+                        "schedule_id": schedule_id
+                    })
+                    
+                    ac_detail["steps"].append({"step": "completed_successfully"})
+                    ac_processing_details.append(ac_detail)
+
+                # Add this AC's results to the overall totals
+                all_created_schedules.extend(created_schedules)
+                all_skipped_schedules.extend(skipped_schedules)
                 
-                ac_detail["steps"].append({"step": "completed_successfully"})
-                ac_processing_details.append(ac_detail)
+                ac_summaries.append({
+                    "ac_id": ac_id,
+                    "ac_name": ac_name,
+                    "created": len(created_schedules),
+                    "skipped": len(skipped_schedules),
+                    "created_schedules": created_schedules,
+                    "skipped_schedules": skipped_schedules
+                })
 
-            debug_log["5_processing_complete"] = {
-                "ac_processing_details": ac_processing_details,
-                "created_count": len(created_schedules),
-                "skipped_count": len(skipped_schedules)
-            }
-
-            return jsonify({
-                "message": f"Schedule generation completed for AC {ac_name} in {academic_year}",
-                "created": len(created_schedules),
-                "skipped": len(skipped_schedules),
-                "created_schedules": created_schedules,
-                "skipped_schedules": skipped_schedules,
-                "debug_log": debug_log
-            }), 200
+            # Return appropriate message based on mode
+            if len(academic_chairs) == 1:
+                # Single AC mode
+                ac = academic_chairs[0]
+                ac_name = f"{ac['first_name']} {ac['last_name']}"
+                return jsonify({
+                    "message": f"Schedule generation completed for AC {ac_name} in {academic_year}",
+                    "created": len(all_created_schedules),
+                    "skipped": len(all_skipped_schedules),
+                    "created_schedules": all_created_schedules,
+                    "skipped_schedules": all_skipped_schedules
+                }), 200
+            else:
+                # All ACs mode
+                return jsonify({
+                    "message": f"Schedule generation completed for {len(academic_chairs)} Academic Chairs in {academic_year}",
+                    "total_created": len(all_created_schedules),
+                    "total_skipped": len(all_skipped_schedules),
+                    "ac_summaries": ac_summaries
+                }), 200
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
