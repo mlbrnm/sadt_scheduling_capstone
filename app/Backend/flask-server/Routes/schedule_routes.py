@@ -211,80 +211,106 @@ def register_schedule_routes(app):
 
     @app.route("/schedules/<schedule_id>/json", methods=["GET"])
     def get_schedule_as_json(schedule_id):
-        """
-        Return schedule, scheduled_courses, and sections in JSON format,
-        including course metadata nested under each scheduled course.
-        """
         try:
-            # Fetch schedule
-            schedule_resp = (
+            # 1. Fetch schedule
+            schedule = (
                 supabase_client.table("schedules")
                 .select("*")
                 .eq("id", schedule_id)
                 .single()
                 .execute()
+                .data
             )
-            if not schedule_resp.data:
+            if not schedule:
                 return jsonify({"error": "Schedule not found"}), 404
 
-            schedule = schedule_resp.data
-
-            # Fetch scheduled courses
-            scheduled_courses_resp = (
+            # 2. Fetch ALL scheduled courses
+            scheduled_courses = (
                 supabase_client.table("scheduled_courses")
                 .select("*")
                 .eq("schedule_id", schedule_id)
                 .execute()
+                .data
+                or []
             )
-            scheduled_courses = scheduled_courses_resp.data or []
 
+            if not scheduled_courses:
+                return jsonify({
+                    "schedule": schedule,
+                    "courses_by_semester": {},
+                    "metaData": {
+                        "year": schedule.get("academic_year"),
+                        "activeSemesters": schedule.get("terms") or []
+                    }
+                }), 200
+
+            # Get all course_ids and scheduled_course_ids at once
+            all_course_ids = [sc["course_id"] for sc in scheduled_courses]
+            all_sc_ids = [sc["scheduled_course_id"] for sc in scheduled_courses]
+
+            # 3. Fetch ALL course metadata in one query
+            course_rows = (
+                supabase_client.table("courses")
+                .select("*")
+                .in_("course_id", all_course_ids)
+                .execute()
+                .data
+                or []
+            )
+
+            courses_by_id = {c["course_id"]: c for c in course_rows}
+
+            # 4. Fetch ALL sections for these scheduled courses
+            sections = (
+                supabase_client.table("sections")
+                .select("*")
+                .in_("scheduled_course_id", all_sc_ids)
+                .execute()
+                .data
+                or []
+            )
+
+            # Organize sections by sc_id
+            sections_by_sc = {}
+            for sec in sections:
+                scid = sec["scheduled_course_id"]
+                sections_by_sc.setdefault(scid, []).append(sec)
+
+            # 5. Fetch ALL instructor assignments at once
+            all_section_ids = [sec["id"] for sec in sections]
+
+            instructors = (
+                supabase_client.table("scheduled_instructors")
+                .select("*")
+                .in_("section_id", all_section_ids)
+                .execute()
+                .data
+                or []
+            )
+
+            # group instructors by section
+            instructors_by_section = {}
+            for ins in instructors:
+                sid = ins["section_id"]
+                instructors_by_section.setdefault(sid, []).append(ins)
+
+            # Attach instructors to sections
+            for sec in sections:
+                sec["assigned_instructors"] = instructors_by_section.get(sec["id"], [])
+
+            # 6. Build final grouped structure
             courses_by_semester = {}
-
             for sc in scheduled_courses:
                 term = sc["term"]
-                sc_id = sc["scheduled_course_id"]  # <-- correct PK
+                sc_id = sc["scheduled_course_id"]
 
-                # Fetch course metadata
-                course_resp = (
-                    supabase_client.table("courses")
-                    .select("*")
-                    .eq("course_id", sc["course_id"])
-                    .single()
-                    .execute()
-                )
-                course_data = course_resp.data or {}
-
-                # Fetch sections for this scheduled course
-                sections_resp = (
-                    supabase_client.table("sections")
-                    .select("*")
-                    .eq("scheduled_course_id", sc_id)  # <-- FIXED
-                    .execute()
-                )
-                related_sections = sections_resp.data or []
-
-                # Fetch instructor assignments for each section
-                for sec in related_sections:
-                    instructors_resp = (
-                        supabase_client.table("scheduled_instructors")
-                        .select("*")
-                        .eq("section_id", sec["id"])
-                        .execute()
-                    )
-                    sec["assigned_instructors"] = instructors_resp.data or []
-
-                # Package full object
-                sc_with_course = {
+                sc_full = {
                     **sc,
-                    "course": course_data,
-                    "sections": related_sections
+                    "course": courses_by_id.get(sc["course_id"]),
+                    "sections": sections_by_sc.get(sc_id, [])
                 }
 
-                # Group by semester/term
-                if term not in courses_by_semester:
-                    courses_by_semester[term] = []
-
-                courses_by_semester[term].append(sc_with_course)
+                courses_by_semester.setdefault(term, []).append(sc_full)
 
             # MetaData
             metaData = {
@@ -299,8 +325,11 @@ def register_schedule_routes(app):
             }), 200
 
         except Exception as e:
+            import traceback
+            print("ERROR in /schedules/<id>/json route:")
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 500
-    
+        
     @app.route("/schedules/<schedule_id>/instructors", methods=["GET"])
     def get_instructors_for_schedule(schedule_id):
         try:
