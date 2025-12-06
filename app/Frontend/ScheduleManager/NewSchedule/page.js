@@ -115,38 +115,6 @@ export default function NewSchedule() {
     fetchInstructors();
   }, [scheduleId]);
 
-  // Fetch instructors and courses for reference
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     setIsLoading(true);
-  //     setError(null);
-
-  //     try {
-  //       const [instructorsRes, coursesRes] = await Promise.all([
-  //         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructors`),
-  //         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`),
-  //       ]);
-
-  //       if (!instructorsRes.ok || !coursesRes.ok) {
-  //         throw new Error("Failed to fetch data from server");
-  //       }
-
-  //       const instructorsData = await instructorsRes.json();
-  //       const coursesData = await coursesRes.json();
-
-  //       setInstructorData(instructorsData || []);
-  //       setCourseData(coursesData || []);
-  //     } catch (err) {
-  //       console.error(err);
-  //       setError("Failed to fetch data: " + err.message);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-
-  //   fetchData();
-  // }, []);
-
   useEffect(() => {
     if (!scheduleId || isLoading) return;
 
@@ -165,11 +133,10 @@ export default function NewSchedule() {
         const metaData = data.metaData || {};
         const coursesBySemester = data.courses_by_semester || {};
 
-        // Set schedule metadata
+        // --- Set schedule metadata ---
         setScheduleAcademicChairId(schedule.academic_chair_id || null);
         setIsScheduleSubmitted(false);
 
-        // Safely set metaData
         setNewScheduleDraft((prev) => ({
           ...prev,
           metaData: {
@@ -179,7 +146,7 @@ export default function NewSchedule() {
           },
         }));
 
-        // Build addedCoursesBySemester
+        // --- Build addedCoursesBySemester ---
         const addedCoursesBySemester = {};
         Object.entries(coursesBySemester).forEach(([semester, courses]) => {
           addedCoursesBySemester[semester] = courses.map((c) => {
@@ -202,20 +169,44 @@ export default function NewSchedule() {
           addedCoursesBySemester,
         }));
 
-        // Build addedInstructors from sections
-        const instructorsMap = {};
+        // Build addedInstructors from sections, including full data
+        const addedInstructors = [];
         Object.values(coursesBySemester).forEach((courses) => {
           courses.forEach((c) => {
             (c.sections || []).forEach((sec) => {
               (sec.assigned_instructors || []).forEach((instr) => {
-                instructorsMap[instr.instructor_id] = true;
+                addedInstructors.push({
+                  ...instr,
+                  first_name: instr.first_name || instr.instructor_name || "",
+                  last_name: instr.last_name || instr.instructor_lastname || "",
+                  full_name:
+                    instr.full_name ||
+                    `${instr.first_name || instr.instructor_name || ""} ${
+                      instr.last_name || instr.instructor_lastname || ""
+                    }`,
+                  total_cch: instr.total_cch,
+                  winter_cch: instr.winter_cch,
+                  spring_summer_cch: instr.spring_summer_cch,
+                  fall_cch: instr.fall_cch,
+                });
               });
             });
           });
         });
 
-        const addedInstructors = instructorData.filter(
-          (instr) => instructorsMap[instr.instructor_id]
+        console.log("Loaded instructors for schedule:", addedInstructors);
+
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          addedInstructors,
+        }));
+
+        console.log(
+          "Loaded schedule:",
+          Object.keys(coursesBySemester).length,
+          "semesters,",
+          addedInstructors.length,
+          "instructors"
         );
 
         setNewScheduleDraft((prev) => ({
@@ -332,118 +323,46 @@ export default function NewSchedule() {
 
   // // toggleSection
 
-  const toggleSection = (instructorId, course, section, semester, mode) => {
+  const toggleSection = (
+    instructorId,
+    course,
+    sectionLetter,
+    semester,
+    mode
+  ) => {
     if (isScheduleSubmitted) return;
 
     const scid = course.scheduled_course_id || course.course_id;
-    const key = `${instructorId}-${scid}-${section}`;
+    const key = `${instructorId}-${scid}-${sectionLetter}`;
 
     setAssignments((prev) => {
       const newAssignments = { ...prev };
 
       if (newAssignments[key] && newAssignments[key].delivery_mode === mode) {
-        // unassign if same mode clicked
         delete newAssignments[key];
       } else {
-        // assign or change mode
+        const realClassHrs = Number(course.course?.class_hrs) || 0;
+        const realOnlineHrs = Number(course.course?.online_hrs) || 0;
+
+        const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
+
+        const onlineHrs =
+          mode === "online" || mode === "both" ? realOnlineHrs : 0;
+
         newAssignments[key] = {
           instructor_id: instructorId,
           scheduled_course_id: scid,
+          section_letter: sectionLetter,
           delivery_mode: mode,
+          weekly_hours: classHrs + onlineHrs,
+          class_hrs: classHrs,
+          online_hrs: onlineHrs,
         };
       }
 
       return newAssignments;
     });
   };
-
-  // const toggleSection = (
-  //   instructorId,
-  //   course,
-  //   section,
-  //   semester,
-  //   component
-  // ) => {
-  //   if (isScheduleSubmitted) return;
-  //   const courseId = String(course.course_id);
-  //   const key = `${instructorId}-${courseId}-${semester}-${section}`;
-
-  //   setAssignments((prev) => {
-  //     const next = { ...prev };
-
-  //     const unsetFromOthers = (comp) => {
-  //       for (const [k, entry] of Object.entries(next)) {
-  //         const [iId, cId, sem, sec] = k.split("-");
-  //         if (
-  //           cId !== courseId ||
-  //           sem !== semester ||
-  //           iId === String(instructorId) ||
-  //           sec !== section
-  //         )
-  //           continue;
-
-  //         const sections = entry?.sections || {};
-  //         const secState = sections[sec];
-  //         if (secState?.[comp]) {
-  //           const newSecState = { ...secState, [comp]: false };
-  //           const newSections = { ...sections };
-  //           if (!newSecState.class && !newSecState.online) {
-  //             delete newSections[sec];
-  //           } else {
-  //             newSections[sec] = newSecState;
-  //           }
-  //           const updatedEntry = { ...entry, sections: newSections };
-  //           if (Object.keys(updatedEntry.sections).length === 0) {
-  //             delete next[k];
-  //           } else {
-  //             next[k] = updatedEntry;
-  //           }
-  //         }
-  //       }
-  //     };
-
-  //     const apply = (comp, toValue) => {
-  //       const entry = next[key] || { sections: {} };
-  //       const currentSec = entry.sections[section] ?? {
-  //         class: false,
-  //         online: false,
-  //       };
-  //       const target = toValue === undefined ? !currentSec[comp] : !!toValue;
-  //       if (target) unsetFromOthers(comp);
-  //       const newSec = { ...currentSec, [comp]: target };
-  //       let newSections = { ...entry.sections };
-  //       if (!newSec.class && !newSec.online) {
-  //         delete newSections[section];
-  //       } else {
-  //         newSections[section] = newSec;
-  //       }
-  //       if (Object.keys(newSections).length === 0) {
-  //         if (next[key]) delete next[key];
-  //       } else {
-  //         next[key] = { ...entry, sections: newSections };
-  //       }
-  //     };
-
-  //     if (component === "both") {
-  //       const existing = next[key]?.sections?.[section] ?? {
-  //         class: false,
-  //         online: false,
-  //       };
-  //       const hasBoth = !!(existing.class && existing.online);
-  //       if (hasBoth) {
-  //         apply("class", false);
-  //         apply("online", false);
-  //       } else {
-  //         apply("class", true);
-  //         apply("online", true);
-  //       }
-  //     } else if (component === "class" || component === "online") {
-  //       apply(component, undefined);
-  //     }
-
-  //     return next;
-  //   });
-  // };
 
   // Cleanup assignments when instructors remove
   useEffect(() => {
@@ -487,7 +406,7 @@ export default function NewSchedule() {
       }
       const payload = {
         academic_year: newScheduleDraft.metaData.year,
-        academic_chair_id: currentUserId,
+        academic_chair_id: scheduleAcademicChairId,
         addedCoursesBySemester: updatedAddedCoursesBySemester || {},
         addedInstructors: newScheduleDraft.addedInstructors || [],
         assignments: assignments || {}, // Include the assignments object
@@ -854,11 +773,10 @@ export default function NewSchedule() {
                   addedInstructors={sortedAndFilteredInstructors}
                   addedCoursesBySemester={filteredCoursesBySemester}
                   onToggleSection={toggleSection}
+                  assignedSections={assignments}
                   activeSemesters={newScheduleDraft.metaData.activeSemesters}
                   rowHeights={rowHeights}
                   headerHeight={headerHeight}
-                  onUpdateCourseSections={handleUpdateCourseSections}
-                  assignedSections={assignments}
                 />
               )}
             </div>

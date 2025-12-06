@@ -44,21 +44,6 @@ export default function AssignmentGrid({
   );
   if (visibleSemesters.length === 0) visibleSemesters.push(...semester_list);
 
-  // Build lookup maps from initial sections
-  const byInstructor = useMemo(() => {
-    const map = {};
-    for (const s of sections || []) {
-      if (!s.instructor_id) continue;
-      const iid = s.instructor_id;
-      const scid = s.scheduled_course_id;
-      const letter = s.section_letter;
-      if (!map[iid]) map[iid] = {};
-      if (!map[iid][scid]) map[iid][scid] = {};
-      map[iid][scid][letter] = s;
-    }
-    return map;
-  }, [sections]);
-
   const coursesWithAdd = (semester) => {
     const courses = (addedCoursesBySemester?.[semester] || []).map(
       (course) => ({
@@ -72,9 +57,9 @@ export default function AssignmentGrid({
   };
 
   const getSectionHours = (instructorId, course, sectionLetter) => {
-    const key = `${instructorId}-${course.course_id}-${sectionLetter}`;
+    const scid = course.scheduled_course_id || course.course_id;
+    const key = `${instructorId}-${scid}-${sectionLetter}`;
     const assignedSec = assignedSections[key];
-
     if (!assignedSec) return { class: 0, online: 0, total: 0 };
 
     const ownsClass =
@@ -89,27 +74,6 @@ export default function AssignmentGrid({
 
     return { class: classHrs, online: onlineHrs, total: classHrs + onlineHrs };
   };
-  const handleToggleSection = (
-    instructorId,
-    course,
-    sectionLetter,
-    semester,
-    mode
-  ) => {
-    onToggleSection?.(instructorId, course, sectionLetter, semester, mode);
-  };
-
-  if (
-    addedInstructors.length === 0 ||
-    Object.values(addedCoursesBySemester).every((c) => c.length === 0)
-  ) {
-    return (
-      <p className="text-gray-500 text-center p-4">
-        {addedInstructors.length === 0 ? "Add Instructor(s)" : "Add Course(s)"}{" "}
-        to start assigning sections.
-      </p>
-    );
-  }
 
   const headerH = ((headerHeight ?? 32) | 0) + "px";
 
@@ -194,56 +158,35 @@ export default function AssignmentGrid({
                         (_, i) => {
                           const sectionLetter = String.fromCharCode(65 + i);
                           const isAdd = !!course.__isAdd;
+                          const scid =
+                            course.scheduled_course_id || course.course_id;
+                          const key = `${instructor.instructor_id}-${scid}-${sectionLetter}`;
 
-                          const {
-                            class: ownsClass,
-                            online: ownsOnline,
-                            total,
-                          } = !isAdd
-                            ? getSectionHours(
-                                instructor.instructor_id,
-                                course,
-                                sectionLetter
-                              )
-                            : { class: 0, online: 0, total: 0 };
+                          // Check assignment
+                          const assignedSec = assignedSections[key];
+                          const isAssigned = !!assignedSec;
+                          const assignedMode = assignedSec?.delivery_mode;
 
-                          const ownsAny = ownsClass || ownsOnline;
-                          const ownsBoth = ownsClass && ownsOnline;
-
+                          // Determine label
                           let label = "";
-                          if (!isAdd) {
-                            if (ownsBoth) label = `${total}h`;
-                            else if (ownsClass) label = `C${ownsClass}h`;
-                            else if (ownsOnline) label = `O${ownsOnline}h`;
+                          if (assignedSec) {
+                            label = `${assignedSec.weekly_hours}h`; // show total weekly hours
                           }
-
+                          // Classes for button
                           const baseClasses =
                             "relative border box-border text-[11px] flex items-center justify-center";
-                          const gradientBgColor =
-                            !ownsAny && !isAdd
-                              ? getSectionBgColor(i, false, false)
-                              : null;
-                          const gradientInlineStyle =
-                            gradientBgColor === null && !ownsAny && !isAdd
-                              ? getSectionInlineStyle(i)
-                              : {};
                           const bgClasses = isAdd
                             ? "bg-gray-50 opacity-50 cursor-not-allowed"
-                            : ownsBoth
+                            : isAssigned
                             ? "bg-green-200 hover:bg-green-300 font-semibold cursor-pointer"
-                            : ownsAny
-                            ? "bg-green-200 hover:bg-green-300 font-semibold cursor-pointer"
-                            : `${
-                                gradientBgColor || ""
-                              } hover:bg-green-100 font-semibold cursor-pointer`;
+                            : "hover:bg-green-100 font-semibold cursor-pointer";
 
                           return (
                             <button
-                              key={`${instructor.instructor_id}-${course.scheduled_course_id}-${sectionLetter}`}
+                              key={`${instructor.instructor_id}-${scid}-${sectionLetter}`}
                               disabled={isAdd}
-                              aria-pressed={ownsAny}
-                              className={`${baseClasses} ${bgClasses} group`}
-                              style={gradientInlineStyle}
+                              aria-pressed={isAssigned}
+                              className={`${baseClasses} ${bgClasses}`}
                               onClick={(e) => {
                                 if (isAdd) return;
                                 const mode = e.altKey
@@ -251,7 +194,7 @@ export default function AssignmentGrid({
                                   : e.shiftKey
                                   ? "online"
                                   : "both";
-                                handleToggleSection(
+                                onToggleSection(
                                   instructor.instructor_id,
                                   course,
                                   sectionLetter,
@@ -259,31 +202,23 @@ export default function AssignmentGrid({
                                   mode
                                 );
                               }}
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                setContextMenu({
-                                  x: e.clientX,
-                                  y: e.clientY,
-                                  instructorId: instructor.instructor_id,
-                                  course,
+                              title={JSON.stringify(
+                                {
+                                  instructor: instructor.instructor_id,
+                                  course:
+                                    course.course_code || course.course_id,
                                   section: sectionLetter,
-                                  semester,
-                                });
-                              }}
-                              title={
-                                isAdd
-                                  ? ""
-                                  : `Click to assign Section ${sectionLetter} (${
-                                      semester_titles[semester]
-                                    }) ${
-                                      course.course_code || course.course_id
-                                    } to ${
-                                      instructor.full_name ||
-                                      instructor.instructor_name
-                                    }`
-                              }
+                                  assigned: !!assignedSec,
+                                  mode: assignedSec?.delivery_mode || "none",
+                                  weekly_hours: assignedSec?.weekly_hours || 0,
+                                  class_hours: assignedSec?.class_hrs || 0,
+                                  online_hours: assignedSec?.online_hrs || 0,
+                                },
+                                null,
+                                2
+                              )}
                             >
-                              {!isAdd ? label : ""}
+                              {label}
                             </button>
                           );
                         }
@@ -296,46 +231,6 @@ export default function AssignmentGrid({
           })}
         </div>
       ))}
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <div
-          className="absolute bg-white border rounded shadow-lg text-sm z-50"
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className="block w-full px-3 py-1 rounded text-left hover:bg-gray-100"
-            onClick={() => {
-              handleToggleSection(
-                contextMenu.instructorId,
-                contextMenu.course,
-                contextMenu.section,
-                contextMenu.semester,
-                "class"
-              );
-              setContextMenu(null);
-            }}
-          >
-            Toggle Class
-          </button>
-          <button
-            className="block w-full px-3 py-1 rounded text-left hover:bg-gray-100"
-            onClick={() => {
-              handleToggleSection(
-                contextMenu.instructorId,
-                contextMenu.course,
-                contextMenu.section,
-                contextMenu.semester,
-                "online"
-              );
-              setContextMenu(null);
-            }}
-          >
-            Toggle Online
-          </button>
-        </div>
-      )}
     </div>
   );
 }

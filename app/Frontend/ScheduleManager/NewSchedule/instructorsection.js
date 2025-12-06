@@ -15,16 +15,19 @@ const instructorListHeaders = [
   "ID",
   "Name",
   "Contract",
-  "Semester Hours",
-  "Total Hours",
+  "Win",
+  "Sp/Su",
+  "Fall",
+  "Total",
   "Status",
 ];
 
 export default function InstructorSection({
-  instructors,
+  instructors = [],
   onAddInstructor,
   onRemoveInstructor,
-  addedInstructors,
+  addedInstructors = [],
+  assignments,
   addedCoursesBySemester,
   onRowResize,
   onHeaderResize,
@@ -32,66 +35,51 @@ export default function InstructorSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Add/remove handlers
+  // --- Normalize instructors to ensure CCH fields exist ---
+  const normalizeInstructor = (instr) => ({
+    ...instr,
+    total_cch: instr.total_cch || "0:00:00",
+    winter_cch: instr.winter_cch || "0:00:00",
+    spring_summer_cch: instr.spring_summer_cch || "0:00:00",
+    fall_cch: instr.fall_cch || "0:00:00",
+    full_name:
+      instr.full_name ||
+      `${instr.instructor_name || ""} ${instr.instructor_lastname || ""}`,
+  });
+
+  const normalizedAddedInstructors = addedInstructors.map(normalizeInstructor);
+  const normalizedInstructors = instructors.map(normalizeInstructor);
+
+  // --- Add/remove handlers ---
   const handleAddInstructor = (instructor) => {
-    onAddInstructor(instructor);
+    onAddInstructor(normalizeInstructor(instructor));
     setIsModalOpen(false);
     setSearchTerm("");
   };
+
   const handleRemoveInstructor = (instructor) => {
-    const name =
-      instructor.full_name ||
-      `${instructor.instructor_name} ${instructor.instructor_lastName}`;
-    if (window.confirm(`Remove ${name}?`)) onRemoveInstructor(instructor);
+    if (
+      window.confirm(
+        `Remove ${instructor.full_name || instructor.instructor_id}?`
+      )
+    ) {
+      onRemoveInstructor(instructor);
+    }
   };
 
-  // Filter modal list
-  const filteredInstructors = instructors.filter((instr) => {
-    const isAdded = addedInstructors.some(
+  // --- Filter modal list ---
+  const filteredInstructors = normalizedInstructors.filter((instr) => {
+    const isAdded = normalizedAddedInstructors.some(
       (i) => i.instructor_id === instr.instructor_id
     );
-    const name =
-      instr.full_name ||
-      `${instr.instructor_name} ${instr.instructor_lastName}`;
     return (
       !isAdded &&
-      (name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (instr.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         String(instr.instructor_id).includes(searchTerm))
     );
   });
 
-  // Calculate hours based on sections assigned to this instructor
-  const sumHours = (instructorId, semester) => {
-    const courses = addedCoursesBySemester?.[semester] || [];
-    let total = 0;
-
-    courses.forEach((course) => {
-      const classHrs = course.class_hrs || 0;
-      const onlineHrs = course.online_hrs || 0;
-
-      (course.sections || []).forEach((sec) => {
-        if (
-          (sec.assigned_instructors || []).some(
-            (i) => i.instructor_id === instructorId
-          )
-        ) {
-          total += classHrs + onlineHrs;
-        }
-      });
-    });
-
-    return total;
-  };
-
-  const calculateSemesterHours = (instructorId, semester) =>
-    sumHours(instructorId, semester) * 15;
-  const sumTotal = (instructorId) =>
-    ["winter", "springSummer", "fall"].reduce(
-      (acc, sem) => acc + calculateSemesterHours(instructorId, sem),
-      0
-    );
-
-  // Resize hooks
+  // --- Resize hooks ---
   const headerRef = useRef(null);
   useEffect(() => {
     if (!headerRef.current || typeof ResizeObserver === "undefined") return;
@@ -115,13 +103,21 @@ export default function InstructorSection({
       observers.push(ro);
     });
     return () => observers.forEach((ro) => ro.disconnect());
-  }, [addedInstructors, onRowResize]);
+  }, [normalizedAddedInstructors, onRowResize]);
+
+  // Accept string "HH:MM:SS" or number of hours
+  const parseCCH = (cch) => {
+    if (typeof cch === "number") return cch; // already hours
+    if (typeof cch !== "string") return 0;
+    const [h, m, s] = cch.split(":").map(Number);
+    return h + m / 60 + s / 3600;
+  };
 
   return (
     <div>
       {/* Added Instructors Table */}
       <div className="bg-gray-50">
-        <table>
+        <table className="min-w-full border border-gray-200">
           <thead ref={headerRef}>
             <tr>
               {instructorCardHeaders.map((header) => (
@@ -135,7 +131,7 @@ export default function InstructorSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-black">
-            {addedInstructors.map((instr) => (
+            {normalizedAddedInstructors.map((instr) => (
               <tr
                 key={instr.instructor_id}
                 ref={(el) => {
@@ -146,27 +142,18 @@ export default function InstructorSection({
                 className="cursor-pointer hover:bg-red-100"
               >
                 <td className="px-3 py-2 text-sm">{instr.contract_type}</td>
-                <td className="px-3 py-2 text-sm">
-                  {sumHours(instr.instructor_id, "winter")}
-                </td>
-                <td className="px-3 py-2 text-sm">
-                  {sumHours(instr.instructor_id, "springSummer")}
-                </td>
-                <td className="px-3 py-2 text-sm">
-                  {sumHours(instr.instructor_id, "fall")}
-                </td>
+                <td className="px-3 py-2 text-sm">{instr.winter_cch}</td>
+                <td className="px-3 py-2 text-sm">{instr.spring_summer_cch}</td>
+                <td className="px-3 py-2 text-sm">{instr.fall_cch}</td>
                 <td
                   className={`px-3 py-2 text-sm ${getUtilizationColor({
                     ...instr,
-                    total_hours: sumTotal(instr.instructor_id),
+                    total_hours: parseCCH(instr.total_cch),
                   })}`}
                 >
-                  {sumTotal(instr.instructor_id)}h
+                  {instr.total_cch}
                 </td>
-                <td className="px-3 py-2 text-sm">
-                  {instr.full_name ||
-                    `${instr.instructor_name} ${instr.instructor_lastName}`}
-                </td>
+                <td className="px-3 py-2 text-sm">{instr.full_name}</td>
               </tr>
             ))}
           </tbody>
@@ -241,17 +228,22 @@ export default function InstructorSection({
                           {instr.instructor_id}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          {instr.full_name ||
-                            `${instr.instructor_name} ${instr.instructor_lastName}`}
+                          {instr.full_name}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instr.contract_type}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          0 h
+                          {instr.winter_cch}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
-                          0 h
+                          {instr.spring_summer_cch}
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          {instr.fall_cch}
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          {instr.total_cch}
                         </td>
                         <td className="px-6 py-4 text-sm border-b border-gray-300">
                           {instr.instructor_status}
