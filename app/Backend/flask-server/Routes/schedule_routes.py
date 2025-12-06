@@ -882,6 +882,11 @@ def register_schedule_routes(app):
                     program_ids = associated_programs_str.split(",") if associated_programs_str else []
                     program_names = [programs_map.get(pid.strip(), pid.strip()) for pid in program_ids if pid.strip()]
                     
+                    # Check if section counts need to be assigned
+                    scheduled_courses_resp = supabase_client.table("scheduled_courses").select("num_sections").eq("schedule_id", schedule["id"]).execute()
+                    scheduled_courses = scheduled_courses_resp.data or []
+                    section_counts_required = all(sc["num_sections"] == 1 for sc in scheduled_courses) if scheduled_courses else False
+                    
                     # Determine combined status
                     approval_status = schedule.get("approval_status", "pending")
                     submission_status = schedule.get("submission_status", "not_submitted")
@@ -902,7 +907,8 @@ def register_schedule_routes(app):
                         "status": combined_status,
                         "submission_status": submission_status,
                         "approval_status": approval_status,
-                        "date_submitted": schedule.get("updated_at") or schedule.get("created_at")
+                        "date_submitted": schedule.get("updated_at") or schedule.get("created_at"),
+                        "section_counts_required": section_counts_required
                     })
                 except Exception as e:
                     print(f"Error processing schedule {schedule.get('id', 'unknown')}: {e}")

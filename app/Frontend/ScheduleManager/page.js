@@ -547,7 +547,7 @@ export default function ScheduleManager() {
                       </td>
                       <td className="mt-1.5 self-center">
                         <span className={getStatusColour(schedule.status)}>
-                          {schedule.status}
+                          {schedule.section_counts_required ? "Section Counts Required" : schedule.status}
                         </span>
                       </td>
                       <td className="flex gap-2 self-center">
@@ -555,7 +555,7 @@ export default function ScheduleManager() {
                           className="button-primary text-white px-4 py-1.5 rounded hover:button-hover active:button-clicked cursor-pointer"
                           onClick={() => handleView(schedule.schedule_id)}
                         >
-                          View
+                          {schedule.section_counts_required ? "Add" : "View"}
                         </button>
                         {schedule.status === "Submitted" && (
                           <>
