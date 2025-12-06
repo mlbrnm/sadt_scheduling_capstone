@@ -486,6 +486,16 @@ def register_schedule_routes(app):
                     program_courses = program_courses_resp.data
                     course_ids = [c["course_id"] for c in program_courses]
 
+                    # Skip programs with no courses
+                    if not course_ids or len(course_ids) == 0:
+                        skipped_schedules.append({
+                            "program_id": program_id,
+                            "reason": "Program has no courses assigned"
+                        })
+                        ac_detail["steps"].append({"step": "skipped", "reason": "no_courses"})
+                        ac_processing_details.append(ac_detail)
+                        continue
+
                     # Create schedule entry
                     schedule_data = {
                         "academic_year": academic_year,
