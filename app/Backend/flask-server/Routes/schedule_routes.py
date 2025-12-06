@@ -312,17 +312,39 @@ def register_schedule_routes(app):
                     "instructor_status": i.get("instructor_status"),
                 }
 
-            # 7. Map instructors to sections and compute weekly_hours per section
+            # --- Step 7: Map instructors to sections and compute hours per section ---
+            # Build a map from section_id -> scheduled_course_id
+            section_to_course_id_map = {sec["id"]: sec["scheduled_course_id"] for sec in sections}
+
             instructors_by_section = {}
+
             for ins in instructors_assignments:
                 section_id = ins["section_id"]
+                
+                # Base instructor info from instructors table
                 instr_info = instructors_by_id.get(ins["instructor_id"], {}).copy()
-                instr_info["weekly_hours"] = ins.get("weekly_hours") or 0
-                # Merge, with instr_info taking precedence
-                merged = {**ins, **instr_info}
+                
+                # Compute hours
+                # Use class_hrs and online_hrs from the assignment if present, else 0
+                class_hrs = ins.get("class_hrs") or 0
+                online_hrs = ins.get("online_hrs") or 0
+                weekly_hours = class_hrs + online_hrs
+                
+                # Include scheduled_course_id (required for frontend key)
+                scheduled_course_id = ins.get("scheduled_course_id") or section_to_course_id_map.get(section_id)
+                
+                merged = {
+                    **ins,  # keep other assignment fields
+                    **instr_info,
+                    "scheduled_course_id": scheduled_course_id,
+                    "weekly_hours": weekly_hours,
+                    "class_hrs": class_hrs,
+                    "online_hrs": online_hrs
+                }
+                
                 instructors_by_section.setdefault(section_id, []).append(merged)
 
-            # 8. Attach instructors to sections
+            # --- Step 8: Attach instructors to sections ---
             for sec in sections:
                 sec["assigned_instructors"] = instructors_by_section.get(sec["id"], [])
 

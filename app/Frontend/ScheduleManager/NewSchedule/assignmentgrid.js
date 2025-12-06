@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 const semester_list = ["winter", "springSummer", "fall"];
 const semester_titles = {
@@ -60,8 +60,22 @@ export default function AssignmentGrid({
     const scid = course.scheduled_course_id || course.course_id;
     const key = `${instructorId}-${scid}-${sectionLetter}`;
     const assignedSec = assignedSections[key];
+
     if (!assignedSec) return { class: 0, online: 0, total: 0 };
 
+    // Use existing hours if they exist (preloaded assignment)
+    if (
+      typeof assignedSec.class_hrs === "number" &&
+      typeof assignedSec.online_hrs === "number"
+    ) {
+      return {
+        class: assignedSec.class_hrs,
+        online: assignedSec.online_hrs,
+        total: assignedSec.class_hrs + assignedSec.online_hrs,
+      };
+    }
+
+    // Fallback: calculate from course hours and delivery_mode
     const ownsClass =
       assignedSec.delivery_mode === "class" ||
       assignedSec.delivery_mode === "both";
@@ -76,6 +90,37 @@ export default function AssignmentGrid({
   };
 
   const headerH = ((headerHeight ?? 32) | 0) + "px";
+
+  console.log("assignedSections", assignedSections);
+  console.log("addedInstructors", addedInstructors);
+  console.log("addedCoursesBySemester", addedCoursesBySemester);
+
+  useEffect(() => {
+    console.log("=== SANITY CHECK ===");
+    console.log(
+      "addedInstructors:",
+      addedInstructors.map((i) => i.instructor_id)
+    );
+    console.log("addedCoursesBySemester:", Object.keys(addedCoursesBySemester));
+
+    const allKeys = [];
+    Object.entries(addedCoursesBySemester).forEach(([semester, courses]) => {
+      courses.forEach((course) => {
+        const scid = course.scheduled_course_id || course.course_id;
+        const sectionsCount = course.num_sections || 1;
+        for (let i = 0; i < sectionsCount; i++) {
+          const sectionLetter = String.fromCharCode(65 + i);
+          addedInstructors.forEach((instr) => {
+            allKeys.push(`${instr.instructor_id}-${scid}-${sectionLetter}`);
+          });
+        }
+      });
+    });
+    console.log("Expected assignedSections keys:", allKeys);
+
+    console.log("Actual assignedSections keys:", Object.keys(assignedSections));
+    console.log("Assigned sections data:", assignedSections);
+  }, [addedInstructors, addedCoursesBySemester, assignedSections]);
 
   return (
     <div className="flex flex-row relative">
@@ -168,10 +213,12 @@ export default function AssignmentGrid({
                           const assignedMode = assignedSec?.delivery_mode;
 
                           // Determine label
-                          let label = "";
-                          if (assignedSec) {
-                            label = `${assignedSec.weekly_hours}h`; // show total weekly hours
-                          }
+                          const { total: weeklyHrs } = getSectionHours(
+                            instructor.instructor_id,
+                            course,
+                            sectionLetter
+                          );
+                          const label = weeklyHrs > 0 ? `${weeklyHrs}h` : "";
                           // Classes for button
                           const baseClasses =
                             "relative border box-border text-[11px] flex items-center justify-center";

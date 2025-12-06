@@ -156,10 +156,16 @@ export default function NewSchedule() {
                 : c.sections
                 ? c.sections.length
                 : 1;
+
+            const fullCourseData =
+              courseData.find((cd) => cd.course_id === c.course_id) || {};
+
             return {
               ...c,
               sections: c.sections || [],
               num_sections: numSections,
+              class_hrs: c.class_hrs ?? fullCourseData.class_hrs ?? 0,
+              online_hrs: c.online_hrs ?? fullCourseData.online_hrs ?? 0,
             };
           });
         });
@@ -169,33 +175,66 @@ export default function NewSchedule() {
           addedCoursesBySemester,
         }));
 
-        // Build addedInstructors from sections, including full data
+        // --- Build addedInstructors ---
         const addedInstructors = [];
+        const newAssignments = {};
+
         Object.values(coursesBySemester).forEach((courses) => {
-          courses.forEach((c) => {
-            (c.sections || []).forEach((sec) => {
+          courses.forEach((course) => {
+            (course.sections || []).forEach((sec) => {
               (sec.assigned_instructors || []).forEach((instr) => {
-                addedInstructors.push({
-                  ...instr,
-                  first_name: instr.first_name || instr.instructor_name || "",
-                  last_name: instr.last_name || instr.instructor_lastname || "",
-                  full_name:
-                    instr.full_name ||
-                    `${instr.first_name || instr.instructor_name || ""} ${
-                      instr.last_name || instr.instructor_lastname || ""
-                    }`,
-                  total_cch: instr.total_cch,
-                  winter_cch: instr.winter_cch,
-                  spring_summer_cch: instr.spring_summer_cch,
-                  fall_cch: instr.fall_cch,
-                });
+                const instrId = instr.instructor_id;
+
+                // Add instructor to list (if not already)
+                const existing = addedInstructors.find(
+                  (i) => i.instructor_id === instrId
+                );
+                if (!existing) {
+                  addedInstructors.push({
+                    ...instr,
+                    first_name: instr.first_name || instr.instructor_name || "",
+                    last_name:
+                      instr.last_name || instr.instructor_lastname || "",
+                    full_name:
+                      instr.full_name ||
+                      `${instr.first_name || instr.instructor_name || ""} ${
+                        instr.last_name || instr.instructor_lastname || ""
+                      }`,
+                    total_cch: instr.total_cch ?? 0,
+                    winter_cch: instr.winter_cch ?? 0,
+                    spring_summer_cch: instr.spring_summer_cch ?? 0,
+                    fall_cch: instr.fall_cch ?? 0,
+                  });
+                }
+
+                // --- Auto-assign section ---
+                const sectionLetter = sec.section_letter || "A"; // fallback
+                const key = `${instrId}-${
+                  course.scheduled_course_id || course.course_id
+                }-${sectionLetter}`;
+
+                // Compute real hours (match toggleSection logic)
+                const weeklyHrs = Number(instr.weekly_hours ?? 0);
+                const classHrs = Number(instr.class_hrs ?? 0);
+                const onlineHrs = Number(instr.online_hrs ?? 0);
+
+                newAssignments[key] = {
+                  instructor_id: instrId,
+                  scheduled_course_id:
+                    course.scheduled_course_id || course.course_id,
+                  section_letter: sectionLetter,
+                  delivery_mode: sec.delivery_mode || "both",
+                  weekly_hours: weeklyHrs,
+                  class_hrs: classHrs,
+                  online_hrs: onlineHrs,
+                };
               });
             });
           });
         });
 
-        console.log("Loaded instructors for schedule:", addedInstructors);
-
+        // --- Update state ---
+        setAssignments(newAssignments);
         setNewScheduleDraft((prev) => ({
           ...prev,
           addedInstructors,
@@ -208,11 +247,6 @@ export default function NewSchedule() {
           addedInstructors.length,
           "instructors"
         );
-
-        setNewScheduleDraft((prev) => ({
-          ...prev,
-          addedInstructors,
-        }));
       } catch (err) {
         console.error("Error loading schedule:", err);
         setError("Failed to load schedule: " + err.message);
@@ -222,7 +256,7 @@ export default function NewSchedule() {
     };
 
     loadSchedule();
-  }, [scheduleId, isLoading, instructorData]);
+  }, [scheduleId, isLoading, instructorData, courseData]);
 
   // Handler to update num_sections for a course in a semester
   const handleUpdateCourseSections = (course_id, semester, newCount) => {
@@ -321,7 +355,7 @@ export default function NewSchedule() {
     }));
   };
 
-  // // toggleSection
+  // toggleSection
 
   const toggleSection = (
     instructorId,
@@ -337,30 +371,154 @@ export default function NewSchedule() {
 
     setAssignments((prev) => {
       const newAssignments = { ...prev };
+      const existing = newAssignments[key];
 
-      if (newAssignments[key] && newAssignments[key].delivery_mode === mode) {
+      // Compute real hours
+      const courseInfo =
+        newScheduleDraft.addedCoursesBySemester[semester]?.find(
+          (c) => c.course_id === course.course_id
+        ) || course;
+
+      const realClassHrs = Number(courseInfo.class_hrs ?? 0);
+      const realOnlineHrs = Number(courseInfo.online_hrs ?? 0);
+
+      const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
+      const onlineHrs =
+        mode === "online" || mode === "both" ? realOnlineHrs : 0;
+      const weekly_hours = classHrs + onlineHrs;
+
+      // REMOVE (toggle off)
+      if (existing && existing.delivery_mode === mode) {
         delete newAssignments[key];
       } else {
-        const realClassHrs = Number(course.course?.class_hrs) || 0;
-        const realOnlineHrs = Number(course.course?.online_hrs) || 0;
-
-        const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
-
-        const onlineHrs =
-          mode === "online" || mode === "both" ? realOnlineHrs : 0;
-
+        // ADD assignment
         newAssignments[key] = {
           instructor_id: instructorId,
           scheduled_course_id: scid,
           section_letter: sectionLetter,
           delivery_mode: mode,
-          weekly_hours: classHrs + onlineHrs,
+          weekly_hours,
           class_hrs: classHrs,
           online_hrs: onlineHrs,
+          semester,
         };
       }
 
+      // Recalculate all instructor CCHs after this toggle
+      recalcAllInstructorCCH(newAssignments);
+
       return newAssignments;
+    });
+  };
+
+  // Recalculate semester + total CCH for all instructors
+  const recalcAllInstructorCCH = (currentAssignments) => {
+    setNewScheduleDraft((prev) => {
+      const updated = prev.addedInstructors.map((inst) => {
+        const newInst = { ...inst };
+
+        let totalSeconds = 0;
+
+        for (const sem of ["winter", "springSummer", "fall"]) {
+          // Sum weekly hours for this semester
+          const weeklySum = sumHours(
+            inst.instructor_id,
+            sem,
+            currentAssignments
+          );
+          const semesterHours = weeklySum * 15;
+
+          // Update semester CCH
+          const semesterKey =
+            sem === "winter"
+              ? "winter_cch"
+              : sem === "springSummer"
+              ? "spring_summer_cch"
+              : "fall_cch";
+
+          newInst[semesterKey] = addHoursToCCH("00:00:00", semesterHours);
+
+          // Accumulate total seconds for total_cch
+          const [h, m, s] = newInst[semesterKey].split(":").map(Number);
+          totalSeconds += h * 3600 + m * 60 + s;
+        }
+
+        // Update total_cch
+        const newH = String(Math.floor(totalSeconds / 3600));
+        const newM = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
+          2,
+          "0"
+        );
+        const newS = String(totalSeconds % 60).padStart(2, "0");
+        newInst.total_cch = `${newH}:${newM}:${newS}`;
+
+        return newInst;
+      });
+
+      return { ...prev, addedInstructors: updated };
+    });
+  };
+
+  // sumHours now takes assignments as argument to allow recalculation
+  const sumHours = (instructorId, semester, currentAssignments) => {
+    let sum = 0;
+    const iId = String(instructorId);
+    for (const [key, value] of Object.entries(currentAssignments || {})) {
+      if (!value) continue;
+      const [iid] = key.split("-");
+      if (iid !== iId) continue;
+      if (semester) {
+        const sem = value.semester || semester;
+        if (sem !== semester) continue;
+      }
+      sum += value.weekly_hours || 0;
+    }
+    return sum;
+  };
+
+  // Convert HH:MM:SS and hour-delta into new HH:MM:SS
+  function addHoursToCCH(cchString, deltaHours) {
+    const [h, m, s] = (cchString || "00:00:00")
+      .split(":")
+      .map((v) => Number(v) || 0);
+
+    const currentSeconds = h * 3600 + m * 60 + s;
+    const deltaSeconds = Number(deltaHours) * 3600;
+    const newSeconds = Math.max(0, currentSeconds + deltaSeconds);
+
+    const newH = String(Math.floor(newSeconds / 3600));
+    const newM = String(Math.floor((newSeconds % 3600) / 60)).padStart(2, "0");
+    const newS = String(newSeconds % 60).padStart(2, "0");
+
+    return `${newH}:${newM}:${newS}`;
+  }
+
+  const adjustInstructorCCH = (instructorId, semester) => {
+    // Compute total weekly hours for this instructor & semester
+    const weeklyHours = sumHours(instructorId, semester);
+
+    // Convert to semester hours
+    const semesterHours = weeklyHours * 15;
+
+    setNewScheduleDraft((prev) => {
+      const updated = prev.addedInstructors.map((inst) => {
+        if (inst.instructor_id !== instructorId) return inst;
+
+        const semesterKey =
+          semester === "winter"
+            ? "winter_cch"
+            : semester === "springSummer"
+            ? "spring_summer_cch"
+            : "fall_cch";
+
+        return {
+          ...inst,
+          total_cch: addHoursToCCH(inst.total_cch, semesterHours),
+          [semesterKey]: addHoursToCCH(inst[semesterKey], semesterHours),
+        };
+      });
+
+      return { ...prev, addedInstructors: updated };
     });
   };
 
@@ -464,26 +622,6 @@ export default function NewSchedule() {
       classHrs: course?.class_hrs || 0,
       onlineHrs: course?.online_hrs || 0,
     };
-  };
-
-  const sumHours = (instructorId, semester) => {
-    let sum = 0;
-    const iId = String(instructorId);
-    for (const [key, value] of Object.entries(assignments || {})) {
-      const parts = key.split("-");
-      if (parts.length < 3) continue;
-      const [iid, ...rest] = parts;
-      const sem = rest[rest.length - 1];
-      const cid = rest.slice(0, -1).join("-");
-      if (iid !== iId || sem !== semester) continue;
-      const { classHrs, onlineHrs } = hoursPerSection(sem, cid);
-      const sections = value?.sections || {};
-      for (const sec of Object.values(sections)) {
-        if (sec.class) sum += classHrs;
-        if (sec.online) sum += onlineHrs;
-      }
-    }
-    return sum;
   };
 
   const calculateSemesterHours = (instructorId, semester) =>
