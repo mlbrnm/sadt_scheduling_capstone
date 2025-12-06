@@ -333,7 +333,7 @@ def register_schedule_routes(app):
     @app.route("/schedules/<schedule_id>/instructors", methods=["GET"])
     def get_instructors_for_schedule(schedule_id):
         try:
-            # Just fetch ALL instructors
+            # fetch ALL instructors
             instructors_resp = (
                 supabase_client.table("instructors")
                 .select("*")

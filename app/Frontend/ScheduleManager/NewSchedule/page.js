@@ -330,94 +330,120 @@ export default function NewSchedule() {
     }));
   };
 
-  // toggleSection
-  const toggleSection = (
-    instructorId,
-    course,
-    section,
-    semester,
-    component
-  ) => {
+  // // toggleSection
+
+  const toggleSection = (instructorId, course, section, semester, mode) => {
     if (isScheduleSubmitted) return;
-    const courseId = String(course.course_id);
-    const key = `${instructorId}-${courseId}-${semester}-${section}`;
+
+    const scid = course.scheduled_course_id || course.course_id;
+    const key = `${instructorId}-${scid}-${section}`;
 
     setAssignments((prev) => {
-      const next = { ...prev };
+      const newAssignments = { ...prev };
 
-      const unsetFromOthers = (comp) => {
-        for (const [k, entry] of Object.entries(next)) {
-          const [iId, cId, sem, sec] = k.split("-");
-          if (
-            cId !== courseId ||
-            sem !== semester ||
-            iId === String(instructorId) ||
-            sec !== section
-          )
-            continue;
-
-          const sections = entry?.sections || {};
-          const secState = sections[sec];
-          if (secState?.[comp]) {
-            const newSecState = { ...secState, [comp]: false };
-            const newSections = { ...sections };
-            if (!newSecState.class && !newSecState.online) {
-              delete newSections[sec];
-            } else {
-              newSections[sec] = newSecState;
-            }
-            const updatedEntry = { ...entry, sections: newSections };
-            if (Object.keys(updatedEntry.sections).length === 0) {
-              delete next[k];
-            } else {
-              next[k] = updatedEntry;
-            }
-          }
-        }
-      };
-
-      const apply = (comp, toValue) => {
-        const entry = next[key] || { sections: {} };
-        const currentSec = entry.sections[section] ?? {
-          class: false,
-          online: false,
+      if (newAssignments[key] && newAssignments[key].delivery_mode === mode) {
+        // unassign if same mode clicked
+        delete newAssignments[key];
+      } else {
+        // assign or change mode
+        newAssignments[key] = {
+          instructor_id: instructorId,
+          scheduled_course_id: scid,
+          delivery_mode: mode,
         };
-        const target = toValue === undefined ? !currentSec[comp] : !!toValue;
-        if (target) unsetFromOthers(comp);
-        const newSec = { ...currentSec, [comp]: target };
-        let newSections = { ...entry.sections };
-        if (!newSec.class && !newSec.online) {
-          delete newSections[section];
-        } else {
-          newSections[section] = newSec;
-        }
-        if (Object.keys(newSections).length === 0) {
-          if (next[key]) delete next[key];
-        } else {
-          next[key] = { ...entry, sections: newSections };
-        }
-      };
-
-      if (component === "both") {
-        const existing = next[key]?.sections?.[section] ?? {
-          class: false,
-          online: false,
-        };
-        const hasBoth = !!(existing.class && existing.online);
-        if (hasBoth) {
-          apply("class", false);
-          apply("online", false);
-        } else {
-          apply("class", true);
-          apply("online", true);
-        }
-      } else if (component === "class" || component === "online") {
-        apply(component, undefined);
       }
 
-      return next;
+      return newAssignments;
     });
   };
+
+  // const toggleSection = (
+  //   instructorId,
+  //   course,
+  //   section,
+  //   semester,
+  //   component
+  // ) => {
+  //   if (isScheduleSubmitted) return;
+  //   const courseId = String(course.course_id);
+  //   const key = `${instructorId}-${courseId}-${semester}-${section}`;
+
+  //   setAssignments((prev) => {
+  //     const next = { ...prev };
+
+  //     const unsetFromOthers = (comp) => {
+  //       for (const [k, entry] of Object.entries(next)) {
+  //         const [iId, cId, sem, sec] = k.split("-");
+  //         if (
+  //           cId !== courseId ||
+  //           sem !== semester ||
+  //           iId === String(instructorId) ||
+  //           sec !== section
+  //         )
+  //           continue;
+
+  //         const sections = entry?.sections || {};
+  //         const secState = sections[sec];
+  //         if (secState?.[comp]) {
+  //           const newSecState = { ...secState, [comp]: false };
+  //           const newSections = { ...sections };
+  //           if (!newSecState.class && !newSecState.online) {
+  //             delete newSections[sec];
+  //           } else {
+  //             newSections[sec] = newSecState;
+  //           }
+  //           const updatedEntry = { ...entry, sections: newSections };
+  //           if (Object.keys(updatedEntry.sections).length === 0) {
+  //             delete next[k];
+  //           } else {
+  //             next[k] = updatedEntry;
+  //           }
+  //         }
+  //       }
+  //     };
+
+  //     const apply = (comp, toValue) => {
+  //       const entry = next[key] || { sections: {} };
+  //       const currentSec = entry.sections[section] ?? {
+  //         class: false,
+  //         online: false,
+  //       };
+  //       const target = toValue === undefined ? !currentSec[comp] : !!toValue;
+  //       if (target) unsetFromOthers(comp);
+  //       const newSec = { ...currentSec, [comp]: target };
+  //       let newSections = { ...entry.sections };
+  //       if (!newSec.class && !newSec.online) {
+  //         delete newSections[section];
+  //       } else {
+  //         newSections[section] = newSec;
+  //       }
+  //       if (Object.keys(newSections).length === 0) {
+  //         if (next[key]) delete next[key];
+  //       } else {
+  //         next[key] = { ...entry, sections: newSections };
+  //       }
+  //     };
+
+  //     if (component === "both") {
+  //       const existing = next[key]?.sections?.[section] ?? {
+  //         class: false,
+  //         online: false,
+  //       };
+  //       const hasBoth = !!(existing.class && existing.online);
+  //       if (hasBoth) {
+  //         apply("class", false);
+  //         apply("online", false);
+  //       } else {
+  //         apply("class", true);
+  //         apply("online", true);
+  //       }
+  //     } else if (component === "class" || component === "online") {
+  //       apply(component, undefined);
+  //     }
+
+  //     return next;
+  //   });
+  // };
 
   // Cleanup assignments when instructors remove
   useEffect(() => {
@@ -585,13 +611,27 @@ export default function NewSchedule() {
 
   const getFilteredCoursesBySemester = () => {
     const filtered = {};
+
     for (const semester of semester_list) {
       const courses = newScheduleDraft.addedCoursesBySemester?.[semester] || [];
-      filtered[semester] = courses.filter((course) => {
+
+      // enrich each scheduled course with class_hrs and online_hrs from the courses table
+      const enrichedCourses = courses.map((sc) => {
+        const courseData = courses.find((c) => c.course_id === sc.course_id); //full courses list
+
+        return {
+          ...sc,
+          class_hrs: courseData?.class_hrs || 0,
+          online_hrs: courseData?.online_hrs || 0,
+        };
+      });
+
+      filtered[semester] = enrichedCourses.filter((course) => {
         if (!hideFullyAssignedCourses) return true;
         return !isCourseFullyAssigned(course.course_id, semester);
       });
     }
+
     return filtered;
   };
 
@@ -818,6 +858,7 @@ export default function NewSchedule() {
                   rowHeights={rowHeights}
                   headerHeight={headerHeight}
                   onUpdateCourseSections={handleUpdateCourseSections}
+                  assignedSections={assignments}
                 />
               )}
             </div>
