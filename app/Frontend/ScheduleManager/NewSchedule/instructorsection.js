@@ -181,9 +181,10 @@ export default function InstructorSection({
         >
           <div className="absolute inset-0 bg-gray-800 opacity-50" />
           <div
-            className="relative bg-gray-100 p-4 rounded-md"
+            className="relative bg-gray-100 p-4 rounded-md w-11/12 max-w-2xl"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Close Button */}
             <div className="flex justify-end">
               <button
                 className="text-gray-600 hover:text-gray-800 text-xl font-bold px-2 cursor-pointer"
@@ -192,69 +193,75 @@ export default function InstructorSection({
                 &times;
               </button>
             </div>
+
+            {/* Search Input */}
             <input
               type="text"
               placeholder="Search Instructors by Name or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-xs my-2"
+              className="px-3 py-2 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 w-full my-2"
             />
-            <table className="min-w-full border border-gray-300">
-              <thead className="bg-gray-50 sticky top-0">
-                <tr>
-                  {instructorListHeaders.map((header) => (
-                    <th
-                      key={header}
-                      className="px-3 py-2 text-left text-sm font-medium text-gray-700 border-b border-gray-300"
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y">
-                {filteredInstructors.length === 0 ? (
+
+            {/* Scrollable Table */}
+            <div className="max-h-96 overflow-y-auto border border-gray-300 rounded-md">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <td
-                      colSpan={instructorListHeaders.length}
-                      className="px-6 py-4 text-sm text-center"
-                    >
-                      {searchTerm
-                        ? "No instructors match your search."
-                        : "All available instructors have been added."}
-                    </td>
+                    {instructorListHeaders.map((header) => (
+                      <th
+                        key={header}
+                        className="px-3 py-2 text-left text-sm font-medium text-gray-700 border-b border-gray-300"
+                      >
+                        {header}
+                      </th>
+                    ))}
                   </tr>
-                ) : (
-                  filteredInstructors.map((instr) => (
-                    <tr
-                      key={instr.instructor_id}
-                      onClick={() => handleAddInstructor(instr)}
-                      className="cursor-pointer hover:bg-gray-100"
-                    >
-                      <td className="px-6 py-4 text-sm border-b border-gray-300">
-                        {instr.instructor_id}
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b border-gray-300">
-                        {instr.full_name ||
-                          `${instr.instructor_name} ${instr.instructor_lastName}`}
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b border-gray-300">
-                        {instr.contract_type}
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b border-gray-300">
-                        0 h
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b border-gray-300">
-                        0 h
-                      </td>
-                      <td className="px-6 py-4 text-sm border-b border-gray-300">
-                        {instr.instructor_status}
+                </thead>
+                <tbody className="bg-white divide-y">
+                  {filteredInstructors.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={instructorListHeaders.length}
+                        className="px-6 py-4 text-sm text-center"
+                      >
+                        {searchTerm
+                          ? "No instructors match your search."
+                          : "All available instructors have been added."}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredInstructors.map((instr) => (
+                      <tr
+                        key={instr.instructor_id}
+                        onClick={() => handleAddInstructor(instr)}
+                        className="cursor-pointer hover:bg-gray-100"
+                      >
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          {instr.instructor_id}
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          {instr.full_name ||
+                            `${instr.instructor_name} ${instr.instructor_lastName}`}
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          {instr.contract_type}
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          0 h
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          0 h
+                        </td>
+                        <td className="px-6 py-4 text-sm border-b border-gray-300">
+                          {instr.instructor_status}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
