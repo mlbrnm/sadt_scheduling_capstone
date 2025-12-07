@@ -43,7 +43,11 @@ export default function ScheduleControls({
   };
 
   // Determine which tab is currently active
-  const { winter, springSummer, fall } = metaData.activeSemesters;
+  const { winter, springSummer, fall } = metaData.activeSemesters || {
+    winter: true,
+    springSummer: true,
+    fall: true,
+  };
   const allActive = winter && springSummer && fall;
   const activeTab = allActive
     ? "all"
@@ -149,7 +153,10 @@ export default function ScheduleControls({
               onChange={(e) => setHideFullyAssignedCourses(e.target.checked)}
               className="cursor-pointer w-4 h-4"
             />
-            <label htmlFor="hideCourses" className="ml-2 text-sm cursor-pointer">
+            <label
+              htmlFor="hideCourses"
+              className="ml-2 text-sm cursor-pointer"
+            >
               Hide Fully Assigned Courses
             </label>
           </div>
@@ -158,10 +165,15 @@ export default function ScheduleControls({
               type="checkbox"
               id="hideInstructors"
               checked={hideFullyAssignedInstructors}
-              onChange={(e) => setHideFullyAssignedInstructors(e.target.checked)}
+              onChange={(e) =>
+                setHideFullyAssignedInstructors(e.target.checked)
+              }
               className="cursor-pointer w-4 h-4"
             />
-            <label htmlFor="hideInstructors" className="ml-2 text-sm cursor-pointer">
+            <label
+              htmlFor="hideInstructors"
+              className="ml-2 text-sm cursor-pointer"
+            >
               Hide Fully Assigned Instructors
             </label>
           </div>

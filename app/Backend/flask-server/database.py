@@ -386,6 +386,84 @@ def link_courses_to_programs():
         return []
 
 
+def populate_program_courses():
+    """
+    Populates the program_courses junction table by matching course.program_major to program.acronym.
+    Uses the same matching logic as link_courses_to_programs().
+    Returns a list of courses that couldn't be matched to any program.
+    """
+    try:
+        # Fetch all programs
+        programs_response = supabase_client.table("programs").select("program_id, acronym, program").execute()
+        programs = programs_response.data or []
+        
+        # Fetch all courses
+        courses_response = supabase_client.table("courses").select("course_id, course_code, course_name, program_major").execute()
+        courses = courses_response.data or []
+        
+        if not programs:
+            print("Warning: No programs found in database. Cannot populate program_courses.")
+            return [{"course_id": c["course_id"], "course_code": c.get("course_code"), "course_name": c.get("course_name"), "program_major": c.get("program_major")} for c in courses if c.get("program_major")]
+        
+        # Create a mapping of acronym (uppercase) to program_id
+        acronym_to_program_id = {}
+        for program in programs:
+            if program.get("acronym"):
+                acronym_to_program_id[program["acronym"].upper().strip()] = program["program_id"]
+        
+        # Clear existing program_courses entries
+        # Using the same pattern as clear_table_data - filter for all rows
+        try:
+            supabase_client.table("program_courses").delete().not_.is_("program_id", None).execute()
+            print("Cleared existing program_courses entries")
+        except Exception as e:
+            print(f"Warning: Could not clear program_courses: {e}")
+        
+        unmatched_courses = []
+        matched_count = 0
+        program_course_entries = []
+        
+        # Match each course to a program
+        for course in courses:
+            program_major = course.get("program_major")
+            
+            if not program_major:
+                # Skip courses without a program_major value
+                continue
+            
+            # Try to match by acronym (case-insensitive)
+            program_major_upper = program_major.upper().strip()
+            matched_program_id = acronym_to_program_id.get(program_major_upper)
+            
+            if matched_program_id:
+                # Add to the list of entries to insert
+                program_course_entries.append({
+                    "program_id": matched_program_id,
+                    "course_id": course["course_id"]
+                })
+                matched_count += 1
+            else:
+                # Add to unmatched list
+                unmatched_courses.append({
+                    "course_id": course["course_id"],
+                    "course_code": course.get("course_code", ""),
+                    "course_name": course.get("course_name", ""),
+                    "program_major": program_major
+                })
+        
+        # Insert all matched program-course pairs
+        if program_course_entries:
+            supabase_client.table("program_courses").insert(program_course_entries).execute()
+            print(f"Program_courses population complete: {matched_count} entries inserted")
+        
+        print(f"Unmatched courses: {len(unmatched_courses)}")
+        return unmatched_courses
+        
+    except Exception as e:
+        print(f"Error populating program_courses: {e}")
+        return []
+
+
 def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uploads"):
     try:
         print("Starting save_uploaded_file()...")  # DEBUG
@@ -442,6 +520,9 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
         if table_name in ["courses", "programs"]:
             print(f"Linking courses to programs after {table_name} upload...")
             unmatched_courses = link_courses_to_programs()
+            
+            print(f"Populating program_courses table after {table_name} upload...")
+            populate_program_courses()
         
         return {
             "version": next_version,
@@ -460,7 +541,7 @@ def save_uploaded_file(file, user_email, supabase, table_name, bucket_name="uplo
 def clear_table_data(table_name):
     # Define child table dependencies to handle foreign key constraints
     CHILD_TABLES = {
-        "courses": ["instructor_course_qualifications"],
+        "courses": ["instructor_course_qualifications", "program_courses"],
         "instructors": ["instructor_course_qualifications", "instructor_availability"],
         "programs": [],
     }
@@ -472,11 +553,14 @@ def clear_table_data(table_name):
                 # Delete all rows from child table using a filter that matches all rows
                 # For instructor_course_qualifications, both instructor_id and course_id are part of primary key
                 # For instructor_availability, instructor_id is the primary key
+                # For program_courses, both program_id and course_id are part of primary key
                 # Using not_.is_(column, None) matches all rows since primary keys can't be NULL
                 if child_table == "instructor_course_qualifications":
                     supabase_client.table(child_table).delete().not_.is_("course_id", None).execute()
                 elif child_table == "instructor_availability":
                     supabase_client.table(child_table).delete().not_.is_("instructor_id", None).execute()
+                elif child_table == "program_courses":
+                    supabase_client.table(child_table).delete().not_.is_("course_id", None).execute()
                 print(f"Cleared child table: {child_table}")
             except Exception as e:
                 print(f"Warning: Could not clear {child_table}: {e}")

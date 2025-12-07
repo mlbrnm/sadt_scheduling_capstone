@@ -7,6 +7,7 @@ const semester_titles = {
   springSummer: "Spring/Summer",
   fall: "Fall",
 };
+
 const maxSections = 6; // absolute max (A–F)
 
 const getSectionBgColor = (sectionIndex, isHeader = false, isAdd = false) => {
@@ -32,56 +33,44 @@ const getSectionInlineStyle = (sectionIndex) => {
 export default function AssignmentGrid({
   addedInstructors,
   addedCoursesBySemester,
-  assignments,
+  scheduledCourses,
   onToggleSection,
   activeSemesters,
   rowHeights,
   headerHeight,
 }) {
   const [contextMenu, setContextMenu] = useState(null);
-  const [sectionsByCourse, setSectionsByCourse] = useState({});
 
-  useEffect(() => {
-    const handleOutsideClick = () => setContextMenu(null);
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, []);
-
+  // Generate courses with add button for a semester
   const coursesWithAdd = (semester) => [
     ...(addedCoursesBySemester[semester] || []).map((course) => ({
       ...course,
-      sectionsCount: sectionsByCourse[course.course_id] ?? maxSections,
+      sectionsCount: course.num_sections ?? maxSections,
     })),
     { __isAdd: true, course_id: `__add-${semester}` },
   ];
 
-  const increaseSections = (courseId) => {
-    setSectionsByCourse((prev) => ({
-      ...prev,
-      [courseId]: Math.min(maxSections, (prev[courseId] || maxSections) + 1),
-    }));
+  const getSectionHours = (instructorId, course, section, semester) => {
+    const key = `${instructorId}-${course.course_id}-${semester}`;
+    const sec = scheduledCourses[key]?.sections?.[section] || {};
+    const classHrs = course.class_hrs || 0;
+    const onlineHrs = course.online_hrs || 0;
+    return {
+      class: sec.class ? classHrs : 0,
+      online: sec.online ? onlineHrs : 0,
+      total: (sec.class ? classHrs : 0) + (sec.online ? onlineHrs : 0),
+    };
   };
 
-  const decreaseSections = (courseId) => {
-    setSectionsByCourse((prev) => ({
-      ...prev,
-      [courseId]: Math.max(1, (prev[courseId] || maxSections) - 1),
-    }));
-  };
-
-  const owns = (instructorId, courseId, section, semester, comp) => {
-    const key = `${instructorId}-${courseId}-${semester}`;
-    const sec = assignments[key]?.sections?.[section];
-    return !!sec?.[comp];
-  };
-
-  let visibleSemesters = semester_list.filter((sem) => activeSemesters?.[sem]);
-  if (visibleSemesters.length === 0) visibleSemesters = [...semester_list];
-
-  const noCoursesAdded = Object.values(addedCoursesBySemester).every(
-    (courses) => courses.length === 0
+  const visibleSemesters = semester_list.filter(
+    (sem) => activeSemesters?.[sem]
   );
-  if (addedInstructors.length === 0 || noCoursesAdded) {
+  if (visibleSemesters.length === 0) visibleSemesters.push(...semester_list);
+
+  if (
+    addedInstructors.length === 0 ||
+    Object.values(addedCoursesBySemester).every((c) => c.length === 0)
+  ) {
     return (
       <p className="text-gray-500 text-center p-4">
         {addedInstructors.length === 0 ? "Add Instructor(s)" : "Add Course(s)"}{" "}
@@ -95,8 +84,8 @@ export default function AssignmentGrid({
   return (
     <div className="flex flex-row">
       {visibleSemesters.map((semester) => (
-        <div key={semester}>
-          {/* Header Row: Section Letters + +/- */}
+        <div key={semester} className="mr-4">
+          {/* Header Row */}
           <div className="flex">
             {coursesWithAdd(semester).map((course) => (
               <div
@@ -108,22 +97,6 @@ export default function AssignmentGrid({
                   <span className="font-semibold text-sm">
                     {course.course_code || "New Course"}
                   </span>
-                  {!course.__isAdd && (
-                    <div className="flex gap-1">
-                      <button
-                        className="text-xs px-1 bg-gray-200 rounded"
-                        onClick={() => decreaseSections(course.course_id)}
-                      >
-                        −
-                      </button>
-                      <button
-                        className="text-xs px-1 bg-gray-200 rounded"
-                        onClick={() => increaseSections(course.course_id)}
-                      >
-                        +
-                      </button>
-                    </div>
-                  )}
                 </div>
                 <div
                   className="grid h-full"
@@ -177,35 +150,26 @@ export default function AssignmentGrid({
                       {Array.from({ length: course.sectionsCount }, (_, i) => {
                         const section = String.fromCharCode(65 + i);
                         const isAdd = !!course.__isAdd;
-                        const ownsClass =
-                          !isAdd &&
-                          owns(
-                            instructor.instructor_id,
-                            course.course_id,
-                            section,
-                            semester,
-                            "class"
-                          );
-                        const ownsOnline =
-                          !isAdd &&
-                          owns(
-                            instructor.instructor_id,
-                            course.course_id,
-                            section,
-                            semester,
-                            "online"
-                          );
+                        const {
+                          class: ownsClass,
+                          online: ownsOnline,
+                          total,
+                        } = !isAdd
+                          ? getSectionHours(
+                              instructor.instructor_id,
+                              course,
+                              section,
+                              semester
+                            )
+                          : { class: 0, online: 0, total: 0 };
                         const ownsAny = ownsClass || ownsOnline;
                         const ownsBoth = ownsClass && ownsOnline;
 
                         let label = "";
                         if (!isAdd) {
-                          const classHrs = course.class_hrs || 0;
-                          const onlineHrs = course.online_hrs || 0;
-                          const totalHrs = classHrs + onlineHrs;
-                          if (ownsBoth) label = `${totalHrs}h`;
-                          else if (ownsClass) label = `C${classHrs}h`;
-                          else if (ownsOnline) label = `O${onlineHrs}h`;
+                          if (ownsBoth) label = `${total}h`;
+                          else if (ownsClass) label = `C${ownsClass}h`;
+                          else if (ownsOnline) label = `O${ownsOnline}h`;
                         }
 
                         const baseClasses =

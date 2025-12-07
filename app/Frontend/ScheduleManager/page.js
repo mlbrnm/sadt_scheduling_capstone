@@ -13,6 +13,11 @@ export default function ScheduleManager() {
   const [successMessage, setSuccessMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState(null);
 
+  // Schedule generation state
+  const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
+  const [generating, setGenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState(null);
+
   // Rejection modal state
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionComment, setRejectionComment] = useState("");
@@ -298,8 +303,145 @@ export default function ScheduleManager() {
     setScheduleToReject(null);
   };
 
+  // Handle Generate Schedules for All ACs
+  const handleGenerateSchedules = async () => {
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            academic_year: parseInt(academicYear),
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate schedules");
+      }
+
+      setGenerateMessage({
+        type: "success",
+        text: data.message,
+        details: data.ac_summaries || [],
+        total_created: data.total_created || data.created || 0,
+        total_skipped: data.total_skipped || data.skipped || 0,
+      });
+
+      // Refresh schedules list
+      const refreshResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/list`
+      );
+      const refreshData = await refreshResponse.json();
+      setSchedulesData(refreshData.schedules || []);
+    } catch (error) {
+      setGenerateMessage({ type: "error", text: error.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Handle Clear All Schedules
+  const handleClearSchedules = async () => {
+    if (!confirm("Are you sure you want to delete all schedules? This cannot be undone.")) return;
+
+    try {
+      setGenerating(true);
+      setGenerateMessage(null);
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/clear`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to clear schedules");
+
+      setGenerateMessage({
+        type: "success",
+        text: `${data.message}. Deleted ${data.deleted_count} schedule(s).`,
+      });
+
+      // Refresh schedules list
+      const refreshResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/list`
+      );
+      const refreshData = await refreshResponse.json();
+      setSchedulesData(refreshData.schedules || []);
+    } catch (error) {
+      setGenerateMessage({ type: "error", text: error.message });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="p-8">
+      {/* Schedule Generator Section */}
+      <div className="bg-gray-100 rounded-lg p-4 mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">
+          Generate Schedules for All Academic Chairs
+        </h3>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            value={academicYear}
+            onChange={(e) => setAcademicYear(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md w-32"
+            placeholder="Year"
+          />
+          <button
+            onClick={handleGenerateSchedules}
+            disabled={generating}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {generating ? "Generating..." : "Generate Schedules for All ACs"}
+          </button>
+          <button
+            onClick={handleClearSchedules}
+            disabled={generating}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            Clear All Schedules
+          </button>
+        </div>
+
+        {generateMessage && (
+          <div
+            className={`mt-3 p-3 rounded-md text-sm ${
+              generateMessage.type === "success"
+                ? "bg-green-50 text-green-700"
+                : "bg-red-50 text-red-700"
+            }`}
+          >
+            <div className="font-medium">{generateMessage.text}</div>
+            {generateMessage.details && generateMessage.details.length > 0 && (
+              <div className="mt-2 text-xs">
+                <div className="font-medium mb-1">
+                  Summary: {generateMessage.total_created} created, {generateMessage.total_skipped} skipped
+                </div>
+                <ul className="list-disc list-inside">
+                  {generateMessage.details.map((ac, idx) => (
+                    <li key={idx}>
+                      {ac.ac_name}: {ac.created} created, {ac.skipped} skipped
+                      {ac.message && ` (${ac.message})`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Filter/Sort & Search */}
       <div className="flex flex-row items-center justify-center gap-10 pb-8">
         {/* Filter/Sort Container */}
@@ -405,7 +547,7 @@ export default function ScheduleManager() {
                       </td>
                       <td className="mt-1.5 self-center">
                         <span className={getStatusColour(schedule.status)}>
-                          {schedule.status}
+                          {schedule.section_counts_required ? "Section Counts Required" : schedule.status}
                         </span>
                       </td>
                       <td className="flex gap-2 self-center">
@@ -413,7 +555,7 @@ export default function ScheduleManager() {
                           className="button-primary text-white px-4 py-1.5 rounded hover:button-hover active:button-clicked cursor-pointer"
                           onClick={() => handleView(schedule.schedule_id)}
                         >
-                          View
+                          {schedule.section_counts_required ? "Add" : "View"}
                         </button>
                         {schedule.status === "Submitted" && (
                           <>

@@ -13,9 +13,6 @@ export default function ACScheduleManage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
-  const [generating, setGenerating] = useState(false);
-  const [generateMessage, setGenerateMessage] = useState(null);
   const [scheduleAssignments, setScheduleAssignments] = useState({}); // Store assignments by schedule_id
   const router = useRouter();
 
@@ -155,76 +152,7 @@ export default function ACScheduleManage() {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
 
-  // Handlers for generate/clear/submit/recall schedules
-  const handleGenerateSchedules = async () => {
-    try {
-      setGenerating(true);
-      setGenerateMessage(null);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/generate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ academic_year: parseInt(academicYear) }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate schedules");
-      }
-
-      setGenerateMessage({
-        type: "success",
-        text: `${data.message}. Created: ${data.created}, Skipped: ${data.skipped}`,
-      });
-
-      // Refresh schedules list
-      const { data: schedulesData } = await supabase
-        .from("schedules")
-        .select("*")
-        .eq("academic_chair_id", currentUser)
-        .order("academic_year", { ascending: false });
-
-      setSchedules(schedulesData || []);
-    } catch (error) {
-      setGenerateMessage({ type: "error", text: error.message });
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleClearSchedules = async () => {
-    if (!confirm("Are you sure you want to delete all schedules?")) return;
-
-    try {
-      setGenerating(true);
-      setGenerateMessage(null);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/schedules/clear`,
-        {
-          method: "DELETE",
-        }
-      );
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Failed to clear schedules");
-
-      setGenerateMessage({
-        type: "success",
-        text: `${data.message}. Deleted ${data.deleted_count} schedule(s).`,
-      });
-
-      setSchedules([]);
-    } catch (error) {
-      setGenerateMessage({ type: "error", text: error.message });
-    } finally {
-      setGenerating(false);
-    }
-  };
+  // Handlers for submit/recall schedules
 
   const handleCreateModifySchedule = (scheduleId) => {
     router.push(
@@ -236,8 +164,8 @@ export default function ACScheduleManage() {
     if (!confirm("Are you sure you want to submit this schedule?")) return;
 
     try {
-      setGenerating(true);
-      setGenerateMessage(null);
+      setLoading(true);
+      setError(null);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/submit`,
@@ -247,18 +175,16 @@ export default function ACScheduleManage() {
       if (!response.ok)
         throw new Error(data.error || "Failed to submit schedule");
 
-      setGenerateMessage({ type: "success", text: data.message });
-
       const { data: schedulesData } = await supabase
         .from("schedules")
         .select("*")
         .eq("academic_chair_id", currentUser)
         .order("academic_year", { ascending: false });
       setSchedules(schedulesData || []);
-    } catch (error) {
-      setGenerateMessage({ type: "error", text: error.message });
+    } catch (err) {
+      setError(err.message);
     } finally {
-      setGenerating(false);
+      setLoading(false);
     }
   };
 
@@ -266,8 +192,8 @@ export default function ACScheduleManage() {
     if (!confirm("Are you sure you want to recall this schedule?")) return;
 
     try {
-      setGenerating(true);
-      setGenerateMessage(null);
+      setLoading(true);
+      setError(null);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/recall`,
@@ -277,18 +203,16 @@ export default function ACScheduleManage() {
       if (!response.ok)
         throw new Error(data.error || "Failed to recall schedule");
 
-      setGenerateMessage({ type: "success", text: data.message });
-
       const { data: schedulesData } = await supabase
         .from("schedules")
         .select("*")
         .eq("academic_chair_id", currentUser)
         .order("academic_year", { ascending: false });
       setSchedules(schedulesData || []);
-    } catch (error) {
-      setGenerateMessage({ type: "error", text: error.message });
+    } catch (err) {
+      setError(err.message);
     } finally {
-      setGenerating(false);
+      setLoading(false);
     }
   };
 
@@ -296,49 +220,7 @@ export default function ACScheduleManage() {
     <div className="p-8 px-80">
       {/* Header */}
       <div className="flex flex-col mb-6">
-        <h1 className="text-xl font-bold text-center mb-4">Manage Schedules</h1>
-
-        {/* Generate / Clear Buttons */}
-        <div className="bg-gray-100 rounded-lg p-4 mb-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
-            Generate Schedules
-          </h3>
-          <div className="flex items-center gap-3">
-            <input
-              type="number"
-              value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md w-32"
-              placeholder="Year"
-            />
-            <button
-              onClick={handleGenerateSchedules}
-              disabled={generating}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {generating ? "Generating..." : "Generate Schedules"}
-            </button>
-            <button
-              onClick={handleClearSchedules}
-              disabled={generating}
-              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              Clear All Schedules
-            </button>
-          </div>
-
-          {generateMessage && (
-            <div
-              className={`mt-3 p-3 rounded-md text-sm ${
-                generateMessage.type === "success"
-                  ? "bg-green-50 text-green-700"
-                  : "bg-red-50 text-red-700"
-              }`}
-            >
-              {generateMessage.text}
-            </div>
-          )}
-        </div>
+        <h1 className="text-xl font-bold text-center mb-4">My Schedules</h1>
       </div>
 
       {/* Error */}
@@ -486,7 +368,7 @@ export default function ACScheduleManage() {
 
           {schedules.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No schedules found. Create a new schedule to get started.
+              No schedules found. The administrator has not yet generated schedules for the current academic year.
             </div>
           )}
         </div>
