@@ -76,24 +76,10 @@ function AddInstructorModal({ onClose, onSuccess }) {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  console.log("🔥 SUBMIT CLICKED");
-  setIsSubmitting(true);
-  setError("");
-
-  try {
-    console.log("📤 Sending data:", formData);
-    
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/admin/data/instructors`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      }
-    );
+    e.preventDefault();
+    console.log("🔥 SUBMIT CLICKED");
+    setIsSubmitting(true);
+    setError("");
 
     try {
       console.log("📤 Sending data:", formData);
@@ -102,9 +88,7 @@ function AddInstructorModal({ onClose, onSuccess }) {
         "http://localhost:5000/admin/data/instructors",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
         }
       );
@@ -114,11 +98,8 @@ function AddInstructorModal({ onClose, onSuccess }) {
       console.log("📝 Result:", result);
 
       if (!response.ok) {
-        console.log("❌ ERROR:", result.error);
         throw new Error(result.error || "Failed to add instructor");
       }
-
-      console.log("✅ SUCCESS - Closing modal...");
 
       // Clear form
       setFormData({
@@ -133,11 +114,8 @@ function AddInstructorModal({ onClose, onSuccess }) {
         reporting_ac: "",
       });
 
-      console.log("🚪 Calling onClose()...");
       onClose();
-      console.log("🔄 Calling onSuccess()...");
       onSuccess();
-      console.log("✨ Done!");
     } catch (error) {
       console.log("💥 CATCH BLOCK:", error.message);
       setError(error.message);
