@@ -254,6 +254,7 @@ export default function AssignmentGrid({
                                   instructor: instructor.instructor_id,
                                   course:
                                     course.course_code || course.course_id,
+                                  section_id: scid,
                                   section: sectionLetter,
                                   assigned: !!assignedSec,
                                   mode: assignedSec?.delivery_mode || "none",

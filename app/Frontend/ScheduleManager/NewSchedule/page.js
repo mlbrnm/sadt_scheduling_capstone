@@ -2,7 +2,7 @@
 // All architectural decisions and final implementation were done by the developer.
 
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "../../supabaseClient";
 import ScheduleControls from "./schedulecontrols";
@@ -34,6 +34,7 @@ export default function NewSchedule() {
   const [scheduleAcademicChairId, setScheduleAcademicChairId] = useState(null);
   const [isScheduleSubmitted, setIsScheduleSubmitted] = useState(false);
   const [courseSections, setCourseSections] = useState({});
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
 
   // Dynamic heights from InstructorSection
   const [rowHeights, setRowHeights] = useState({});
@@ -116,7 +117,8 @@ export default function NewSchedule() {
   }, [scheduleId]);
 
   useEffect(() => {
-    if (!scheduleId || isLoading) return;
+    // Wait until we have a scheduleId and the course data is loaded
+    if (!scheduleId || isLoading || courseData.length === 0) return;
 
     const loadSchedule = async () => {
       setLoadingSchedule(true);
@@ -157,6 +159,7 @@ export default function NewSchedule() {
                 ? c.sections.length
                 : 1;
 
+            // Look up the full course info from courseData
             const fullCourseData =
               courseData.find((cd) => cd.course_id === c.course_id) || {};
 
@@ -175,7 +178,7 @@ export default function NewSchedule() {
           addedCoursesBySemester,
         }));
 
-        // --- Build addedInstructors ---
+        // --- Build addedInstructors and assignments ---
         const addedInstructors = [];
         const newAssignments = {};
 
@@ -207,16 +210,16 @@ export default function NewSchedule() {
                   });
                 }
 
-                // --- Auto-assign section ---
-                const sectionLetter = sec.section_letter || "A"; // fallback
+                // Auto-assign section
+                const sectionLetter = sec.section_letter || "A";
                 const key = `${instrId}-${
                   course.scheduled_course_id || course.course_id
                 }-${sectionLetter}`;
 
-                // Compute real hours (match toggleSection logic)
-                const weeklyHrs = Number(instr.weekly_hours ?? 0);
-                const classHrs = Number(instr.class_hrs ?? 0);
-                const onlineHrs = Number(instr.online_hrs ?? 0);
+                const weeklyHrs =
+                  Number(instr.weekly_hours ?? 0) ||
+                  Number(course.class_hrs ?? 0) +
+                    Number(course.online_hrs ?? 0);
 
                 newAssignments[key] = {
                   instructor_id: instrId,
@@ -225,15 +228,14 @@ export default function NewSchedule() {
                   section_letter: sectionLetter,
                   delivery_mode: sec.delivery_mode || "both",
                   weekly_hours: weeklyHrs,
-                  class_hrs: classHrs,
-                  online_hrs: onlineHrs,
+                  class_hrs: Number(course.class_hrs ?? 0),
+                  online_hrs: Number(course.online_hrs ?? 0),
                 };
               });
             });
           });
         });
 
-        // --- Update state ---
         setAssignments(newAssignments);
         setNewScheduleDraft((prev) => ({
           ...prev,
@@ -256,8 +258,178 @@ export default function NewSchedule() {
     };
 
     loadSchedule();
-  }, [scheduleId, isLoading, instructorData, courseData]);
+  }, [scheduleId, isLoading, courseData]);
 
+  // Recalculate semester + total CCH for all instructors
+  const recalcAllInstructorCCH = useCallback((currentAssignments) => {
+    setNewScheduleDraft((prev) => {
+      const updated = prev.addedInstructors.map((inst) => {
+        const newInst = { ...inst };
+        let totalSeconds = 0;
+
+        for (const sem of ["winter", "springSummer", "fall"]) {
+          const weeklySum = Object.values(currentAssignments)
+            .filter(
+              (a) =>
+                a.instructor_id === inst.instructor_id && a.semester === sem
+            )
+            .reduce((sum, a) => sum + (a.weekly_hours ?? 0), 0);
+
+          const semesterHours = weeklySum * 15; // 15 weeks per semester
+          const semesterKey =
+            sem === "winter"
+              ? "winter_cch"
+              : sem === "springSummer"
+              ? "spring_summer_cch"
+              : "fall_cch";
+
+          newInst[semesterKey] = addHoursToCCH("00:00:00", semesterHours);
+
+          // accumulate total seconds
+          const [h, m, s] = newInst[semesterKey].split(":").map(Number);
+          totalSeconds += h * 3600 + m * 60 + s;
+        }
+
+        const newH = Math.floor(totalSeconds / 3600);
+        const newM = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
+          2,
+          "0"
+        );
+        const newS = String(totalSeconds % 60).padStart(2, "0");
+        newInst.total_cch = `${newH}:${newM}:${newS}`;
+
+        return newInst;
+      });
+
+      return { ...prev, addedInstructors: updated };
+    });
+  });
+
+  // sumHours now takes assignments as argument to allow recalculation
+  const sumHours = (instructorId, semester, currentAssignments) => {
+    let sum = 0;
+    const iId = String(instructorId);
+    for (const [key, value] of Object.entries(currentAssignments || {})) {
+      if (!value) continue;
+      const [iid] = key.split("-");
+      if (iid !== iId) continue;
+      if (semester) {
+        const sem = value.semester || semester;
+        if (sem !== semester) continue;
+      }
+      sum += value.weekly_hours || 0;
+    }
+    return sum;
+  };
+
+  // Convert HH:MM:SS and hour-delta into new HH:MM:SS
+  function addHoursToCCH(cchString, deltaHours) {
+    const [h, m, s] = (cchString || "00:00:00")
+      .split(":")
+      .map((v) => Number(v) || 0);
+
+    const currentSeconds = h * 3600 + m * 60 + s;
+    const deltaSeconds = Number(deltaHours) * 3600;
+    const newSeconds = Math.max(0, currentSeconds + deltaSeconds);
+
+    const newH = String(Math.floor(newSeconds / 3600));
+    const newM = String(Math.floor((newSeconds % 3600) / 60)).padStart(2, "0");
+    const newS = String(newSeconds % 60).padStart(2, "0");
+
+    return `${newH}:${newM}:${newS}`;
+  }
+
+  const adjustInstructorCCH = (instructorId, semester) => {
+    // Compute total weekly hours for this instructor & semester
+    const weeklyHours = sumHours(instructorId, semester);
+
+    // Convert to semester hours
+    const semesterHours = weeklyHours * 15;
+
+    setNewScheduleDraft((prev) => {
+      const updated = prev.addedInstructors.map((inst) => {
+        if (inst.instructor_id !== instructorId) return inst;
+
+        const semesterKey =
+          semester === "winter"
+            ? "winter_cch"
+            : semester === "springSummer"
+            ? "spring_summer_cch"
+            : "fall_cch";
+
+        return {
+          ...inst,
+          total_cch: addHoursToCCH(inst.total_cch, semesterHours),
+          [semesterKey]: addHoursToCCH(inst[semesterKey], semesterHours),
+        };
+      });
+
+      return { ...prev, addedInstructors: updated };
+    });
+  };
+
+  useEffect(() => {
+    if (!scheduleId) return;
+
+    const loadAssignments = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/assignments`
+        );
+        const json = await res.json();
+        if (!res.ok)
+          throw new Error(json.error || "Failed to load assignments");
+
+        const mapped = {};
+        json.assignments.forEach((a) => {
+          const scid = a.scheduled_course_id || a.course_id;
+          const key = `${a.instructor_id}-${scid}-${a.section_letter}`;
+          mapped[key] = {
+            ...a,
+            weekly_hours: Number(
+              a.weekly_hours_required ||
+                Number(a.class_hrs ?? 0) + Number(a.online_hrs ?? 0)
+            ),
+            class_hrs: Number(a.class_hrs ?? 0),
+            online_hrs: Number(a.online_hrs ?? 0),
+          };
+        });
+
+        setAssignments(mapped);
+
+        // Recalculate CCH totals for all instructors
+        recalcAllInstructorCCH(mapped);
+      } catch (err) {
+        console.error("Failed to load assignments:", err);
+      }
+    };
+
+    loadAssignments();
+  }, [scheduleId]);
+
+  const handleAutoAssign = async (scheduleId) => {
+    if (!scheduleId) {
+      console.error("Missing scheduleId");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/auto_assign`,
+        { method: "POST" }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to auto-assign");
+      }
+
+      const data = await res.json();
+      console.log("Auto-assign success:", data);
+    } catch (err) {
+      console.error("Auto-assign error:", err);
+    }
+  };
   // Handler to update num_sections for a course in a semester
   const handleUpdateCourseSections = (course_id, semester, newCount) => {
     if (isScheduleSubmitted) return; // prevent edits if submitted
@@ -357,7 +529,7 @@ export default function NewSchedule() {
 
   // toggleSection
 
-  const toggleSection = (
+  const toggleSection = async (
     instructorId,
     course,
     sectionLetter,
@@ -366,32 +538,35 @@ export default function NewSchedule() {
   ) => {
     if (isScheduleSubmitted) return;
 
-    const scid = course.scheduled_course_id || course.course_id;
+    const scid =
+      typeof course.scheduled_course_id === "function"
+        ? course.scheduled_course_id()
+        : course.scheduled_course_id || course.course_id;
     const key = `${instructorId}-${scid}-${sectionLetter}`;
+    const existing = assignments[key];
 
+    // Compute real hours
+    const courseInfo =
+      newScheduleDraft.addedCoursesBySemester[semester]?.find(
+        (c) => c.course_id === course.course_id
+      ) || course;
+
+    const realClassHrs = Number(courseInfo.class_hrs ?? 0);
+    const realOnlineHrs = Number(courseInfo.online_hrs ?? 0);
+
+    const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
+    const onlineHrs = mode === "online" || mode === "both" ? realOnlineHrs : 0;
+    const weekly_hours = classHrs + onlineHrs;
+
+    // Optimistically update the local assignments
     setAssignments((prev) => {
       const newAssignments = { ...prev };
-      const existing = newAssignments[key];
 
-      // Compute real hours
-      const courseInfo =
-        newScheduleDraft.addedCoursesBySemester[semester]?.find(
-          (c) => c.course_id === course.course_id
-        ) || course;
-
-      const realClassHrs = Number(courseInfo.class_hrs ?? 0);
-      const realOnlineHrs = Number(courseInfo.online_hrs ?? 0);
-
-      const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
-      const onlineHrs =
-        mode === "online" || mode === "both" ? realOnlineHrs : 0;
-      const weekly_hours = classHrs + onlineHrs;
-
-      // REMOVE (toggle off)
       if (existing && existing.delivery_mode === mode) {
+        // Remove locally
         delete newAssignments[key];
       } else {
-        // ADD assignment
+        // Add locally
         newAssignments[key] = {
           instructor_id: instructorId,
           scheduled_course_id: scid,
@@ -404,122 +579,66 @@ export default function NewSchedule() {
         };
       }
 
-      // Recalculate all instructor CCHs after this toggle
+      // Recalculate CCH
       recalcAllInstructorCCH(newAssignments);
-
       return newAssignments;
     });
-  };
 
-  // Recalculate semester + total CCH for all instructors
-  const recalcAllInstructorCCH = (currentAssignments) => {
-    setNewScheduleDraft((prev) => {
-      const updated = prev.addedInstructors.map((inst) => {
-        const newInst = { ...inst };
+    const payload = {
+      action: existing && existing.delivery_mode === mode ? "remove" : "add",
+      instructor_id: Number(instructorId),
+      scheduled_course_id: String(scid),
+      section_letter: String(sectionLetter),
+      delivery_mode: String(mode),
+      semester: String(semester),
+      weekly_hours: Number(weekly_hours),
+      class_hrs: Number(classHrs),
+      online_hrs: Number(onlineHrs),
+    };
 
-        let totalSeconds = 0;
+    console.log("Payload for toggleSection:", payload);
+    console.log("Types of each field:", {
+      action: typeof payload.action,
+      instructor_id: typeof payload.instructor_id,
+      scheduled_course_id: typeof payload.scheduled_course_id,
+      section_letter: typeof payload.section_letter,
+      delivery_mode: typeof payload.delivery_mode,
+      semester: typeof payload.semester,
+      weekly_hours: typeof payload.weekly_hours,
+      class_hrs: typeof payload.class_hrs,
+      online_hrs: typeof payload.online_hrs,
+    });
 
-        for (const sem of ["winter", "springSummer", "fall"]) {
-          // Sum weekly hours for this semester
-          const weeklySum = sumHours(
-            inst.instructor_id,
-            sem,
-            currentAssignments
-          );
-          const semesterHours = weeklySum * 15;
-
-          // Update semester CCH
-          const semesterKey =
-            sem === "winter"
-              ? "winter_cch"
-              : sem === "springSummer"
-              ? "spring_summer_cch"
-              : "fall_cch";
-
-          newInst[semesterKey] = addHoursToCCH("00:00:00", semesterHours);
-
-          // Accumulate total seconds for total_cch
-          const [h, m, s] = newInst[semesterKey].split(":").map(Number);
-          totalSeconds += h * 3600 + m * 60 + s;
+    // Call backend to persist the change
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/assignments/toggle`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action:
+              existing && existing.delivery_mode === mode ? "remove" : "add",
+            instructor_id: Number(instructorId),
+            scheduled_course_id: String(scid),
+            section_letter: String(sectionLetter),
+            delivery_mode: String(mode),
+            semester: String(semester),
+            weekly_hours: Number(weekly_hours),
+            class_hrs: Number(classHrs),
+            online_hrs: Number(onlineHrs),
+          }),
         }
+      );
 
-        // Update total_cch
-        const newH = String(Math.floor(totalSeconds / 3600));
-        const newM = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
-          2,
-          "0"
-        );
-        const newS = String(totalSeconds % 60).padStart(2, "0");
-        newInst.total_cch = `${newH}:${newM}:${newS}`;
-
-        return newInst;
-      });
-
-      return { ...prev, addedInstructors: updated };
-    });
-  };
-
-  // sumHours now takes assignments as argument to allow recalculation
-  const sumHours = (instructorId, semester, currentAssignments) => {
-    let sum = 0;
-    const iId = String(instructorId);
-    for (const [key, value] of Object.entries(currentAssignments || {})) {
-      if (!value) continue;
-      const [iid] = key.split("-");
-      if (iid !== iId) continue;
-      if (semester) {
-        const sem = value.semester || semester;
-        if (sem !== semester) continue;
-      }
-      sum += value.weekly_hours || 0;
+      const data = await response.json();
+      if (!response.ok)
+        throw new Error(data.error || "Failed to update assignment");
+    } catch (err) {
+      console.error("Failed to save assignment:", err);
+      // Optionally, revert local state on failure
+      setAssignments((prev) => ({ ...prev, [key]: existing }));
     }
-    return sum;
-  };
-
-  // Convert HH:MM:SS and hour-delta into new HH:MM:SS
-  function addHoursToCCH(cchString, deltaHours) {
-    const [h, m, s] = (cchString || "00:00:00")
-      .split(":")
-      .map((v) => Number(v) || 0);
-
-    const currentSeconds = h * 3600 + m * 60 + s;
-    const deltaSeconds = Number(deltaHours) * 3600;
-    const newSeconds = Math.max(0, currentSeconds + deltaSeconds);
-
-    const newH = String(Math.floor(newSeconds / 3600));
-    const newM = String(Math.floor((newSeconds % 3600) / 60)).padStart(2, "0");
-    const newS = String(newSeconds % 60).padStart(2, "0");
-
-    return `${newH}:${newM}:${newS}`;
-  }
-
-  const adjustInstructorCCH = (instructorId, semester) => {
-    // Compute total weekly hours for this instructor & semester
-    const weeklyHours = sumHours(instructorId, semester);
-
-    // Convert to semester hours
-    const semesterHours = weeklyHours * 15;
-
-    setNewScheduleDraft((prev) => {
-      const updated = prev.addedInstructors.map((inst) => {
-        if (inst.instructor_id !== instructorId) return inst;
-
-        const semesterKey =
-          semester === "winter"
-            ? "winter_cch"
-            : semester === "springSummer"
-            ? "spring_summer_cch"
-            : "fall_cch";
-
-        return {
-          ...inst,
-          total_cch: addHoursToCCH(inst.total_cch, semesterHours),
-          [semesterKey]: addHoursToCCH(inst[semesterKey], semesterHours),
-        };
-      });
-
-      return { ...prev, addedInstructors: updated };
-    });
   };
 
   // Cleanup assignments when instructors remove
@@ -855,8 +974,42 @@ export default function NewSchedule() {
       <div className="flex flex-col">
         <div className="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] flex-1">
           <div className="flex justify-center items-center">
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow transition">
-              Auto-Assign Instructors
+            <button
+              className={`px-4 py-2 text-white font-medium rounded-lg shadow transition ${
+                isAutoAssigning
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+              onClick={() => handleAutoAssign(scheduleId)}
+              disabled={isAutoAssigning}
+            >
+              {isAutoAssigning ? (
+                <div className="flex items-center space-x-2">
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
+                  </svg>
+                  <span>Assigning...</span>
+                </div>
+              ) : (
+                "Auto-Assign Instructors"
+              )}
             </button>
           </div>
           <div className="col-start-2 row-start-1 min-w-0">

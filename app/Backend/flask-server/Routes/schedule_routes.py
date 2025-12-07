@@ -1,11 +1,12 @@
 import json
-from datetime import timedelta
-
+from datetime import time, timedelta
 from flask import jsonify, request
+from postgrest import APIError
 from database import supabase_client
+from artifacts.schedulingprototype.scheduling import main as solver_main
 
 def register_schedule_routes(app):
-    
+
 
     @app.route("/schedules/save", methods=["POST"])
     def save_schedule():
@@ -401,7 +402,20 @@ def register_schedule_routes(app):
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+    #AUTO ASSIGNMENT    
+    @app.route("/schedules/<schedule_id>/auto_assign", methods=["POST"])
+    def auto_assign_route(schedule_id):
+        if not schedule_id:
+            return jsonify({"error": "Missing schedule_id"}), 400
 
+        try:
+            # Run your solver with the given schedule_id
+            solver_main(schedule_id)
+
+            return jsonify({"success": True, "message": f"Auto-assignment completed for schedule {schedule_id}"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/admin/schedules/generate", methods=["POST"])
     def generate_schedules():
@@ -604,8 +618,8 @@ def register_schedule_routes(app):
                         print(f"sc_insert_res.data: {sc_insert_res.data}")
                         print(f"Number of records inserted: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
                         
-                        if hasattr(sc_insert_res, 'error') and sc_insert_res.error:
-                            print(f"ERROR in sc_insert_res: {sc_insert_res.error}")
+                        if hasattr(sc_insert_res, 'error') and sc_insert_res.data:
+                            print(f"ERROR in sc_insert_res: {sc_insert_res.data}")
                             
                     except Exception as insert_error:
                         print(f"\n=== DEBUG: EXCEPTION during scheduled_courses insert ===")
@@ -627,7 +641,7 @@ def register_schedule_routes(app):
                                 "course_id": sc["course_id"],
                                 "term": sc["term"],
                                 "section_letter": "A",
-                                "delivery_mode": "In-Person",  
+                                "delivery_mode": "Both",  
                                 "timeslots": [],    
                                 "instructor_id": None,
                                 "semester_id": None,
@@ -701,105 +715,6 @@ def register_schedule_routes(app):
             return jsonify({"error": str(e)}), 500
     
 
-    # @app.route("/admin/schedules/generate", methods=["POST"])
-    # def generate_schedules():
-    #     """
-    #     Generate blank schedules for all Academic Chairs for a given academic year.
-    #     Send JSON with "academic_year".
-    #     """
-    #     try:
-    #         # Get academic year from request
-    #         data = request.get_json()
-    #         academic_year = data.get("academic_year")
-            
-    #         if not academic_year:
-    #             return jsonify({"error": "academic_year is required"}), 400
-            
-    #         # Fetch all users with role "AC"
-    #         ac_response = supabase_client.table("users").select("id, first_name, last_name").eq("role", "AC").eq("is_deleted", False).execute()
-            
-    #         academic_chairs = ac_response.data
-            
-    #         if not academic_chairs:
-    #             return jsonify({"message": "No Academic Chairs found"}), 200
-            
-    #         created_schedules = []
-    #         skipped_schedules = []
-            
-    #         for ac in academic_chairs:
-    #             ac_id = ac["id"]
-    #             ac_name = f"{ac['first_name']} {ac['last_name']}"
-                
-    #             # Check if schedule already exists for this AC and year
-    #             existing = supabase_client.table("schedules").select("id").eq("academic_chair_id", ac_id).eq("academic_year", academic_year).execute()
-                
-    #             if existing.data:
-    #                 skipped_schedules.append({
-    #                     "academic_chair": ac_name,
-    #                     "reason": "Schedule already exists for this year"
-    #                 })
-    #                 continue
-                
-    #             # Find programs where this AC's UUID is in the comma-separated academic_chair field
-    #             programs_response = supabase_client.table("programs").select("program_id, courses").execute()
-                
-    #             # Filter programs that contain this AC's UUID in their academic_chair field
-    #             ac_programs = []
-    #             all_course_ids = []
-                
-    #             for program in programs_response.data:
-    #                 # Get the academic_chair field (comma-separated UUIDs)
-    #                 program_ac_field = program.get("academic_chair", "")
-                    
-    #                 # Check if this AC's UUID is in the list
-    #                 if ac_id in program_ac_field:
-    #                     ac_programs.append(program["program_id"])
-                        
-    #                     # Extract course IDs from this program
-    #                     courses_field = program.get("courses", "")
-    #                     if courses_field:
-    #                         # Split by comma and strip whitespace
-    #                         course_ids = [c.strip() for c in courses_field.split(",") if c.strip()]
-    #                         all_course_ids.extend(course_ids)
-                
-    #             # Remove duplicate course IDs
-    #             all_course_ids = list(set(all_course_ids))
-                
-    #             # Create comma-separated strings
-    #             associated_programs_str = ",".join(ac_programs) if ac_programs else ""
-    #             associated_courses_str = ",".join(all_course_ids) if all_course_ids else ""
-                
-    #             # Create the schedule record
-    #             schedule_data = {
-    #                 "academic_year": academic_year,
-    #                 "academic_chair_id": ac_id,
-    #                 "completion_status": "not_started",
-    #                 "submission_status": "not_submitted",
-    #                 "approval_status": "pending",
-    #                 "time_slots_attached": "not_attached",
-    #                 "associated_programs": associated_programs_str,
-    #                 "associated_courses": associated_courses_str
-    #             }
-                
-    #             schedule_response = supabase_client.table("schedules").insert(schedule_data).execute()
-                
-    #             created_schedules.append({
-    #                 "academic_chair": ac_name,
-    #                 "academic_chair_id": ac_id,
-    #                 "programs_count": len(ac_programs),
-    #                 "courses_count": len(all_course_ids)
-    #             })
-            
-    #         return jsonify({
-    #             "message": f"Schedule generation completed for academic year {academic_year}",
-    #             "created": len(created_schedules),
-    #             "skipped": len(skipped_schedules),
-    #             "created_schedules": created_schedules,
-    #             "skipped_schedules": skipped_schedules
-    #         }), 200
-            
-    #     except Exception as e:
-    #         return jsonify({"error": str(e)}), 500
     
     @app.route("/admin/schedules/clear", methods=["DELETE"])
     def clear_schedules():
@@ -1054,4 +969,209 @@ def register_schedule_routes(app):
             }), 200
             
         except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        
+
+    def save_assignment(schedule_id, instructor_id, scheduled_course_id, section_letter, delivery_mode, semester, weekly_hours, class_hrs, online_hrs):
+        # Upsert: add or update assignment
+        data = {
+            "schedule_id": schedule_id,
+            "instructor_id": instructor_id,
+            "scheduled_course_id": scheduled_course_id,
+            "section_letter": section_letter,
+            "delivery_mode": delivery_mode,
+            "semester": semester,
+            "weekly_hours": weekly_hours,
+            "class_hrs": class_hrs,
+            "online_hrs": online_hrs,
+        }
+        
+        response = supabase_client.table("assignments").upsert(data).execute()
+        if response.error:
+            print("Error saving assignment:", response.error)
+        return response.data
+
+    def delete_assignment(schedule_id, instructor_id, scheduled_course_id, section_letter):
+        response = (
+            supabase_client.table("assignments")
+            .delete()
+            .eq("schedule_id", schedule_id)
+            .eq("instructor_id", instructor_id)
+            .eq("scheduled_course_id", scheduled_course_id)
+            .eq("section_letter", section_letter)
+            .execute()
+        )
+        if response.error:
+            print("Error deleting assignment:", response.error)
+        return response.data
+    
+    @app.route("/schedules/<schedule_id>/assignments/toggle", methods=["POST"])
+    def toggle_assignment(schedule_id):
+        """
+        Toggle an assignment for an instructor in a schedule.
+        Expects JSON body with:
+        {
+            "action": "add" | "remove",
+            "instructor_id": int,
+            "scheduled_course_id": str,
+            "section_letter": str,
+            "delivery_mode": "class" | "online" | "both",
+            "semester": str,
+            "weekly_hours": float,
+            "class_hrs": float,
+            "online_hrs": float
+        }
+        """
+        data = request.get_json()
+        if not data:
+            print("\n[TOGGLE ASSIGNMENT]  Missing JSON body\n")
+            return jsonify({"error": "Missing JSON body"}), 400
+
+        scheduled_course_id = data.get("scheduled_course_id")
+        print(f"\n[TOGGLE ASSIGNMENT]  Incoming request for schedule_id: {schedule_id}")
+        print(f"Payload: {data}")
+
+        # Fetch the course_id for this scheduled_course_id
+        scheduled_course_id = data["scheduled_course_id"]
+
+        # Fetch the related course_id
+        res = supabase_client.table("scheduled_courses") \
+            .select("course_id") \
+            .eq("scheduled_course_id", scheduled_course_id) \
+            .single() \
+            .execute()
+
+        if res.data is None:
+            return jsonify({"error": "Scheduled course not found"}), 400
+
+        course_id = res.data["course_id"]
+
+        if not res.data:
+            print(f"[TOGGLE ASSIGNMENT]  Invalid scheduled_course_id: {scheduled_course_id}")
+            return jsonify({"error": "Invalid scheduled_course_id"}), 400
+
+        course_id = res.data["course_id"]
+        print(f"[TOGGLE ASSIGNMENT] Found course_id: {course_id} for scheduled_course_id: {scheduled_course_id}")
+
+        try:
+            action = data.get("action")
+            instructor_id = data.get("instructor_id")
+            section_letter = data.get("section_letter")
+            delivery_mode = data.get("delivery_mode")
+            semester = data.get("semester")
+            weekly_hours = data.get("weekly_hours", 0)
+            class_hrs = data.get("class_hrs", 0)
+            online_hrs = data.get("online_hrs", 0)
+
+            if not all([action, instructor_id, scheduled_course_id, section_letter, semester]):
+                print(f"[TOGGLE ASSIGNMENT]  Missing required fields")
+                return jsonify({"error": "Missing required fields"}), 400
+
+            print(f"[TOGGLE ASSIGNMENT] Action: {action.upper()} | Instructor ID: {instructor_id} | "
+                f"Section: {section_letter} | Semester: {semester} | Delivery: {delivery_mode} | "
+                f"Weekly Hrs: {weekly_hours} | Class Hrs: {class_hrs} | Online Hrs: {online_hrs}")
+
+            if action == "add":
+                # Fetch course_id from scheduled_courses
+                scheduled_course = supabase_client.table("scheduled_courses") \
+                    .select("course_id") \
+                    .eq("scheduled_course_id", scheduled_course_id) \
+                    .single().execute()
+                
+                if not scheduled_course.data:
+                    return jsonify({"error": "Scheduled course not found"}), 400
+
+                course_id = scheduled_course.data["course_id"]
+
+                result = supabase_client.table("sections").upsert({
+                    "schedule_id": schedule_id,
+                    "course_id": course_id,
+                    "scheduled_course_id": scheduled_course_id,
+                    "section_letter": section_letter,
+                    "delivery_mode": delivery_mode,
+                    "semester_id": semester,
+                    "instructor_id": instructor_id,
+                    "weekly_hours_required": weekly_hours,
+                    "class_hrs": f"{class_hrs} hours" if class_hrs else None,
+                    "online_hrs": f"{online_hrs} hours" if online_hrs else None,
+                }).execute()
+                print(f"[TOGGLE ASSIGNMENT]  Upsert result: {result.data}")
+
+            elif action == "remove":
+                result = supabase_client.table("sections").delete().match({
+                    "schedule_id": schedule_id,
+                    "instructor_id": instructor_id,
+                    "scheduled_course_id": scheduled_course_id,
+                    "section_letter": section_letter
+                }).execute()
+                print(f"[TOGGLE ASSIGNMENT]  Delete result: {result.data}")
+
+            else:
+                print(f"[TOGGLE ASSIGNMENT]  Invalid action: {action}")
+                return jsonify({"error": "Invalid action"}), 400
+
+            print(f"[TOGGLE ASSIGNMENT]  Action completed successfully!\n")
+            return jsonify({"success": True})
+
+        except Exception as e:
+            print(f"[TOGGLE ASSIGNMENT]  Exception occurred: {e}")
+            return jsonify({"error": str(e)}), 500
+        
+    def safe_execute(query, retries=3, delay=0.1):
+        """Execute a Supabase/PostgREST query safely on Windows with retry for WinError 10035."""
+        for attempt in range(retries):
+            try:
+                return query.execute()
+            except OSError as e:
+                if getattr(e, "winerror", None) == 10035:
+                    time.sleep(delay)
+                    continue
+                raise
+            except APIError:
+                raise
+        # Last attempt if still failing
+        return query.execute()
+
+    @app.route("/schedules/<schedule_id>/assignments", methods=["GET"])
+    def get_assignments(schedule_id):
+        try:
+            # Fetch all sections for this schedule
+            res = safe_execute(
+                supabase_client.table("sections")
+                .select("*")
+                .eq("schedule_id", schedule_id)
+            )
+            sections = res.data or []
+
+            if not sections:
+                return jsonify({"assignments": []})
+
+            #Collect all unique course_ids missing hours
+            missing_course_ids = {
+                s["course_id"] for s in sections
+                if not s.get("class_hrs") or not s.get("online_hrs")
+            }
+
+            course_map = {}
+            if missing_course_ids:
+                #Batch fetch all missing courses in one query
+                courses_res = safe_execute(
+                    supabase_client.table("courses")
+                    .select("course_id, class_hrs, online_hrs")
+                    .in_("course_id", list(missing_course_ids))
+                )
+                for c in courses_res.data or []:
+                    course_map[c["course_id"]] = c
+
+            #  Enrich sections with course hours
+            for s in sections:
+                if not s.get("class_hrs"):
+                    s["class_hrs"] = course_map.get(s["course_id"], {}).get("class_hrs", 0)
+                if not s.get("online_hrs"):
+                    s["online_hrs"] = course_map.get(s["course_id"], {}).get("online_hrs", 0)
+
+            return jsonify({"assignments": sections})
+
+        except Exception as e:
+            print("[GET ASSIGNMENTS] Exception:", e)
             return jsonify({"error": str(e)}), 500
