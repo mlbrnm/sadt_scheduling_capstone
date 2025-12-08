@@ -32,6 +32,10 @@ export default function InstructorSection({
   onRowResize,
   onHeaderResize,
 }) {
+  useEffect(() => {
+    console.log("instructors prop =", instructors);
+  }, [instructors]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 

@@ -279,75 +279,75 @@ def register_schedule_routes(app):
                 sections_by_sc.setdefault(scid, []).append(sec)
                 all_section_ids.append(sec["id"])
 
-            # 5. Fetch instructor assignments
-            instructors_assignments = (
-                supabase_client.table("scheduled_instructors")
-                .select("*")
-                .in_("section_id", all_section_ids)
-                .execute()
-                .data or []
-            )
+            # # 5. Fetch instructor assignments
+            # instructors_assignments = (
+            #     supabase_client.table("scheduled_instructors")
+            #     .select("*")
+            #     .in_("section_id", all_section_ids)
+            #     .execute()
+            #     .data or []
+            # )
 
-            # 6. Fetch full instructor details
-            instructor_ids = [ins["instructor_id"] for ins in instructors_assignments]
-            instructors_data = (
-                supabase_client.table("instructors")
-                .select("*")
-                .in_("instructor_id", instructor_ids)
-                .execute()
-                .data or []
-            )
+            # # 6. Fetch full instructor details
+            # instructor_ids = [ins["instructor_id"] for ins in instructors_assignments]
+            # instructors_data = (
+            #     supabase_client.table("instructors")
+            #     .select("*")
+            #     .in_("instructor_id", instructor_ids)
+            #     .execute()
+            #     .data or []
+            # )
 
             # Convert CCH to numeric hours and build dictionary
-            instructors_by_id = {}
-            for i in instructors_data:
-                instructors_by_id[i["instructor_id"]] = {
-                    "first_name": i.get("instructor_name"),
-                    "last_name": i.get("instructor_lastname"),
-                    "total_cch": hms_to_hours(i.get("total_cch")),
-                    "winter_cch": hms_to_hours(i.get("winter_cch")),
-                    "spring_summer_cch": hms_to_hours(i.get("spring_summer_cch")),
-                    "fall_cch": hms_to_hours(i.get("fall_cch")),
-                    # Include contract info
-                    "contract_type": i.get("contract_type"),
-                    "instructor_status": i.get("instructor_status"),
-                }
+            # instructors_by_id = {}
+            # for i in instructors_data:
+            #     instructors_by_id[i["instructor_id"]] = {
+            #         "first_name": i.get("instructor_name"),
+            #         "last_name": i.get("instructor_lastname"),
+            #         "total_cch": hms_to_hours(i.get("total_cch")),
+            #         "winter_cch": hms_to_hours(i.get("winter_cch")),
+            #         "spring_summer_cch": hms_to_hours(i.get("spring_summer_cch")),
+            #         "fall_cch": hms_to_hours(i.get("fall_cch")),
+            #         # Include contract info
+            #         "contract_type": i.get("contract_type"),
+            #         "instructor_status": i.get("instructor_status"),
+            #     }
 
-            # --- Step 7: Map instructors to sections and compute hours per section ---
-            # Build a map from section_id -> scheduled_course_id
-            section_to_course_id_map = {sec["id"]: sec["scheduled_course_id"] for sec in sections}
+            # # --- Step 7: Map instructors to sections and compute hours per section ---
+            # # Build a map from section_id -> scheduled_course_id
+            # section_to_course_id_map = {sec["id"]: sec["scheduled_course_id"] for sec in sections}
 
-            instructors_by_section = {}
+            # instructors_by_section = {}
 
-            for ins in instructors_assignments:
-                section_id = ins["section_id"]
+            # for ins in instructors_assignments:
+            #     section_id = ins["section_id"]
                 
-                # Base instructor info from instructors table
-                instr_info = instructors_by_id.get(ins["instructor_id"], {}).copy()
+            #     # Base instructor info from instructors table
+            #     instr_info = instructors_by_id.get(ins["instructor_id"], {}).copy()
                 
-                # Compute hours
-                # Use class_hrs and online_hrs from the assignment if present, else 0
-                class_hrs = ins.get("class_hrs") or 0
-                online_hrs = ins.get("online_hrs") or 0
-                weekly_hours = class_hrs + online_hrs
+            #     # Compute hours
+            #     # Use class_hrs and online_hrs from the assignment if present, else 0
+            #     class_hrs = ins.get("class_hrs") or 0
+            #     online_hrs = ins.get("online_hrs") or 0
+            #     weekly_hours = class_hrs + online_hrs
                 
-                # Include scheduled_course_id (required for frontend key)
-                scheduled_course_id = ins.get("scheduled_course_id") or section_to_course_id_map.get(section_id)
+            #     # Include scheduled_course_id (required for frontend key)
+            #     scheduled_course_id = ins.get("scheduled_course_id") or section_to_course_id_map.get(section_id)
                 
-                merged = {
-                    **ins,  # keep other assignment fields
-                    **instr_info,
-                    "scheduled_course_id": scheduled_course_id,
-                    "weekly_hours": weekly_hours,
-                    "class_hrs": class_hrs,
-                    "online_hrs": online_hrs
-                }
+            #     merged = {
+            #         **ins,  # keep other assignment fields
+            #         **instr_info,
+            #         "scheduled_course_id": scheduled_course_id,
+            #         "weekly_hours": weekly_hours,
+            #         "class_hrs": class_hrs,
+            #         "online_hrs": online_hrs
+            #     }
                 
-                instructors_by_section.setdefault(section_id, []).append(merged)
+            #     instructors_by_section.setdefault(section_id, []).append(merged)
 
-            # --- Step 8: Attach instructors to sections ---
-            for sec in sections:
-                sec["assigned_instructors"] = instructors_by_section.get(sec["id"], [])
+            # # --- Step 8: Attach instructors to sections ---
+            # for sec in sections:
+            #     sec["assigned_instructors"] = instructors_by_section.get(sec["id"], [])
 
             # 9. Group courses by semester
             courses_by_semester = {}
@@ -368,8 +368,8 @@ def register_schedule_routes(app):
 
             # Debug prints
             print(f"Schedule {schedule_id} loaded with {len(scheduled_courses)} courses and {len(sections)} sections.")
-            total_instructors = sum(len(sec["assigned_instructors"]) for sec in sections)
-            print(f"Total instructor assignments attached: {total_instructors}")
+            # total_instructors = sum(len(sec["assigned_instructors"]) for sec in sections)
+            # print(f"Total instructor assignments attached: {total_instructors}")
 
             return jsonify({
                 "schedule": schedule,
@@ -1174,4 +1174,152 @@ def register_schedule_routes(app):
 
         except Exception as e:
             print("[GET ASSIGNMENTS] Exception:", e)
+            return jsonify({"error": str(e)}), 500
+        
+#ENDPOINT FOR TOGGLING SECTION
+    @app.route("/scheduled_courses/<scid>/sections/toggle", methods=["POST"])
+    def toggle_section(scid):
+        payload = request.json
+        letter = payload.get("section_letter")
+        schedule_id = payload.get("scheduleId")
+
+        # get the course_id 
+        scheduled_course = supabase_client.table("scheduled_courses") \
+        .select("course_id") \
+        .eq("scheduled_course_id", scid) \
+        .single() \
+        .execute()
+
+        if not scheduled_course.data:
+            return jsonify({"error": "Scheduled course not found"}), 404
+
+        course_id = scheduled_course.data.get("course_id")
+
+
+
+        # Check if exists
+        existing = supabase_client.table("sections").select("*").eq("scheduled_course_id", scid).eq("section_letter", letter).execute()
+
+        if existing.data:
+            # REMOVE SECTION
+            supabase_client.table("sections").delete().eq("scheduled_course_id", scid).eq("section_letter", letter).execute()
+        else:
+            # ADD SECTION
+            supabase_client.table("sections").insert({
+                "schedule_id": schedule_id,
+                "course_id": course_id,
+                "scheduled_course_id": scid,
+                "section_letter": letter,
+                "delivery_mode": "both",
+            }).execute()
+
+        # Fetch updated list
+        result = supabase_client.table("sections").select("*").eq("scheduled_course_id", scid).execute()
+
+        return jsonify({ "sections": result.data })
+
+    #GET RELEVANT COURSES FROM SCHEDULED_COURSES
+    @app.route("/schedules/<schedule_id>/scheduled_courses", methods=["GET"])
+    def get_scheduled_courses(schedule_id):
+        if not schedule_id:
+            return jsonify({"error": "Missing schedule_id"}), 400
+
+        try:
+            response = supabase_client.table("scheduled_courses")\
+                .select("*")\
+                .eq("schedule_id", schedule_id)\
+                .execute()
+            
+            print("Supabase response:", response)  # DEBUG LINE
+
+            if hasattr(response, "error") and response.error:
+                return jsonify({"error": response.error.message}), 500
+
+            return jsonify({"scheduled_courses": getattr(response, "data", [])})
+
+        except Exception as e:
+            print("Error fetching scheduled courses:", e)
+            return jsonify({"error": "Internal server error"}), 500
+        
+    # GET scheduled instructors for a schedule
+    @app.route("/schedules/<schedule_id>/scheduled_instructors", methods=["GET"])
+    def get_scheduled_instructors(schedule_id):
+        try:
+            print(f"[DEBUG] Fetching scheduled instructors for schedule_id: {schedule_id}")
+            result = supabase_client.table("scheduled_instructors") \
+                .select("*, instructors(*)") \
+                .eq("schedule_id", schedule_id) \
+                .execute()
+
+            data = result.data or []
+            print(f"[DEBUG] Retrieved {len(data)} scheduled instructors")
+
+            instructors_list = []
+            for row in data:
+                instr = row.get("instructors") or {}
+                instructors_list.append({
+                    "instructor_id": row.get("instructor_id"),
+                    "full_name": instr.get("full_name") or f"{instr.get('instructor_name','')} {instr.get('instructor_lastname','')}".strip(),
+                    "contract_type": instr.get("contract_type"),
+                    "winter_cch": instr.get("winter_cch", "0:00:00"),
+                    "spring_summer_cch": instr.get("spring_summer_cch", "0:00:00"),
+                    "fall_cch": instr.get("fall_cch", "0:00:00"),
+                    "total_cch": instr.get("total_cch", "0:00:00"),
+                })
+            return jsonify(instructors_list)
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch scheduled instructors: {e}")
+            return jsonify({"error": str(e)}), 500
+
+
+    # POST to add instructor to scheduled_instructors table
+    @app.route("/scheduled_instructors", methods=["POST"])
+    def add_scheduled_instructor():
+        payload = request.json
+        schedule_id = payload.get("schedule_id")
+        instructor_id = payload.get("instructor_id")
+
+        print(f"[DEBUG] Adding instructor: schedule_id={schedule_id}, instructor_id={instructor_id}")
+
+        if not schedule_id or not instructor_id:
+            print("[ERROR] Missing schedule_id or instructor_id in payload")
+            return jsonify({"error": "schedule_id and instructor_id are required"}), 400
+
+        try:
+            response = supabase_client.table("scheduled_instructors").insert({
+                "schedule_id": schedule_id,
+                "instructor_id": instructor_id
+            }).execute()
+
+            print(f"[DEBUG] Insert response: {response.data}")
+            return jsonify({"success": True})
+        except Exception as e:
+            print(f"[ERROR] Failed to add instructor: {e}")
+            return jsonify({"error": str(e)}), 500
+
+
+    # DELETE to remove instructor from scheduled_instructors table
+    @app.route("/scheduled_instructors", methods=["DELETE"])
+    def remove_scheduled_instructor():
+        payload = request.json
+        schedule_id = payload.get("schedule_id")
+        instructor_id = payload.get("instructor_id")
+
+        print(f"[DEBUG] Removing instructor: schedule_id={schedule_id}, instructor_id={instructor_id}")
+
+        if not schedule_id or not instructor_id:
+            print("[ERROR] Missing schedule_id or instructor_id in payload")
+            return jsonify({"error": "schedule_id and instructor_id are required"}), 400
+
+        try:
+            response = supabase_client.table("scheduled_instructors") \
+                .delete() \
+                .eq("schedule_id", schedule_id) \
+                .eq("instructor_id", instructor_id) \
+                .execute()
+
+            print(f"[DEBUG] Delete response: {response.data}")
+            return jsonify({"success": True})
+        except Exception as e:
+            print(f"[ERROR] Failed to remove instructor: {e}")
             return jsonify({"error": str(e)}), 500
