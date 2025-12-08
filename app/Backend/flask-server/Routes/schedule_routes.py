@@ -1323,3 +1323,15 @@ def register_schedule_routes(app):
         except Exception as e:
             print(f"[ERROR] Failed to remove instructor: {e}")
             return jsonify({"error": str(e)}), 500
+
+    # GET assigned instructors for sections in a schedule
+    # @app.route("/schedules/<schedule_id>/assignments", methods=["GET"])
+    # def get_assignments(schedule_id):
+    #     try:
+    #         result = supabase_client.table("assigned_instructors").select("*").execute()
+
+    #         assignedInstructors = result.data or []
+
+    #         return jsonify(assignedInstructors)
+    #     except Exception as e:
+    #         return jsonify({"error": str(e)}), 500

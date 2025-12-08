@@ -95,32 +95,33 @@ export default function AssignmentGrid({
   console.log("addedInstructors", addedInstructors);
   console.log("addedCoursesBySemester", addedCoursesBySemester);
 
-  useEffect(() => {
-    console.log("=== SANITY CHECK ===");
-    console.log(
-      "addedInstructors:",
-      addedInstructors.map((i) => i.instructor_id)
-    );
-    console.log("addedCoursesBySemester:", Object.keys(addedCoursesBySemester));
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // useEffect(() => {
+  //   console.log("=== SANITY CHECK ===");
+  //   console.log(
+  //     "addedInstructors:",
+  //     addedInstructors.map((i) => i.instructor_id)
+  //   );
+  //   console.log("addedCoursesBySemester:", Object.keys(addedCoursesBySemester));
 
-    const allKeys = [];
-    Object.entries(addedCoursesBySemester).forEach(([semester, courses]) => {
-      courses.forEach((course) => {
-        const scid = course.scheduled_course_id || course.course_id;
-        const sectionsCount = course.num_sections || 1;
-        for (let i = 0; i < sectionsCount; i++) {
-          const sectionLetter = String.fromCharCode(65 + i);
-          addedInstructors.forEach((instr) => {
-            allKeys.push(`${instr.instructor_id}-${scid}-${sectionLetter}`);
-          });
-        }
-      });
-    });
-    console.log("Expected assignedSections keys:", allKeys);
+  //   const allKeys = [];
+  //   Object.entries(addedCoursesBySemester).forEach(([semester, courses]) => {
+  //     courses.forEach((course) => {
+  //       const scid = course.scheduled_course_id || course.course_id;
+  //       const sectionsCount = course.num_sections || 1;
+  //       for (let i = 0; i < sectionsCount; i++) {
+  //         const sectionLetter = String.fromCharCode(65 + i);
+  //         addedInstructors.forEach((instr) => {
+  //           allKeys.push(`${instr.instructor_id}-${scid}-${sectionLetter}`);
+  //         });
+  //       }
+  //     });
+  //   });
+  //   console.log("Expected assignedSections keys:", allKeys);
 
-    console.log("Actual assignedSections keys:", Object.keys(assignedSections));
-    console.log("Assigned sections data:", assignedSections);
-  }, [addedInstructors, addedCoursesBySemester, assignedSections]);
+  //   console.log("Actual assignedSections keys:", Object.keys(assignedSections));
+  //   console.log("Assigned sections data:", assignedSections);
+  // }, [addedInstructors, addedCoursesBySemester, assignedSections]);
 
   return (
     <div className="flex flex-row relative">
