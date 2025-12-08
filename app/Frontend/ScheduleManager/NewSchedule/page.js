@@ -28,6 +28,14 @@ export default function NewSchedule() {
   const [addedScheduledInstructors, setAddedScheduledInstructors] = useState(
     []
   );
+  const [scheduleCoursesBySemester, setScheduleCoursesBySemester] = useState({
+    winter: [],
+    spring: [],
+    summer: [],
+    fall: [],
+  });
+
+  const [courseSectionsMap, setCourseSectionsMap] = useState({});
 
   //
   const [instructorData, setInstructorData] = useState([]); //see how still used
@@ -76,28 +84,47 @@ export default function NewSchedule() {
     })();
   }, []);
 
-  //Fetch courses
   useEffect(() => {
-    const fetchCourses = async () => {
-      setIsLoading(true);
-      setError(null);
+    if (!scheduleId) return;
+
+    const fetchScheduleCourses = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/courses`
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/courses`
         );
-        if (!res.ok) throw new Error("Failed to fetch courses");
+        if (!res.ok) throw new Error("Failed to fetch schedule courses");
         const data = await res.json();
-        setCourseData(data || []);
+
+        setScheduleCoursesBySemester(data);
       } catch (err) {
-        console.error(err);
-        setError("Failed to fetch courses: " + err.message);
-      } finally {
-        setIsLoading(false);
+        console.error("Error fetching courses:", err);
       }
     };
+    fetchScheduleCourses();
+  }, [scheduleId]);
 
-    fetchCourses();
-  }, []);
+  //Fetch courses
+  // useEffect(() => {
+  //   const fetchCourses = async () => {
+  //     setIsLoading(true);
+  //     setError(null);
+  //     try {
+  //       const res = await fetch(
+  //         `${process.env.NEXT_PUBLIC_API_URL}/api/courses`
+  //       );
+  //       if (!res.ok) throw new Error("Failed to fetch courses");
+  //       const data = await res.json();
+  //       setCourseData(data || []);
+  //     } catch (err) {
+  //       console.error(err);
+  //       setError("Failed to fetch courses: " + err.message);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   fetchCourses();
+  // }, []);
 
   //FETCH THE COURSES ATTACHED TO THE SCHEDULE FROM SCHEDULED_COURSES
   async function fetchScheduledCourses(scheduleId) {
@@ -136,41 +163,77 @@ export default function NewSchedule() {
   }, [scheduleId]);
 
   //TOGGLE SECTION HANDLER
-  const handleToggleSection = async (scheduled_course_id, section_letter) => {
-    // 1. Call backend toggle API
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/scheduled_courses/${scheduled_course_id}/sections/toggle`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section_letter, scheduleId }),
-      }
-    );
+  const handleToggleSection = (scheduledCourseId, sectionLetter) => {
+    setScheduleCoursesBySemester((prev) => {
+      // Copy the previous state
+      const newState = { ...prev };
 
-    const data = await res.json();
+      // Ensure all semesters exist
+      ["winter", "spring", "summer", "fall"].forEach((sem) => {
+        const courses = newState[sem] || []; // fallback if undefined
+        newState[sem] = courses.map((course) => {
+          if (course.course_id === scheduledCourseId) {
+            const currentSections = course.sections || [];
+            let updatedSections;
 
-    if (!res.ok) {
-      console.error(data.error);
-      return;
-    }
+            if (currentSections.includes(sectionLetter)) {
+              // Remove section
+              updatedSections = currentSections.filter(
+                (s) => s !== sectionLetter
+              );
+            } else {
+              // Add section
+              updatedSections = [...currentSections, sectionLetter];
+            }
 
-    // 2. Update local state with returned sections
-    setNewScheduleDraft((prev) => {
-      const updated = { ...prev };
-      for (const [sem, list] of Object.entries(
-        updated.addedCoursesBySemester
-      )) {
-        updated.addedCoursesBySemester[sem] = list.map((c) => {
-          if (c.scheduled_course_id !== scheduled_course_id) return c;
-          return {
-            ...c,
-            sections: data.sections, // backend returns updated array
-          };
+            return {
+              ...course,
+              sections: updatedSections,
+              num_sections: updatedSections.length,
+            };
+          }
+          return course;
         });
-      }
-      return updated;
+      });
+
+      return newState;
     });
   };
+  // const handleToggleSection = async (scheduled_course_id, section_letter) => {
+  //   // 1. Call backend toggle API
+  //   const res = await fetch(
+  //     `${process.env.NEXT_PUBLIC_API_URL}/scheduled_courses/${scheduled_course_id}/sections/toggle`,
+  //     {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ section_letter, scheduleId }),
+  //     }
+  //   );
+
+  //   const data = await res.json();
+
+  //   if (!res.ok) {
+  //     console.error(data.error);
+  //     return;
+  //   }
+
+  //   // 2. Update local state with returned sections
+  //   setNewScheduleDraft((prev) => {
+  //     const updated = { ...prev };
+  //     for (const [sem, list] of Object.entries(
+  //       updated.addedCoursesBySemester
+  //     )) {
+  //       updated.addedCoursesBySemester[sem] = list.map((c) => {
+  //         if (c.scheduled_course_id !== scheduled_course_id) return c;
+  //         return {
+  //           ...c,
+  //           sections: data.sections, // backend returns updated array
+  //         };
+  //       });
+  //     }
+  //     return updated;
+  //   });
+  // };
 
   useEffect(() => {
     if (!scheduleId || isLoading || courseData.length === 0) return;
@@ -283,6 +346,19 @@ export default function NewSchedule() {
     );
   };
 
+  useEffect(() => {
+    if (!scheduleId) return;
+
+    const fetchSectionCounts = async () => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/section_counts`
+      );
+      const data = await res.json();
+      setCourseSectionsMap(data);
+    };
+
+    fetchSectionCounts();
+  }, [scheduleId]);
   // useEffect(() => {
   //   // Wait until we have a scheduleId and the course data is loaded
   //   if (!scheduleId || isLoading || courseData.length === 0) return;
@@ -611,34 +687,49 @@ export default function NewSchedule() {
       console.error("Auto-assign error:", err);
     }
   };
+
   // Handler to update num_sections for a course in a semester
-  const handleUpdateCourseSections = (course_id, semester, newCount) => {
-    if (isScheduleSubmitted) return; // prevent edits if submitted
-
-    setNewScheduleDraft((prev) => {
-      const currentCourses = prev.addedCoursesBySemester[semester] || [];
-      const updatedCourses = currentCourses.map((c) =>
-        c.course_id === course_id ? { ...c, num_sections: newCount } : c
-      );
-
-      return {
-        ...prev,
-        addedCoursesBySemester: {
-          ...prev.addedCoursesBySemester,
-          [semester]: updatedCourses,
-        },
-      };
-    });
-
-    // Update courseSections per term
-    setCourseSections((prev) => ({
+  const handleUpdateCourseSections = (courseId, semester, newCount) => {
+    setScheduleCoursesBySemester((prev) => ({
       ...prev,
-      [semester]: {
-        ...(prev[semester] || {}),
-        [course_id]: newCount,
-      },
+      [semester]: prev[semester].map((c) =>
+        c.course_id === courseId
+          ? {
+              ...c,
+              num_sections: newCount,
+              sections: c.sections.slice(0, newCount),
+            }
+          : c
+      ),
     }));
   };
+  // const handleUpdateCourseSections = (course_id, semester, newCount) => {
+  //   if (isScheduleSubmitted) return; // prevent edits if submitted
+
+  //   setNewScheduleDraft((prev) => {
+  //     const currentCourses = prev.addedCoursesBySemester[semester] || [];
+  //     const updatedCourses = currentCourses.map((c) =>
+  //       c.course_id === course_id ? { ...c, num_sections: newCount } : c
+  //     );
+
+  //     return {
+  //       ...prev,
+  //       addedCoursesBySemester: {
+  //         ...prev.addedCoursesBySemester,
+  //         [semester]: updatedCourses,
+  //       },
+  //     };
+  //   });
+
+  //   // Update courseSections per term
+  //   setCourseSections((prev) => ({
+  //     ...prev,
+  //     [semester]: {
+  //       ...(prev[semester] || {}),
+  //       [course_id]: newCount,
+  //     },
+  //   }));
+  // };
 
   // Handler function to add an instructor to the newScheduleDraft state
   const handleAddInstructor = (instructor) => {
@@ -679,38 +770,54 @@ export default function NewSchedule() {
 
   // Add course to semester
   const handleAddCourseToSemester = (semester, course) => {
-    if (isScheduleSubmitted) return;
-    setNewScheduleDraft((prevDraft) => {
-      const current = prevDraft.addedCoursesBySemester[semester] || [];
-      if (current.some((c) => c.course_id === course.course_id))
-        return prevDraft;
-      return {
-        ...prevDraft,
-        addedCoursesBySemester: {
-          ...prevDraft.addedCoursesBySemester,
-          [semester]: [...current, course],
-        },
-      };
-    });
-  };
-
-  // Remove course from semester
-  const handleRemoveCourseFromSemester = (semester, course) => {
-    if (isScheduleSubmitted) return;
-    setNewScheduleDraft((prevDraft) => ({
-      ...prevDraft,
-      addedCoursesBySemester: {
-        ...prevDraft.addedCoursesBySemester,
-        [semester]: prevDraft.addedCoursesBySemester[semester].filter(
-          (c) => c.course_id !== course.course_id
-        ),
-      },
+    setScheduleCoursesBySemester((prev) => ({
+      ...prev,
+      [semester]: [...prev[semester], { ...course, sections: [] }],
     }));
   };
 
+  // const handleAddCourseToSemester = (semester, course) => {
+  //   if (isScheduleSubmitted) return;
+  //   setNewScheduleDraft((prevDraft) => {
+  //     const current = prevDraft.addedCoursesBySemester[semester] || [];
+  //     if (current.some((c) => c.course_id === course.course_id))
+  //       return prevDraft;
+  //     return {
+  //       ...prevDraft,
+  //       addedCoursesBySemester: {
+  //         ...prevDraft.addedCoursesBySemester,
+  //         [semester]: [...current, course],
+  //       },
+  //     };
+  //   });
+  // };
+
+  // Remove course from semester
+  const handleRemoveCourseFromSemester = (semester, course) => {
+    setScheduleCoursesBySemester((prev) => ({
+      ...prev,
+      [semester]: prev[semester].filter(
+        (c) => c.course_id !== course.course_id
+      ),
+    }));
+  };
+
+  // const handleRemoveCourseFromSemester = (semester, course) => {
+  //   if (isScheduleSubmitted) return;
+  //   setNewScheduleDraft((prevDraft) => ({
+  //     ...prevDraft,
+  //     addedCoursesBySemester: {
+  //       ...prevDraft.addedCoursesBySemester,
+  //       [semester]: prevDraft.addedCoursesBySemester[semester].filter(
+  //         (c) => c.course_id !== course.course_id
+  //       ),
+  //     },
+  //   }));
+  // };
+
   // toggleSection
 
-  const toggleSection = async (
+  const toggleSectionAssignment = async (
     instructorId,
     course,
     sectionLetter,
@@ -1210,25 +1317,14 @@ export default function NewSchedule() {
                         : semester.charAt(0).toUpperCase() + semester.slice(1)}
                     </div>
                     <CourseSection
-                      courses={[
-                        ...(newScheduleDraft.addedCoursesBySemester?.winter ||
-                          []),
-                        ...(newScheduleDraft.addedCoursesBySemester
-                          ?.springSummer || []),
-                        ...(newScheduleDraft.addedCoursesBySemester?.fall ||
-                          []),
-                      ]}
-                      onToggleSection={handleToggleSection}
+                      key={semester}
                       semester={semester}
-                      //courses={courseData}
-                      onAddCourse={(course, sem) =>
-                        handleAddCourseToSemester(sem, course)
-                      }
+                      courses={scheduleCoursesBySemester[semester]}
+                      addedCourses={scheduleCoursesBySemester[semester]}
+                      onAddCourse={handleAddCourseToSemester}
+                      onRemoveCourse={handleRemoveCourseFromSemester}
                       onUpdateCourseSections={handleUpdateCourseSections}
-                      onRemoveCourse={(course, sem) =>
-                        handleRemoveCourseFromSemester(sem, course)
-                      }
-                      addedCourses={filteredCoursesBySemester[semester]}
+                      onToggleSection={handleToggleSection}
                     />
                   </div>
                 ))}
@@ -1243,7 +1339,7 @@ export default function NewSchedule() {
               onRemoveInstructor={handleRemoveScheduledInstructor}
               addedInstructors={addedScheduledInstructors}
               assignments={assignments}
-              addedCoursesBySemester={newScheduleDraft.addedCoursesBySemester}
+              addedCoursesBySemester={scheduleCoursesBySemester}
               onRowResize={handleRowResize}
               onHeaderResize={handleHeaderResize}
             />
@@ -1253,9 +1349,10 @@ export default function NewSchedule() {
             <div ref={bottomScrollerRef} className="overflow-x-hidden w-full">
               {!isLoading && !loadingSchedule && (
                 <AssignmentGrid
-                  addedInstructors={sortedAndFilteredInstructors}
-                  addedCoursesBySemester={filteredCoursesBySemester}
-                  onToggleSection={toggleSection}
+                  courseSectionsMap={courseSectionsMap}
+                  addedInstructors={addedScheduledInstructors}
+                  addedCoursesBySemester={scheduleCoursesBySemester}
+                  onToggleSectionAssignment={toggleSectionAssignment}
                   assignedSections={assignments}
                   activeSemesters={newScheduleDraft.metaData.activeSemesters}
                   rowHeights={rowHeights}

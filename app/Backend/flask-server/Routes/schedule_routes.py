@@ -1323,6 +1323,90 @@ def register_schedule_routes(app):
         except Exception as e:
             print(f"[ERROR] Failed to remove instructor: {e}")
             return jsonify({"error": str(e)}), 500
+    
+    #GET section counts for courses in a schedule
+    @app.route("/schedules/<schedule_id>/section_counts", methods=["GET"])
+    def get_section_counts(schedule_id):
+        rows = supabase_client.table("sections").select("*").eq("schedule_id", schedule_id).execute().data
+        
+        section_counts = {}
+        for row in rows:
+            course_id = row["course_id"]
+            section_counts[course_id] = section_counts.get(course_id, 0) + 1
+
+        return jsonify(section_counts)
+    
+    # GET all the courses in a schedule
+    @app.route("/schedules/<schedule_id>/courses", methods=["GET"])
+    def get_schedule_courses(schedule_id):
+        try:
+            print("\n" + "="*60)
+            print(f"[DEBUG] Incoming request: GET /schedules/{schedule_id}/courses")
+            print("="*60)
+
+            # Fetch sections from Supabase, including course info via foreign key
+            print(f"[DEBUG] Fetching sections for schedule_id={schedule_id} ...")
+            sections_res = supabase_client.table("sections")\
+                .select("scheduled_course_id, course_id, section_letter, term, course:course_id(course_code, course_name)")\
+                .eq("schedule_id", schedule_id).execute()
+
+            print(f"[DEBUG] Supabase sections response: {sections_res}")
+            sections = sections_res.data or []
+            print(f"[DEBUG] Retrieved {len(sections)} sections")
+
+            if not sections:
+                print("[WARN] No sections found for this schedule")
+
+            # Initialize result structure
+            result = {"winter": [], "spring": [], "summer":[], "fall": []}
+            print("[DEBUG] Initialized result structure:", result)
+
+            # Group sections by scheduled_course_id + term
+            courses_map = {}
+            for s in sections:
+                cid = s.get("scheduled_course_id")
+                term = s.get("term")
+                course_info = s.get("course") or {}
+
+                if not cid or not term:
+                    print(f"[WARN] Section missing scheduled_course_id or term: {s}")
+                    continue
+
+                if term not in result:
+                    print(f"[WARN] Unknown term '{term}' found, skipping section: {s}")
+                    continue
+
+                if cid not in courses_map:
+                    courses_map[cid] = {
+                        "course_id": cid,
+                        "course_code": course_info.get("course_code"),
+                        "title": course_info.get("course_name"),  # use course_name instead of title
+                        "sections": [],
+                        "term": term
+                    }
+
+                courses_map[cid]["sections"].append(s.get("section_letter"))
+                print(f"[DEBUG] Added section '{s.get('section_letter')}' to course '{cid}'")
+
+            print(f"[DEBUG] Completed courses_map:")
+            for cid, c in courses_map.items():
+                print(f"  {cid}: {c}")
+
+            # Build final result grouped by term
+            for course in courses_map.values():
+                course["num_sections"] = len(course["sections"])
+                result[course["term"]].append(course)
+
+            print("[DEBUG] Final formatted result:")
+            print(result)
+            print("="*60 + "\n")
+
+            return jsonify(result), 200
+
+        except Exception as e:
+            print("[ERROR] Exception in get_schedule_courses:", e)
+            return jsonify({"error": str(e)}), 500
+
 
     # GET assigned instructors for sections in a schedule
     # @app.route("/schedules/<schedule_id>/assignments", methods=["GET"])
@@ -1335,3 +1419,4 @@ def register_schedule_routes(app):
     #         return jsonify(assignedInstructors)
     #     except Exception as e:
     #         return jsonify({"error": str(e)}), 500
+
