@@ -1406,6 +1406,110 @@ def register_schedule_routes(app):
         except Exception as e:
             print("[ERROR] Exception in get_schedule_courses:", e)
             return jsonify({"error": str(e)}), 500
+        
+    #GET sections with assigned instructors
+    @app.route("/schedules/<schedule_id>/sections", methods=["GET"])
+    def get_sections(schedule_id):
+        try:
+            print("\n" + "="*60)
+            print(f"[DEBUG] Incoming request: GET /schedules/{schedule_id}/sections")
+            print("="*60)
+
+            # Fetch all sections for the schedule
+            print(f"[DEBUG] Fetching sections for schedule_id={schedule_id} ...")
+            res = supabase_client.table("sections").select("*").eq("schedule_id", schedule_id).execute()
+            print(f"[DEBUG] Supabase response: {res}")
+
+            sections = res.data or []
+            print(f"[DEBUG] Retrieved {len(sections)} sections")
+
+            if not sections:
+                print("[WARN] No sections found for this schedule")
+
+            # Build assignment lookup
+            assignment_lookup = {}
+            for s in sections:
+                instructor_id = s.get("instructor_id")
+                scheduled_course_id = s.get("scheduled_course_id")
+                section_letter = s.get("section_letter")
+
+                if instructor_id:
+                    key = f"{instructor_id}-{scheduled_course_id}-{section_letter}"
+                    assignment_lookup[key] = True
+                    print(f"[DEBUG] Assigned section added: {key}")
+                else:
+                    print(f"[DEBUG] Section unassigned: {scheduled_course_id}-{section_letter}")
+
+            print(f"[DEBUG] Final assignment_lookup: {assignment_lookup}")
+            print("="*60 + "\n")
+
+            return jsonify({"sections": sections, "assignedSections": assignment_lookup}), 200
+
+        except Exception as e:
+            print(f"[ERROR] Exception in get_sections: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    #POST toggle instructors on a section
+    @app.route("/schedules/<schedule_id>/sections/toggle-instructor", methods=["POST"])
+    def toggle_instructor(schedule_id):
+        """
+        Expects JSON:
+        {
+            "instructor_id": 123,
+            "scheduled_course_id": "...",
+            "section_letter": "A"
+        }
+        """
+        try:
+            print("\n" + "="*60)
+            print(f"[DEBUG] Incoming request: POST /schedules/{schedule_id}/sections/toggle-instructor")
+            data = request.json
+            print(f"[DEBUG] Request JSON: {data}")
+
+            instructor_id = data.get("instructor_id")
+            scheduled_course_id = data.get("scheduled_course_id")
+            section_letter = data.get("section_letter")
+
+            if not (instructor_id and scheduled_course_id and section_letter):
+                print("[ERROR] Missing required fields in request")
+                return jsonify({"error": "Missing instructor_id, scheduled_course_id, or section_letter"}), 400
+
+            # Fetch the section
+            print(f"[DEBUG] Fetching section for schedule_id={schedule_id}, "
+                f"scheduled_course_id={scheduled_course_id}, section_letter={section_letter}")
+            section_res = supabase_client.table("sections") \
+                .select("*") \
+                .eq("schedule_id", schedule_id) \
+                .eq("scheduled_course_id", scheduled_course_id) \
+                .eq("section_letter", section_letter) \
+                .execute()
+
+            print(f"[DEBUG] Supabase response: {section_res}")
+            if not section_res.data or len(section_res.data) == 0:
+                print("[WARN] Section not found")
+                return jsonify({"error": "Section not found"}), 404
+
+            section = section_res.data[0]
+            current_instructor = section.get("instructor_id")
+            print(f"[DEBUG] Current instructor_id: {current_instructor}")
+
+            # Toggle assignment
+            new_instructor_id = None if current_instructor == instructor_id else instructor_id
+            print(f"[DEBUG] Updating instructor_id to: {new_instructor_id}")
+
+            update_res = supabase_client.table("sections") \
+                .update({"instructor_id": new_instructor_id}) \
+                .eq("id", section["id"]) \
+                .execute()
+
+            print(f"[DEBUG] Supabase update response: {update_res}")
+            print("="*60 + "\n")
+
+            return jsonify({"success": True, "instructor_id": new_instructor_id}), 200
+
+        except Exception as e:
+            print(f"[ERROR] Exception in toggle_instructor: {e}")
+            return jsonify({"error": str(e)}), 500
 
 
     # GET assigned instructors for sections in a schedule

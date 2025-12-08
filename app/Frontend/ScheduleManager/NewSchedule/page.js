@@ -34,6 +34,8 @@ export default function NewSchedule() {
     summer: [],
     fall: [],
   });
+  const [sections, setSections] = useState([]);
+  const [assignedSections, setAssignedSections] = useState({});
 
   const [courseSectionsMap, setCourseSectionsMap] = useState({});
 
@@ -83,6 +85,22 @@ export default function NewSchedule() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    const fetchSections = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/sections`
+        );
+        const data = await res.json();
+        setSections(data.sections || []);
+        setAssignedSections(data.assignedSections || {});
+      } catch (err) {
+        console.error("Failed to fetch sections:", err);
+      }
+    };
+    fetchSections();
+  }, [scheduleId]);
 
   useEffect(() => {
     if (!scheduleId) return;
@@ -234,6 +252,41 @@ export default function NewSchedule() {
   //     return updated;
   //   });
   // };
+
+  //HANDLE TOGGLE INSTRUCTOR
+  const handleToggleInstructor = async (
+    instructorId,
+    scheduledCourseId,
+    sectionLetter
+  ) => {
+    const key = `${instructorId}-${scheduledCourseId}-${sectionLetter}`;
+    try {
+      const res = await fetch(
+        `/schedules/${scheduleId}/sections/toggle-instructor`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            instructor_id: instructorId,
+            scheduled_course_id: scheduledCourseId,
+            section_letter: sectionLetter,
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setAssignedSections((prev) => ({
+          ...prev,
+          [key]: !!data.instructor_id,
+        }));
+      } else {
+        console.error("Failed to toggle instructor assignment");
+      }
+    } catch (err) {
+      console.error("Error toggling instructor:", err);
+    }
+  };
 
   useEffect(() => {
     if (!scheduleId || isLoading || courseData.length === 0) return;
