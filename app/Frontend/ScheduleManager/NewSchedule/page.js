@@ -196,41 +196,51 @@ export default function NewSchedule() {
   }, [scheduleId]);
 
   //TOGGLE SECTION HANDLER
-  const handleToggleSection = (scheduledCourseId, sectionLetter) => {
-    setScheduleCoursesBySemester((prev) => {
-      // Copy the previous state
-      const newState = { ...prev };
+  const handleToggleSection = async (scheduledCourseId, sectionLetter) => {
+    try {
+      // 1. Call backend to toggle section
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/scheduled_courses/${scheduledCourseId}/sections/toggle`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            section_letter: sectionLetter,
+            scheduleId,
+          }),
+        }
+      );
 
-      // Ensure all semesters exist
-      ["winter", "spring", "summer", "fall"].forEach((sem) => {
-        const courses = newState[sem] || []; // fallback if undefined
-        newState[sem] = courses.map((course) => {
-          if (course.course_id === scheduledCourseId) {
-            const currentSections = course.sections || [];
-            let updatedSections;
+      const data = await res.json();
 
-            if (currentSections.includes(sectionLetter)) {
-              // Remove section
-              updatedSections = currentSections.filter(
-                (s) => s !== sectionLetter
-              );
-            } else {
-              // Add section
-              updatedSections = [...currentSections, sectionLetter];
-            }
+      if (!res.ok) {
+        console.error("Section toggle failed:", data.error);
+        return;
+      }
+
+      // 2. Update local state with backend-returned sections array
+      setNewScheduleDraft((prev) => {
+        const updated = { ...prev };
+
+        for (const [sem, list] of Object.entries(
+          updated.addedCoursesBySemester
+        )) {
+          updated.addedCoursesBySemester[sem] = list.map((c) => {
+            if (c.scheduled_course_id !== scheduledCourseId) return c;
 
             return {
-              ...course,
-              sections: updatedSections,
-              num_sections: updatedSections.length,
+              ...c,
+              sections: data.sections,
+              num_sections: data.sections.length,
             };
-          }
-          return course;
-        });
-      });
+          });
+        }
 
-      return newState;
-    });
+        return updated;
+      });
+    } catch (error) {
+      console.error("Error calling section toggle API:", error);
+    }
   };
   // const handleToggleSection = async (scheduled_course_id, section_letter) => {
   //   // 1. Call backend toggle API

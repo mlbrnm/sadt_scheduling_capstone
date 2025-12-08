@@ -1177,46 +1177,136 @@ def register_schedule_routes(app):
             return jsonify({"error": str(e)}), 500
         
 #ENDPOINT FOR TOGGLING SECTION
+# ============================================================
+# TOGGLE SECTION LETTER FOR A SCHEDULED COURSE
+# ============================================================
     @app.route("/scheduled_courses/<scid>/sections/toggle", methods=["POST"])
     def toggle_section(scid):
-        payload = request.json
-        letter = payload.get("section_letter")
-        schedule_id = payload.get("scheduleId")
+        print("\n" + "=" * 80)
+        print(f"[DEBUG] Incoming request: POST /scheduled_courses/{scid}/sections/toggle")
 
-        # get the course_id 
-        scheduled_course = supabase_client.table("scheduled_courses") \
-        .select("course_id") \
-        .eq("scheduled_course_id", scid) \
-        .single() \
-        .execute()
+        try:
+            data = request.json
+            print(f"[DEBUG] Request JSON: {data}")
 
-        if not scheduled_course.data:
-            return jsonify({"error": "Scheduled course not found"}), 404
+            section_letter = data.get("section_letter")
+            schedule_id = data.get("scheduleId")
 
-        course_id = scheduled_course.data.get("course_id")
+            # --------------------------
+            # Validate
+            # --------------------------
+            if not section_letter or not schedule_id:
+                print("[ERROR] Missing required fields (section_letter, scheduleId)")
+                return jsonify({
+                    "error": "Missing required fields: section_letter, scheduleId"
+                }), 400
 
+            # --------------------------
+            # Get course_id from scheduled_course
+            # --------------------------
+            print(f"[DEBUG] Fetching scheduled_course: scid={scid}")
 
+            scheduled_course_res = (
+                supabase_client.table("scheduled_courses")
+                .select("course_id, schedule_id")
+                .eq("scheduled_course_id", scid)
+                .single()
+                .execute()
+            )
 
-        # Check if exists
-        existing = supabase_client.table("sections").select("*").eq("scheduled_course_id", scid).eq("section_letter", letter).execute()
+            print(f"[DEBUG] Supabase scheduled_course result: {scheduled_course_res}")
 
-        if existing.data:
-            # REMOVE SECTION
-            supabase_client.table("sections").delete().eq("scheduled_course_id", scid).eq("section_letter", letter).execute()
-        else:
-            # ADD SECTION
-            supabase_client.table("sections").insert({
-                "schedule_id": schedule_id,
-                "course_id": course_id,
-                "scheduled_course_id": scid,
-                "section_letter": letter,
-                "delivery_mode": "both",
-            }).execute()
+            if not scheduled_course_res.data:
+                print("[ERROR] Scheduled course not found")
+                return jsonify({"error": "Scheduled course not found"}), 404
 
-        # Fetch updated list
-        result = supabase_client.table("sections").select("*").eq("scheduled_course_id", scid).execute()
+            course_id = scheduled_course_res.data["course_id"]
+            backend_schedule_id = scheduled_course_res.data["schedule_id"]
 
-        return jsonify({ "sections": result.data })
+            print(f"[DEBUG] course_id={course_id}, schedule_id(found)={backend_schedule_id}")
+
+            # --------------------------
+            # Ensure schedule_id matches
+            # --------------------------
+            if str(backend_schedule_id) != str(schedule_id):
+                print("[WARN] scheduleId mismatch between payload and DB")
+                print(f"Payload scheduleId={schedule_id}, DB scheduleId={backend_schedule_id}")
+
+            # --------------------------
+            # Check if the section already exists
+            # --------------------------
+            print(f"[DEBUG] Checking if section exists: {section_letter}")
+
+            existing_res = (
+                supabase_client.table("sections")
+                .select("*")
+                .eq("scheduled_course_id", scid)
+                .eq("section_letter", section_letter)
+                .execute()
+            )
+
+            print(f"[DEBUG] Section query result: {existing_res}")
+
+            if existing_res.data:
+                # ----------------------------------------
+                # REMOVE SECTION
+                # ----------------------------------------
+                print(f"[DEBUG] Section {section_letter} exists → removing")
+
+                delete_res = (
+                    supabase_client.table("sections")
+                    .delete()
+                    .eq("scheduled_course_id", scid)
+                    .eq("section_letter", section_letter)
+                    .execute()
+                )
+                print(f"[DEBUG] Delete response: {delete_res}")
+
+            else:
+                # ----------------------------------------
+                # ADD SECTION
+                # ----------------------------------------
+                print(f"[DEBUG] Section {section_letter} does NOT exist → adding")
+
+                insert_res = (
+                    supabase_client.table("sections")
+                    .insert({
+                        "schedule_id": backend_schedule_id,
+                        "course_id": course_id,
+                        "scheduled_course_id": scid,
+                        "section_letter": section_letter,
+                        "delivery_mode": "both",
+                        "instructor_id": None,   # always start empty
+                    })
+                    .execute()
+                )
+                print(f"[DEBUG] Insert response: {insert_res}")
+
+            # --------------------------
+            # Fetch and return updated letters
+            # --------------------------
+            print("[DEBUG] Fetching updated section list")
+
+            final_res = (
+                supabase_client.table("sections")
+                .select("section_letter")
+                .eq("scheduled_course_id", scid)
+                .order("section_letter")
+                .execute()
+            )
+
+            print(f"[DEBUG] Final section list: {final_res.data}")
+            print("=" * 80 + "\n")
+
+            # Return ONLY letters (cleaner for frontend)
+            letters = [row["section_letter"] for row in final_res.data]
+
+            return jsonify({"sections": letters}), 200
+
+        except Exception as e:
+            print(f"[ERROR] toggle_section exception: {e}")
+            print("=" * 80 + "\n")
+            return jsonify({"error": str(e)}), 500
 
     #GET RELEVANT COURSES FROM SCHEDULED_COURSES
     @app.route("/schedules/<schedule_id>/scheduled_courses", methods=["GET"])
