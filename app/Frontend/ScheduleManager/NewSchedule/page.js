@@ -93,12 +93,27 @@ export default function NewSchedule() {
           `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/sections`
         );
         const data = await res.json();
-        setSections(data.sections || []);
-        setAssignedSections(data.assignedSections || {});
+
+        const rawSections = data.sections || [];
+
+        // Build the map that AssignmentGrid uses
+        const assignedMap = {};
+        for (const sec of rawSections) {
+          if (sec.instructor_id) {
+            const key = `${sec.instructor_id}-${sec.scheduled_course_id}-${sec.section_letter}`;
+            assignedMap[key] = true;
+          }
+        }
+
+        setSections(rawSections);
+        setAssignedSections(assignedMap);
+
+        console.log("Rebuilt assignedSections:", assignedMap);
       } catch (err) {
         console.error("Failed to fetch sections:", err);
       }
     };
+
     fetchSections();
   }, [scheduleId]);
 
@@ -869,13 +884,11 @@ export default function NewSchedule() {
   // };
 
   // toggleSection
-
   const toggleSectionAssignment = async (
     instructorId,
     course,
     sectionLetter,
-    semester,
-    mode
+    semester
   ) => {
     if (isScheduleSubmitted) return;
 
@@ -883,104 +896,186 @@ export default function NewSchedule() {
       typeof course.scheduled_course_id === "function"
         ? course.scheduled_course_id()
         : course.scheduled_course_id || course.course_id;
+
     const key = `${instructorId}-${scid}-${sectionLetter}`;
     const existing = assignments[key];
 
-    // Compute real hours
-    const courseInfo =
-      newScheduleDraft.addedCoursesBySemester[semester]?.find(
-        (c) => c.course_id === course.course_id
-      ) || course;
-
-    const realClassHrs = Number(courseInfo.class_hrs ?? 0);
-    const realOnlineHrs = Number(courseInfo.online_hrs ?? 0);
-
-    const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
-    const onlineHrs = mode === "online" || mode === "both" ? realOnlineHrs : 0;
-    const weekly_hours = classHrs + onlineHrs;
-
-    // Optimistically update the local assignments
+    // Optimistic UI: flip assignment locally
     setAssignments((prev) => {
-      const newAssignments = { ...prev };
-
-      if (existing && existing.delivery_mode === mode) {
-        // Remove locally
-        delete newAssignments[key];
+      const updated = { ...prev };
+      if (existing) {
+        delete updated[key]; // unassign
       } else {
-        // Add locally
-        newAssignments[key] = {
-          instructor_id: instructorId,
-          scheduled_course_id: scid,
-          section_letter: sectionLetter,
-          delivery_mode: mode,
-          weekly_hours,
-          class_hrs: classHrs,
-          online_hrs: onlineHrs,
-          semester,
-        };
+        updated[key] = true; // assign
       }
-
-      // Recalculate CCH
-      recalcAllInstructorCCH(newAssignments);
-      return newAssignments;
+      return updated;
     });
 
-    const payload = {
-      action: existing && existing.delivery_mode === mode ? "remove" : "add",
-      instructor_id: Number(instructorId),
-      scheduled_course_id: String(scid),
-      section_letter: String(sectionLetter),
-      delivery_mode: String(mode),
-      semester: String(semester),
-      weekly_hours: Number(weekly_hours),
-      class_hrs: Number(classHrs),
-      online_hrs: Number(onlineHrs),
-    };
-
-    console.log("Payload for toggleSection:", payload);
-    console.log("Types of each field:", {
-      action: typeof payload.action,
-      instructor_id: typeof payload.instructor_id,
-      scheduled_course_id: typeof payload.scheduled_course_id,
-      section_letter: typeof payload.section_letter,
-      delivery_mode: typeof payload.delivery_mode,
-      semester: typeof payload.semester,
-      weekly_hours: typeof payload.weekly_hours,
-      class_hrs: typeof payload.class_hrs,
-      online_hrs: typeof payload.online_hrs,
-    });
-
-    // Call backend to persist the change
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/assignments/toggle`,
+        `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/sections/toggle-instructor`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action:
-              existing && existing.delivery_mode === mode ? "remove" : "add",
             instructor_id: Number(instructorId),
             scheduled_course_id: String(scid),
             section_letter: String(sectionLetter),
-            delivery_mode: String(mode),
-            semester: String(semester),
-            weekly_hours: Number(weekly_hours),
-            class_hrs: Number(classHrs),
-            online_hrs: Number(onlineHrs),
           }),
         }
       );
 
       const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.error || "Failed to update assignment");
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to toggle instructor");
+      }
+
+      // Backend returns the new instructor_id or null
+      const newInstructorId = data.instructor_id;
+
+      setAssignments((prev) => {
+        const updated = { ...prev };
+
+        if (newInstructorId === instructorId) {
+          // Assigned
+          updated[key] = true;
+        } else {
+          // Unassigned
+          delete updated[key];
+        }
+
+        return updated;
+      });
     } catch (err) {
-      console.error("Failed to save assignment:", err);
-      // Optionally, revert local state on failure
-      setAssignments((prev) => ({ ...prev, [key]: existing }));
+      console.error("Failed to toggle section assignment:", err);
+
+      // rollback optimistic update
+      setAssignments((prev) => {
+        const updated = { ...prev };
+
+        if (existing) {
+          updated[key] = true; // restore original
+        } else {
+          delete updated[key];
+        }
+
+        return updated;
+      });
     }
   };
+
+  // const toggleSectionAssignment = async (
+  //   instructorId,
+  //   course,
+  //   sectionLetter,
+  //   semester,
+  //   mode
+  // ) => {
+  //   if (isScheduleSubmitted) return;
+
+  //   const scid =
+  //     typeof course.scheduled_course_id === "function"
+  //       ? course.scheduled_course_id()
+  //       : course.scheduled_course_id || course.course_id;
+  //   const key = `${instructorId}-${scid}-${sectionLetter}`;
+  //   const existing = assignments[key];
+
+  //   // Compute real hours
+  //   const courseInfo =
+  //     newScheduleDraft.addedCoursesBySemester[semester]?.find(
+  //       (c) => c.course_id === course.course_id
+  //     ) || course;
+
+  //   const realClassHrs = Number(courseInfo.class_hrs ?? 0);
+  //   const realOnlineHrs = Number(courseInfo.online_hrs ?? 0);
+
+  //   const classHrs = mode === "class" || mode === "both" ? realClassHrs : 0;
+  //   const onlineHrs = mode === "online" || mode === "both" ? realOnlineHrs : 0;
+  //   const weekly_hours = classHrs + onlineHrs;
+
+  //   // Optimistically update the local assignments
+  //   setAssignments((prev) => {
+  //     const newAssignments = { ...prev };
+
+  //     if (existing && existing.delivery_mode === mode) {
+  //       // Remove locally
+  //       delete newAssignments[key];
+  //     } else {
+  //       // Add locally
+  //       newAssignments[key] = {
+  //         instructor_id: instructorId,
+  //         scheduled_course_id: scid,
+  //         section_letter: sectionLetter,
+  //         delivery_mode: mode,
+  //         weekly_hours,
+  //         class_hrs: classHrs,
+  //         online_hrs: onlineHrs,
+  //         semester,
+  //       };
+  //     }
+
+  //     // Recalculate CCH
+  //     recalcAllInstructorCCH(newAssignments);
+  //     return newAssignments;
+  //   });
+
+  //   const payload = {
+  //     action: existing && existing.delivery_mode === mode ? "remove" : "add",
+  //     instructor_id: Number(instructorId),
+  //     scheduled_course_id: String(scid),
+  //     section_letter: String(sectionLetter),
+  //     delivery_mode: String(mode),
+  //     semester: String(semester),
+  //     weekly_hours: Number(weekly_hours),
+  //     class_hrs: Number(classHrs),
+  //     online_hrs: Number(onlineHrs),
+  //   };
+
+  //   console.log("Payload for toggleSection:", payload);
+  //   console.log("Types of each field:", {
+  //     action: typeof payload.action,
+  //     instructor_id: typeof payload.instructor_id,
+  //     scheduled_course_id: typeof payload.scheduled_course_id,
+  //     section_letter: typeof payload.section_letter,
+  //     delivery_mode: typeof payload.delivery_mode,
+  //     semester: typeof payload.semester,
+  //     weekly_hours: typeof payload.weekly_hours,
+  //     class_hrs: typeof payload.class_hrs,
+  //     online_hrs: typeof payload.online_hrs,
+  //   });
+
+  //   // Call backend to persist the change
+  //   try {
+  //     const response = await fetch(
+  //       `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/assignments/toggle`,
+  //       {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({
+  //           action:
+  //             existing && existing.delivery_mode === mode ? "remove" : "add",
+  //           instructor_id: Number(instructorId),
+  //           scheduled_course_id: String(scid),
+  //           section_letter: String(sectionLetter),
+  //           delivery_mode: String(mode),
+  //           semester: String(semester),
+  //           weekly_hours: Number(weekly_hours),
+  //           class_hrs: Number(classHrs),
+  //           online_hrs: Number(onlineHrs),
+  //         }),
+  //       }
+  //     );
+
+  //     const data = await response.json();
+  //     if (!response.ok)
+  //       throw new Error(data.error || "Failed to update assignment");
+  //   } catch (err) {
+  //     console.error("Failed to save assignment:", err);
+  //     // Optionally, revert local state on failure
+  //     setAssignments((prev) => ({ ...prev, [key]: existing }));
+  //   }
+  // };
 
   // Cleanup assignments when instructors remove
   useEffect(() => {
@@ -1406,7 +1501,7 @@ export default function NewSchedule() {
                   addedInstructors={addedScheduledInstructors}
                   addedCoursesBySemester={scheduleCoursesBySemester}
                   onToggleSectionAssignment={toggleSectionAssignment}
-                  assignedSections={assignments}
+                  assignedSections={assignedSections}
                   activeSemesters={newScheduleDraft.metaData.activeSemesters}
                   rowHeights={rowHeights}
                   headerHeight={headerHeight}
