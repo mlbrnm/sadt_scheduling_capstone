@@ -1,8 +1,13 @@
+import json
+from datetime import time, timedelta
 from flask import jsonify, request
+from postgrest import APIError
 from database import supabase_client
+from artifacts.schedulingprototype.scheduling import solver_main
 
 def register_schedule_routes(app):
-    
+
+
     @app.route("/schedules/save", methods=["POST"])
     def save_schedule():
         data = request.get_json()
@@ -15,89 +20,63 @@ def register_schedule_routes(app):
         added_courses_by_semester = data.get("addedCoursesBySemester", {})
         assignments = data.get("assignments", {})
 
+        print("=== SAVE SCHEDULE REQUEST ===")
+        print("Schedule ID:", schedule_id)
+        print("Academic Year:", academic_year)
+        print("Academic Chair:", academic_chair_id)
+        # print("Added Courses By Semester:", added_courses_by_semester)
+        # print("Assignments:", assignments)
+        print("================================")
+
+
         if not academic_chair_id or not academic_year:
             return jsonify({"error": "Missing academic_chair_id or academic_year"}), 400
 
-        # --------------------------------------------------------------
-        # Helper: Ensure section count matches num_sections
-        # --------------------------------------------------------------
-        def sync_sections_for_scheduled_course(sc_row):
-            schedule_id = sc_row["schedule_id"]
-            course_id = sc_row["course_id"]
-            term = sc_row["term"]
-            num_sections = sc_row["num_sections"]
-            scheduled_course_id = sc_row["scheduled_course_id"]
-
-            print("\n=== SECTION SYNC DEBUG ===")
-            print("Syncing sections for:", {
-                "schedule_id": schedule_id,
-                "course_id": course_id,
-                "term": term,
-                "num_sections": num_sections,
-                "scheduled_course_id": scheduled_course_id
-            })
-
-            # 1. Fetch existing sections
-            existing_resp = (
-                supabase_client.table("sections")
-                .select("id,section_letter")
-                .eq("scheduled_course_id", scheduled_course_id)
-                .order("section_letter", desc=False)
-                .execute()
-            )
-
-            existing_sections = existing_resp.data or []
-            existing_letters = [s["section_letter"] for s in existing_sections]
-
-            print("Existing letters:", existing_letters)
-
-            # 2. Determine desired letters A..N
-            target_letters = [chr(ord("A") + i) for i in range(num_sections)]
-            print("Target letters:", target_letters)
-
-            # 3. DELETE extra sections
-            for s in existing_sections:
-                if s["section_letter"] not in target_letters:
-                    print("Deleting extra section:", s["section_letter"])
-                    supabase_client.table("sections") \
-                        .delete() \
-                        .eq("id", s["id"]) \
-                        .execute()
-
-            # 4. INSERT missing sections
-            for letter in target_letters:
-                if letter not in existing_letters:
-                    print("Creating missing section:", letter)
-                    supabase_client.table("sections").insert({
-                        "schedule_id": schedule_id,
-                        "course_id": course_id,
-                        "term": term,
-                        "section_letter": letter,
-                        "delivery_mode": sc_row.get("delivery_mode") or "both",
-                        "timeslots": [],
-                        "scheduled_course_id": scheduled_course_id
-                    }).execute()
-
-            print("=== END SECTION SYNC ===\n")
-
         try:
-            # --------------------------------------------------------------
-            # 1. UPSERT SCHEDULED COURSES + SYNC SECTIONS
-            # --------------------------------------------------------------
+            # -------------------------------
+            # UPSERT SCHEDULED COURSES + SYNC SECTIONS
+            # -------------------------------
+            def sync_sections_for_scheduled_course(sc_row):
+                scheduled_course_id = sc_row["scheduled_course_id"]
+                course_id = sc_row["course_id"]
+                term = sc_row["term"]
+                num_sections = sc_row["num_sections"]
+
+                existing_resp = (
+                    supabase_client.table("sections")
+                    .select("id,section_letter")
+                    .eq("scheduled_course_id", scheduled_course_id)
+                    .order("section_letter", desc=False)
+                    .execute()
+                )
+                existing_sections = existing_resp.data or []
+                existing_letters = [s["section_letter"] for s in existing_sections]
+
+                # DELETE extra sections
+                for s in existing_sections:
+                    if s["section_letter"] not in [chr(ord("A")+i) for i in range(num_sections)]:
+                        supabase_client.table("sections").delete().eq("id", s["id"]).execute()
+
+                # INSERT missing sections
+                for i in range(num_sections):
+                    letter = chr(ord("A")+i)
+                    if letter not in existing_letters:
+                        supabase_client.table("sections").insert({
+                            "schedule_id": sc_row["schedule_id"],
+                            "course_id": course_id,
+                            "term": term,
+                            "section_letter": letter,
+                            "delivery_mode": sc_row.get("delivery_mode") or "both",
+                            "timeslots": [],
+                            "scheduled_course_id": scheduled_course_id
+                        }).execute()
+
             scheduled_courses_batch = []
 
             for semester, courses in added_courses_by_semester.items():
                 for course in courses:
                     course_id = course["course_id"]
                     num_sections = int(course.get("num_sections", 1))
-
-                    print("=== scheduled_course DEBUG ===")
-                    print("Processing:", {
-                        "schedule_id": schedule_id,
-                        "course_id": course_id,
-                        "term": semester,
-                        "desired_num_sections": num_sections
-                    })
 
                     # Check existing scheduled_course
                     existing_resp = (
@@ -108,189 +87,289 @@ def register_schedule_routes(app):
                         .eq("term", semester)
                         .execute()
                     )
-
                     rows = existing_resp.data or []
 
                     if rows:
                         sc_row = rows[0]
-                        sc_id = sc_row["scheduled_course_id"]
-                        current_num = sc_row["num_sections"]
-
-                        if current_num != num_sections:
-                            print(f"Updating scheduled_course {sc_id} from {current_num} -> {num_sections}")
-                            update_resp = (
-                                supabase_client.table("scheduled_courses")
-                                .update({
-                                    "num_sections": num_sections,
-                                    "status": "sections_created"
-                                })
-                                .eq("scheduled_course_id", sc_id)
-                                .execute()
-                            )
-                            sc_row["num_sections"] = num_sections  # refresh locally
-
-                    else:
-                        print("Inserting new scheduled_course")
-                        insert_resp = (
-                            supabase_client.table("scheduled_courses")
-                            .insert({
-                                "schedule_id": schedule_id,
-                                "course_id": course_id,
+                        if sc_row["num_sections"] != num_sections:
+                            supabase_client.table("scheduled_courses").update({
                                 "num_sections": num_sections,
-                                "term": semester,
-                                "status": "sections_created",
-                                "delivery_mode": course.get("delivery_mode")
-                            })
-                            .execute()
-                        )
+                                "status": "sections_created"
+                            }).eq("scheduled_course_id", sc_row["scheduled_course_id"]).execute()
+                            sc_row["num_sections"] = num_sections
+                    else:
+                        insert_resp = supabase_client.table("scheduled_courses").insert({
+                            "schedule_id": schedule_id,
+                            "course_id": course_id,
+                            "num_sections": num_sections,
+                            "term": semester,
+                            "status": "sections_created",
+                            "delivery_mode": course.get("delivery_mode")
+                        }).execute()
                         sc_row = insert_resp.data[0]
 
-                    # store
                     scheduled_courses_batch.append(sc_row)
-
-                    # ⭐ SYNC SECTIONS FOR THIS COURSE
                     sync_sections_for_scheduled_course(sc_row)
 
-                    print("=== end scheduled_course DEBUG ===\n")
+            # -------------------------------
+            # ASSIGN INSTRUCTORS TO SECTIONS & CALCULATE HOURS
+            # -------------------------------
 
-            # --------------------------------------------------------------
-            # 2. ASSIGN INSTRUCTORS TO SECTIONS
-            # --------------------------------------------------------------
-            print("\n=== INSTRUCTOR ASSIGNMENT PHASE ===")
+            print("=== START INSTRUCTOR ASSIGNMENTS ===")
+
 
             # Preload all sections for this schedule
             section_rows = (
                 supabase_client.table("sections")
-                .select("id,schedule_id,course_id,term,section_letter")
+                .select("id, schedule_id, course_id, term, section_letter")
                 .eq("schedule_id", schedule_id)
                 .execute()
             ).data or []
+            print(f"Loaded {len(section_rows)} sections for schedule {schedule_id}")
 
-            # Build lookup map: (course_id, term, section_letter) → section_id
-            section_map = {
-                (row["course_id"], row["term"], row["section_letter"]): row["id"]
-                for row in section_rows
-            }
 
-            instructor_upserts = []
+            # Map (course_id, term, section_letter) -> section_id
+            section_map = {(r["course_id"], r["term"], r["section_letter"]): r["id"] for r in section_rows}
+
+            # Track what to insert and instructor hours
+            instructor_hours = {}  # instructor_id -> {"winter": X, "springSummer": Y, "fall": Z}
 
             for key, value in assignments.items():
-                # Key format: "instructor-course-semester"
-                instructor_id_str, course_id_str, semester = key.split("-")
-                instructor_id = float(instructor_id_str)
-                course_id = course_id_str  # keep string, matches your DB
+                # key format: "instructorId-scheduledCourseId-semester"
+                print("Assignment key:", key)
+                print("Value:", value)
 
-                for section_letter, delivery in value.get("sections", {}).items():
-                    lookup_key = (course_id, semester, section_letter)
+                instructor_id = value["instructor_id"]
+                scheduled_course_id = value["scheduled_course_id"]
+                section_letter = value["section_letter"]
+                semester = sc_row["term"]
 
-                    if lookup_key not in section_map:
-                        print("WARNING: Section not found for assignment:", lookup_key)
-                        continue
+                # Map scheduled_course_id to course_id and term
+                sc_row = next((sc for sc in scheduled_courses_batch if sc["scheduled_course_id"] == scheduled_course_id), None)
+                if not sc_row:
+                    print("WARNING: scheduled_course_id not found:", scheduled_course_id)
+                    continue
 
-                    instructor_upserts.append({
-                        "schedule_id": schedule_id,
-                        "section_id": section_map[lookup_key],
-                        "instructor_id": instructor_id
-                    })
+                course_id = sc_row["course_id"]
+                term = sc_row["term"]
+                lookup_key = (course_id, term, section_letter)
 
-            if instructor_upserts:
-                print("Upserting instructors:", instructor_upserts)
-                supabase_client.table("scheduled_instructors") \
-                    .upsert(instructor_upserts,
-                            on_conflict=["schedule_id", "section_id", "instructor_id"]) \
+                if lookup_key not in section_map:
+                    print("WARNING: Section not found:", lookup_key)
+                    continue
+
+                section_id = section_map[lookup_key]
+
+                # --- Insert or skip if exists ---
+                exists = (
+                    supabase_client.table("scheduled_instructors")
+                    .select("id")
+                    .eq("schedule_id", schedule_id)
+                    .eq("section_id", section_id)
+                    .eq("instructor_id", instructor_id)
                     .execute()
+                )
+                if exists.data:
+                        print(f"Instructor {instructor_id} already assigned to section {section_letter} of course {course_id}")
+                else:
+                    supabase_client.table("scheduled_instructors").insert({
+                        "schedule_id": schedule_id,
+                        "section_id": section_id,
+                        "instructor_id": instructor_id
+                    }).execute()
+                    print(f"Inserted instructor {instructor_id} into section {section_letter} of course {course_id}")
 
-            print("=== END INSTRUCTOR ASSIGNMENT ===")
+                # --- Track weekly hours ---
+                weekly_hours = value.get("weekly_hours") or 0
+                instructor_hours.setdefault(instructor_id, {"winter":0,"springSummer":0,"fall":0})
+                instructor_hours[instructor_id][semester] += weekly_hours
+                print(f"Tracking {weekly_hours} weekly hours for instructor {instructor_id} in {semester}")
 
-            return jsonify({"message": "Schedule saved successfully"}), 200
+
+                # --- Update instructor CCH totals ---
+                total_weeks = 15
+                for instr_id, hrs in instructor_hours.items():
+                    total_hours = sum(hrs.values()) * total_weeks
+                    winter_hours = hrs["winter"] * total_weeks
+                    spring_summer_hours = hrs["springSummer"] * total_weeks
+                    fall_hours = hrs["fall"] * total_weeks
+
+                    print(f"Updating instructor {instr_id} CCH: total={total_hours}, winter={winter_hours}, spring/summer={spring_summer_hours}, fall={fall_hours}")
+                    supabase_client.table("instructors").update({
+                        "total_cch": f"{int(total_hours)} hours",
+                        "winter_cch": f"{int(winter_hours)} hours",
+                        "spring_summer_cch": f"{int(spring_summer_hours)} hours",
+                        "fall_cch": f"{int(fall_hours)} hours"
+                    }).eq("instructor_id", instr_id).execute()
+
+                print("=== FINISHED INSTRUCTOR ASSIGNMENTS ===")
+                return jsonify({"message": "Schedule saved successfully"}), 200
 
         except Exception as e:
             print("Error saving schedule:", e)
             return jsonify({"error": str(e)}), 500
 
 
+    def hms_to_hours(hms_str):
+        """Convert 'HH:MM:SS' string to float hours."""
+        if not hms_str:
+            return 0
+        h, m, s = map(int, hms_str.split(":"))
+        return h + m/60 + s/3600
+
     @app.route("/schedules/<schedule_id>/json", methods=["GET"])
     def get_schedule_as_json(schedule_id):
-        """
-        Return schedule, scheduled_courses, and sections in JSON format,
-        including course metadata nested under each scheduled course.
-        """
         try:
-            # Fetch schedule
-            schedule_resp = (
+            # 1. Fetch schedule
+            schedule = (
                 supabase_client.table("schedules")
                 .select("*")
                 .eq("id", schedule_id)
                 .single()
                 .execute()
+                .data
             )
-            if not schedule_resp.data:
+            if not schedule:
                 return jsonify({"error": "Schedule not found"}), 404
 
-            schedule = schedule_resp.data
-
-            # Fetch scheduled courses
-            scheduled_courses_resp = (
+            # 2. Fetch scheduled courses
+            scheduled_courses = (
                 supabase_client.table("scheduled_courses")
                 .select("*")
                 .eq("schedule_id", schedule_id)
                 .execute()
+                .data or []
             )
-            scheduled_courses = scheduled_courses_resp.data or []
 
+            if not scheduled_courses:
+                return jsonify({
+                    "schedule": schedule,
+                    "courses_by_semester": {},
+                    "metaData": {
+                        "year": schedule.get("academic_year"),
+                        "activeSemesters": schedule.get("terms") or []
+                    }
+                }), 200
+
+            all_course_ids = [sc["course_id"] for sc in scheduled_courses]
+            all_sc_ids = [sc["scheduled_course_id"] for sc in scheduled_courses]
+
+            # 3. Fetch course metadata
+            course_rows = (
+                supabase_client.table("courses")
+                .select("*")
+                .in_("course_id", all_course_ids)
+                .execute()
+                .data or []
+            )
+            courses_by_id = {c["course_id"]: c for c in course_rows}
+
+            # 4. Fetch sections
+            sections = (
+                supabase_client.table("sections")
+                .select("*")
+                .in_("scheduled_course_id", all_sc_ids)
+                .execute()
+                .data or []
+            )
+            sections_by_sc = {}
+            all_section_ids = []
+            for sec in sections:
+                scid = sec["scheduled_course_id"]
+                sections_by_sc.setdefault(scid, []).append(sec)
+                all_section_ids.append(sec["id"])
+
+            # # 5. Fetch instructor assignments
+            # instructors_assignments = (
+            #     supabase_client.table("scheduled_instructors")
+            #     .select("*")
+            #     .in_("section_id", all_section_ids)
+            #     .execute()
+            #     .data or []
+            # )
+
+            # # 6. Fetch full instructor details
+            # instructor_ids = [ins["instructor_id"] for ins in instructors_assignments]
+            # instructors_data = (
+            #     supabase_client.table("instructors")
+            #     .select("*")
+            #     .in_("instructor_id", instructor_ids)
+            #     .execute()
+            #     .data or []
+            # )
+
+            # Convert CCH to numeric hours and build dictionary
+            # instructors_by_id = {}
+            # for i in instructors_data:
+            #     instructors_by_id[i["instructor_id"]] = {
+            #         "first_name": i.get("instructor_name"),
+            #         "last_name": i.get("instructor_lastname"),
+            #         "total_cch": hms_to_hours(i.get("total_cch")),
+            #         "winter_cch": hms_to_hours(i.get("winter_cch")),
+            #         "spring_summer_cch": hms_to_hours(i.get("spring_summer_cch")),
+            #         "fall_cch": hms_to_hours(i.get("fall_cch")),
+            #         # Include contract info
+            #         "contract_type": i.get("contract_type"),
+            #         "instructor_status": i.get("instructor_status"),
+            #     }
+
+            # # --- Step 7: Map instructors to sections and compute hours per section ---
+            # # Build a map from section_id -> scheduled_course_id
+            # section_to_course_id_map = {sec["id"]: sec["scheduled_course_id"] for sec in sections}
+
+            # instructors_by_section = {}
+
+            # for ins in instructors_assignments:
+            #     section_id = ins["section_id"]
+                
+            #     # Base instructor info from instructors table
+            #     instr_info = instructors_by_id.get(ins["instructor_id"], {}).copy()
+                
+            #     # Compute hours
+            #     # Use class_hrs and online_hrs from the assignment if present, else 0
+            #     class_hrs = ins.get("class_hrs") or 0
+            #     online_hrs = ins.get("online_hrs") or 0
+            #     weekly_hours = class_hrs + online_hrs
+                
+            #     # Include scheduled_course_id (required for frontend key)
+            #     scheduled_course_id = ins.get("scheduled_course_id") or section_to_course_id_map.get(section_id)
+                
+            #     merged = {
+            #         **ins,  # keep other assignment fields
+            #         **instr_info,
+            #         "scheduled_course_id": scheduled_course_id,
+            #         "weekly_hours": weekly_hours,
+            #         "class_hrs": class_hrs,
+            #         "online_hrs": online_hrs
+            #     }
+                
+            #     instructors_by_section.setdefault(section_id, []).append(merged)
+
+            # # --- Step 8: Attach instructors to sections ---
+            # for sec in sections:
+            #     sec["assigned_instructors"] = instructors_by_section.get(sec["id"], [])
+
+            # 9. Group courses by semester
             courses_by_semester = {}
-
             for sc in scheduled_courses:
                 term = sc["term"]
-                sc_id = sc["scheduled_course_id"]  # <-- correct PK
-
-                # Fetch course metadata
-                course_resp = (
-                    supabase_client.table("courses")
-                    .select("*")
-                    .eq("course_id", sc["course_id"])
-                    .single()
-                    .execute()
-                )
-                course_data = course_resp.data or {}
-
-                # Fetch sections for this scheduled course
-                sections_resp = (
-                    supabase_client.table("sections")
-                    .select("*")
-                    .eq("scheduled_course_id", sc_id)  # <-- FIXED
-                    .execute()
-                )
-                related_sections = sections_resp.data or []
-
-                # Fetch instructor assignments for each section
-                for sec in related_sections:
-                    instructors_resp = (
-                        supabase_client.table("scheduled_instructors")
-                        .select("*")
-                        .eq("section_id", sec["id"])
-                        .execute()
-                    )
-                    sec["assigned_instructors"] = instructors_resp.data or []
-
-                # Package full object
-                sc_with_course = {
+                sc_id = sc["scheduled_course_id"]
+                sc_full = {
                     **sc,
-                    "course": course_data,
-                    "sections": related_sections
+                    "course": courses_by_id.get(sc["course_id"]),
+                    "sections": sections_by_sc.get(sc_id, [])
                 }
+                courses_by_semester.setdefault(term, []).append(sc_full)
 
-                # Group by semester/term
-                if term not in courses_by_semester:
-                    courses_by_semester[term] = []
-
-                courses_by_semester[term].append(sc_with_course)
-
-            # MetaData
             metaData = {
                 "year": schedule.get("academic_year"),
                 "activeSemesters": schedule.get("terms") or []
             }
+
+            # Debug prints
+            print(f"Schedule {schedule_id} loaded with {len(scheduled_courses)} courses and {len(sections)} sections.")
+            # total_instructors = sum(len(sec["assigned_instructors"]) for sec in sections)
+            # print(f"Total instructor assignments attached: {total_instructors}")
 
             return jsonify({
                 "schedule": schedule,
@@ -299,59 +378,138 @@ def register_schedule_routes(app):
             }), 200
 
         except Exception as e:
+            import traceback
+            print("ERROR in /schedules/<id>/json route:")
+            traceback.print_exc()
             return jsonify({"error": str(e)}), 500
-    
+
+        
     @app.route("/schedules/<schedule_id>/instructors", methods=["GET"])
     def get_instructors_for_schedule(schedule_id):
         try:
-            # get scheduled courses for this schedule
-            scheduled_courses_resp = (
-                supabase_client.table("scheduled_courses")
-                .select("course_id")
-                .eq("schedule_id", schedule_id)
-                .execute()
-            )
-
-            scheduled_courses = scheduled_courses_resp.data or []
-            if not scheduled_courses:
-                return jsonify({"instructors": []}), 200
-
-            # Extract list of unique course_ids
-            course_ids = list({sc["course_id"] for sc in scheduled_courses})
-
-            # fetch instructors who are qualified for any of those courses
-            qualifications_resp = (
-                supabase_client.table("instructor_course_qualifications")
-                .select("instructor_id, course_id")
-                .in_("course_id", course_ids)
-                .execute()
-            )
-
-            qualifications = qualifications_resp.data or []
-            if not qualifications:
-                return jsonify({"instructors": []}), 200
-
-            # Extract unique instructor_ids
-            instructor_ids = list({q["instructor_id"] for q in qualifications})
-
-            # Step 3: fetch instructor profiles
+            # fetch ALL instructors
             instructors_resp = (
                 supabase_client.table("instructors")
                 .select("*")
-                .in_("instructor_id", instructor_ids)
                 .execute()
             )
 
             instructors = instructors_resp.data or []
 
             return jsonify({
-                "instructors": instructors,
-                "course_ids": course_ids,
+                "instructors": instructors
             }), 200
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+    # AUTO ASSIGNMENT    
+    @app.route("/schedules/<schedule_id>/auto_assign", methods=["POST"])
+    def auto_assign_route(schedule_id):
+        if not schedule_id:
+            return jsonify({"error": "Missing schedule_id"}), 400
 
+        try:
+            print("\n" + "="*100)
+            print(f"[AUTO ASSIGN] Starting auto-assign for schedule_id={schedule_id}")
+
+            # ---------------------------------------------------------------------
+            # 1. Run solver (with internal debugging)
+            # ---------------------------------------------------------------------
+            try:
+                print("[AUTO ASSIGN] Calling solver_main()...")
+                assigned_map = solver_main(schedule_id)
+                print(f"[AUTO ASSIGN] Solver returned type: {type(assigned_map)}")
+                print(f"[AUTO ASSIGN] Solver raw output: {assigned_map}")
+
+            except Exception as solver_error:
+                import traceback
+                print("\n [AUTO ASSIGN] solver_main() crashed!")
+                print(str(solver_error))
+                print(traceback.format_exc())
+                return jsonify({"error": "Solver crashed — see backend logs"}), 500
+
+            # If solver returned None or empty, fail early
+            if assigned_map is None:
+                print("🔥 [AUTO ASSIGN ERROR] solver_main() returned None (unexpected!)")
+                return jsonify({"error": "solver_main() returned None"}), 500
+
+            if not isinstance(assigned_map, dict):
+                print(f"🔥 [AUTO ASSIGN ERROR] solver_main() returned non-dict: {type(assigned_map)}")
+                return jsonify({"error": "Invalid solver return format"}), 500
+
+            # ---------------------------------------------------------------------
+            # 2. Update SECTIONS + SCHEDULED_INSTRUCTORS
+            # ---------------------------------------------------------------------
+            for scid, section_dict in assigned_map.items():
+
+                print(f"[AUTO ASSIGN] Processing scheduled_course_id={scid}, section_dict={section_dict}")
+
+                if section_dict is None:
+                    print(f"⚠️ WARNING: section_dict for scid={scid} is None — skipping")
+                    continue
+
+                for letter, instructor_id in section_dict.items():
+                    print(f"[AUTO ASSIGN] Updating SC={scid} Letter={letter} → Instructor={instructor_id}")
+
+                    # Update SECTIONS table
+                    supabase_client.table("sections") \
+                        .update({"instructor_id": instructor_id}) \
+                        .eq("scheduled_course_id", scid) \
+                        .eq("section_letter", letter) \
+                        .execute()
+
+                    # UPSERT into scheduled_instructors table
+                    supabase_client.table("scheduled_instructors").upsert(
+                        {
+                            "schedule_id": schedule_id,
+                            "scheduled_course_id": scid,
+                            "section_letter": letter,
+                            "instructor_id": instructor_id
+                        },
+                        on_conflict="schedule_id,scheduled_course_id,section_letter"
+                    ).execute()
+
+            # ---------------------------------------------------------------------
+            # 3. Cleanup stale assignments
+            # ---------------------------------------------------------------------
+            print("[AUTO ASSIGN] Cleaning up stale scheduled_instructors rows...")
+
+            existing_res = (
+                supabase_client.table("scheduled_instructors")
+                .select("scheduled_course_id, section_letter")
+                .eq("schedule_id", schedule_id)
+                .execute()
+            )
+
+            existing_pairs = {(row["scheduled_course_id"], row["section_letter"]) for row in existing_res.data}
+            assigned_pairs = {(scid, letter) for scid, sec in assigned_map.items() for letter in sec.keys()}
+            to_delete = existing_pairs - assigned_pairs
+
+            for scid, letter in to_delete:
+                print(f"[AUTO ASSIGN] Deleting outdated assignment scid={scid}, letter={letter}")
+                supabase_client.table("scheduled_instructors") \
+                    .delete() \
+                    .eq("schedule_id", schedule_id) \
+                    .eq("scheduled_course_id", scid) \
+                    .eq("section_letter", letter) \
+                    .execute()
+
+            print("[AUTO ASSIGN] Auto-assign sync complete.")
+            print("="*100 + "\n")
+
+            return jsonify({
+                "success": True,
+                "message": f"Auto-assignment completed for schedule {schedule_id}",
+                "assigned_map": assigned_map
+            })
+
+        except Exception as e:
+            import traceback
+            print("\n🔥🔥🔥 [AUTO ASSIGN] Uncaught exception:")
+            print(str(e))
+            print(traceback.format_exc())
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/admin/schedules/generate", methods=["POST"])
     def generate_schedules():
@@ -554,8 +712,8 @@ def register_schedule_routes(app):
                         print(f"sc_insert_res.data: {sc_insert_res.data}")
                         print(f"Number of records inserted: {len(sc_insert_res.data) if sc_insert_res.data else 0}")
                         
-                        if hasattr(sc_insert_res, 'error') and sc_insert_res.error:
-                            print(f"ERROR in sc_insert_res: {sc_insert_res.error}")
+                        if hasattr(sc_insert_res, 'error') and sc_insert_res.data:
+                            print(f"ERROR in sc_insert_res: {sc_insert_res.data}")
                             
                     except Exception as insert_error:
                         print(f"\n=== DEBUG: EXCEPTION during scheduled_courses insert ===")
@@ -577,7 +735,7 @@ def register_schedule_routes(app):
                                 "course_id": sc["course_id"],
                                 "term": sc["term"],
                                 "section_letter": "A",
-                                "delivery_mode": "In-Person",  
+                                "delivery_mode": "Both",  
                                 "timeslots": [],    
                                 "instructor_id": None,
                                 "semester_id": None,
@@ -651,105 +809,6 @@ def register_schedule_routes(app):
             return jsonify({"error": str(e)}), 500
     
 
-    # @app.route("/admin/schedules/generate", methods=["POST"])
-    # def generate_schedules():
-    #     """
-    #     Generate blank schedules for all Academic Chairs for a given academic year.
-    #     Send JSON with "academic_year".
-    #     """
-    #     try:
-    #         # Get academic year from request
-    #         data = request.get_json()
-    #         academic_year = data.get("academic_year")
-            
-    #         if not academic_year:
-    #             return jsonify({"error": "academic_year is required"}), 400
-            
-    #         # Fetch all users with role "AC"
-    #         ac_response = supabase_client.table("users").select("id, first_name, last_name").eq("role", "AC").eq("is_deleted", False).execute()
-            
-    #         academic_chairs = ac_response.data
-            
-    #         if not academic_chairs:
-    #             return jsonify({"message": "No Academic Chairs found"}), 200
-            
-    #         created_schedules = []
-    #         skipped_schedules = []
-            
-    #         for ac in academic_chairs:
-    #             ac_id = ac["id"]
-    #             ac_name = f"{ac['first_name']} {ac['last_name']}"
-                
-    #             # Check if schedule already exists for this AC and year
-    #             existing = supabase_client.table("schedules").select("id").eq("academic_chair_id", ac_id).eq("academic_year", academic_year).execute()
-                
-    #             if existing.data:
-    #                 skipped_schedules.append({
-    #                     "academic_chair": ac_name,
-    #                     "reason": "Schedule already exists for this year"
-    #                 })
-    #                 continue
-                
-    #             # Find programs where this AC's UUID is in the comma-separated academic_chair field
-    #             programs_response = supabase_client.table("programs").select("program_id, courses").execute()
-                
-    #             # Filter programs that contain this AC's UUID in their academic_chair field
-    #             ac_programs = []
-    #             all_course_ids = []
-                
-    #             for program in programs_response.data:
-    #                 # Get the academic_chair field (comma-separated UUIDs)
-    #                 program_ac_field = program.get("academic_chair", "")
-                    
-    #                 # Check if this AC's UUID is in the list
-    #                 if ac_id in program_ac_field:
-    #                     ac_programs.append(program["program_id"])
-                        
-    #                     # Extract course IDs from this program
-    #                     courses_field = program.get("courses", "")
-    #                     if courses_field:
-    #                         # Split by comma and strip whitespace
-    #                         course_ids = [c.strip() for c in courses_field.split(",") if c.strip()]
-    #                         all_course_ids.extend(course_ids)
-                
-    #             # Remove duplicate course IDs
-    #             all_course_ids = list(set(all_course_ids))
-                
-    #             # Create comma-separated strings
-    #             associated_programs_str = ",".join(ac_programs) if ac_programs else ""
-    #             associated_courses_str = ",".join(all_course_ids) if all_course_ids else ""
-                
-    #             # Create the schedule record
-    #             schedule_data = {
-    #                 "academic_year": academic_year,
-    #                 "academic_chair_id": ac_id,
-    #                 "completion_status": "not_started",
-    #                 "submission_status": "not_submitted",
-    #                 "approval_status": "pending",
-    #                 "time_slots_attached": "not_attached",
-    #                 "associated_programs": associated_programs_str,
-    #                 "associated_courses": associated_courses_str
-    #             }
-                
-    #             schedule_response = supabase_client.table("schedules").insert(schedule_data).execute()
-                
-    #             created_schedules.append({
-    #                 "academic_chair": ac_name,
-    #                 "academic_chair_id": ac_id,
-    #                 "programs_count": len(ac_programs),
-    #                 "courses_count": len(all_course_ids)
-    #             })
-            
-    #         return jsonify({
-    #             "message": f"Schedule generation completed for academic year {academic_year}",
-    #             "created": len(created_schedules),
-    #             "skipped": len(skipped_schedules),
-    #             "created_schedules": created_schedules,
-    #             "skipped_schedules": skipped_schedules
-    #         }), 200
-            
-    #     except Exception as e:
-    #         return jsonify({"error": str(e)}), 500
     
     @app.route("/admin/schedules/clear", methods=["DELETE"])
     def clear_schedules():
@@ -1005,3 +1064,641 @@ def register_schedule_routes(app):
             
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+
+    def save_assignment(schedule_id, instructor_id, scheduled_course_id, section_letter, delivery_mode, semester, weekly_hours, class_hrs, online_hrs):
+        # Upsert: add or update assignment
+        data = {
+            "schedule_id": schedule_id,
+            "instructor_id": instructor_id,
+            "scheduled_course_id": scheduled_course_id,
+            "section_letter": section_letter,
+            "delivery_mode": delivery_mode,
+            "semester": semester,
+            "weekly_hours": weekly_hours,
+            "class_hrs": class_hrs,
+            "online_hrs": online_hrs,
+        }
+        
+        response = supabase_client.table("assignments").upsert(data).execute()
+        if response.error:
+            print("Error saving assignment:", response.error)
+        return response.data
+
+    def delete_assignment(schedule_id, instructor_id, scheduled_course_id, section_letter):
+        response = (
+            supabase_client.table("assignments")
+            .delete()
+            .eq("schedule_id", schedule_id)
+            .eq("instructor_id", instructor_id)
+            .eq("scheduled_course_id", scheduled_course_id)
+            .eq("section_letter", section_letter)
+            .execute()
+        )
+        if response.error:
+            print("Error deleting assignment:", response.error)
+        return response.data
+    
+    @app.route("/schedules/<schedule_id>/assignments/toggle", methods=["POST"])
+    def toggle_assignment(schedule_id):
+        """
+        Toggle an assignment for an instructor in a schedule.
+        Expects JSON body with:
+        {
+            "action": "add" | "remove",
+            "instructor_id": int,
+            "scheduled_course_id": str,
+            "section_letter": str,
+            "delivery_mode": "class" | "online" | "both",
+            "semester": str,
+            "weekly_hours": float,
+            "class_hrs": float,
+            "online_hrs": float
+        }
+        """
+        data = request.get_json()
+        if not data:
+            print("\n[TOGGLE ASSIGNMENT]  Missing JSON body\n")
+            return jsonify({"error": "Missing JSON body"}), 400
+
+        scheduled_course_id = data.get("scheduled_course_id")
+        print(f"\n[TOGGLE ASSIGNMENT]  Incoming request for schedule_id: {schedule_id}")
+        print(f"Payload: {data}")
+
+        # Fetch the course_id for this scheduled_course_id
+        scheduled_course_id = data["scheduled_course_id"]
+
+        # Fetch the related course_id
+        res = supabase_client.table("scheduled_courses") \
+            .select("course_id") \
+            .eq("scheduled_course_id", scheduled_course_id) \
+            .single() \
+            .execute()
+
+        if res.data is None:
+            return jsonify({"error": "Scheduled course not found"}), 400
+
+        course_id = res.data["course_id"]
+
+        if not res.data:
+            print(f"[TOGGLE ASSIGNMENT]  Invalid scheduled_course_id: {scheduled_course_id}")
+            return jsonify({"error": "Invalid scheduled_course_id"}), 400
+
+        course_id = res.data["course_id"]
+        print(f"[TOGGLE ASSIGNMENT] Found course_id: {course_id} for scheduled_course_id: {scheduled_course_id}")
+
+        try:
+            action = data.get("action")
+            instructor_id = data.get("instructor_id")
+            section_letter = data.get("section_letter")
+            delivery_mode = data.get("delivery_mode")
+            semester = data.get("semester")
+            weekly_hours = data.get("weekly_hours", 0)
+            class_hrs = data.get("class_hrs", 0)
+            online_hrs = data.get("online_hrs", 0)
+
+            if not all([action, instructor_id, scheduled_course_id, section_letter, semester]):
+                print(f"[TOGGLE ASSIGNMENT]  Missing required fields")
+                return jsonify({"error": "Missing required fields"}), 400
+
+            print(f"[TOGGLE ASSIGNMENT] Action: {action.upper()} | Instructor ID: {instructor_id} | "
+                f"Section: {section_letter} | Semester: {semester} | Delivery: {delivery_mode} | "
+                f"Weekly Hrs: {weekly_hours} | Class Hrs: {class_hrs} | Online Hrs: {online_hrs}")
+
+            if action == "add":
+                # Fetch course_id from scheduled_courses
+                scheduled_course = supabase_client.table("scheduled_courses") \
+                    .select("course_id") \
+                    .eq("scheduled_course_id", scheduled_course_id) \
+                    .single().execute()
+                
+                if not scheduled_course.data:
+                    return jsonify({"error": "Scheduled course not found"}), 400
+
+                course_id = scheduled_course.data["course_id"]
+
+                result = supabase_client.table("sections").upsert({
+                    "schedule_id": schedule_id,
+                    "course_id": course_id,
+                    "scheduled_course_id": scheduled_course_id,
+                    "section_letter": section_letter,
+                    "delivery_mode": delivery_mode,
+                    "semester_id": semester,
+                    "instructor_id": instructor_id,
+                    "weekly_hours_required": weekly_hours,
+                    "class_hrs": f"{class_hrs} hours" if class_hrs else None,
+                    "online_hrs": f"{online_hrs} hours" if online_hrs else None,
+                }).execute()
+                print(f"[TOGGLE ASSIGNMENT]  Upsert result: {result.data}")
+
+            elif action == "remove":
+                result = supabase_client.table("sections").delete().match({
+                    "schedule_id": schedule_id,
+                    "instructor_id": instructor_id,
+                    "scheduled_course_id": scheduled_course_id,
+                    "section_letter": section_letter
+                }).execute()
+                print(f"[TOGGLE ASSIGNMENT]  Delete result: {result.data}")
+
+            else:
+                print(f"[TOGGLE ASSIGNMENT]  Invalid action: {action}")
+                return jsonify({"error": "Invalid action"}), 400
+
+            print(f"[TOGGLE ASSIGNMENT]  Action completed successfully!\n")
+            return jsonify({"success": True})
+
+        except Exception as e:
+            print(f"[TOGGLE ASSIGNMENT]  Exception occurred: {e}")
+            return jsonify({"error": str(e)}), 500
+        
+    def safe_execute(query, retries=3, delay=0.1):
+        """Execute a Supabase/PostgREST query safely on Windows with retry for WinError 10035."""
+        for attempt in range(retries):
+            try:
+                return query.execute()
+            except OSError as e:
+                if getattr(e, "winerror", None) == 10035:
+                    time.sleep(delay)
+                    continue
+                raise
+            except APIError:
+                raise
+        # Last attempt if still failing
+        return query.execute()
+
+    @app.route("/schedules/<schedule_id>/assignments", methods=["GET"])
+    def get_assignments(schedule_id):
+        try:
+            # Fetch all sections for this schedule
+            res = safe_execute(
+                supabase_client.table("sections")
+                .select("*")
+                .eq("schedule_id", schedule_id)
+            )
+            sections = res.data or []
+
+            if not sections:
+                return jsonify({"assignments": []})
+
+            #Collect all unique course_ids missing hours
+            missing_course_ids = {
+                s["course_id"] for s in sections
+                if not s.get("class_hrs") or not s.get("online_hrs")
+            }
+
+            course_map = {}
+            if missing_course_ids:
+                #Batch fetch all missing courses in one query
+                courses_res = safe_execute(
+                    supabase_client.table("courses")
+                    .select("course_id, class_hrs, online_hrs")
+                    .in_("course_id", list(missing_course_ids))
+                )
+                for c in courses_res.data or []:
+                    course_map[c["course_id"]] = c
+
+            #  Enrich sections with course hours
+            for s in sections:
+                if not s.get("class_hrs"):
+                    s["class_hrs"] = course_map.get(s["course_id"], {}).get("class_hrs", 0)
+                if not s.get("online_hrs"):
+                    s["online_hrs"] = course_map.get(s["course_id"], {}).get("online_hrs", 0)
+
+            return jsonify({"assignments": sections})
+
+        except Exception as e:
+            print("[GET ASSIGNMENTS] Exception:", e)
+            return jsonify({"error": str(e)}), 500
+        
+    # ============================================================
+    # TOGGLE SECTION LETTER FOR A SCHEDULED COURSE
+    # ============================================================
+    @app.route("/scheduled_courses/<scid>/sections/toggle", methods=["POST"])
+    def toggle_section(scid):
+        print("\n" + "=" * 80)
+        print(f"[DEBUG] Incoming request: POST /scheduled_courses/{scid}/sections/toggle")
+
+        try:
+            data = request.json
+            print(f"[DEBUG] Request JSON: {data}")
+
+            schedule_id = data.get("scheduleId")
+
+            if not schedule_id:
+                print("[ERROR] Missing scheduleId")
+                return jsonify({"error": "Missing scheduleId"}), 400
+
+            # --- Get scheduled course info ---
+            sc_res = (
+                supabase_client.table("scheduled_courses")
+                .select("course_id, schedule_id")
+                .eq("scheduled_course_id", scid)
+                .single()
+                .execute()
+            )
+
+            if not sc_res.data:
+                return jsonify({"error": "Scheduled course not found"}), 404
+
+            course_id = sc_res.data["course_id"]
+            backend_schedule_id = sc_res.data["schedule_id"]
+
+            # --- Fetch all existing section letters ---
+            sec_res = (
+                supabase_client.table("sections")
+                .select("section_letter")
+                .eq("scheduled_course_id", scid)
+                .order("section_letter")
+                .execute()
+            )
+
+            existing = sorted([row["section_letter"] for row in sec_res.data])
+            print(f"[DEBUG] Existing sections: {existing}")
+
+            # Ensure A always exists
+            if "A" not in existing:
+                print("[DEBUG] Section A missing → creating it now")
+                supabase_client.table("sections").insert({
+                    "schedule_id": backend_schedule_id,
+                    "course_id": course_id,
+                    "scheduled_course_id": scid,
+                    "section_letter": "A",
+                    "delivery_mode": "both",
+                    "instructor_id": None,
+                }).execute()
+                existing = ["A"]
+
+            # --- Apply stack logic ---
+            if len(existing) == 1:
+                # Only A exists → next add is B
+                next_letter = chr(ord("A") + 1)
+                mode = "add"
+            else:
+                last_letter = existing[-1]
+                mode = "remove" if data.get("section_letter") in existing else "add"
+
+            print(f"[DEBUG] MODE={mode}")
+
+            if mode == "add":
+                next_letter = chr(ord(existing[-1]) + 1)
+                print(f"[DEBUG] Adding new section: {next_letter}")
+
+                supabase_client.table("sections").insert({
+                    "schedule_id": backend_schedule_id,
+                    "course_id": course_id,
+                    "scheduled_course_id": scid,
+                    "section_letter": next_letter,
+                    "delivery_mode": "both",
+                    "instructor_id": None,
+                }).execute()
+
+            else:
+                # REMOVE LAST (but never A)
+                if len(existing) > 1:
+                    to_remove = existing[-1]
+                    print(f"[DEBUG] Removing LAST section: {to_remove}")
+
+                    supabase_client.table("sections") \
+                        .delete() \
+                        .eq("scheduled_course_id", scid) \
+                        .eq("section_letter", to_remove) \
+                        .execute()
+
+            # --- Fetch updated list ---
+            final_res = (
+                supabase_client.table("sections")
+                .select("section_letter")
+                .eq("scheduled_course_id", scid)
+                .order("section_letter")
+                .execute()
+            )
+
+            letters = [row["section_letter"] for row in final_res.data]
+            print(f"[DEBUG] Final letters: {letters}")
+
+            # --- Update num_sections ---
+            update_res = supabase_client.table("scheduled_courses") \
+                .update({"num_sections": len(letters)}) \
+                .eq("scheduled_course_id", scid) \
+                .execute()
+
+            print(f"[DEBUG] Updated num_sections to {len(letters)}")
+            print("=" * 80 + "\n")
+
+            return jsonify({
+                "sections": letters,
+                "num_sections": len(letters)
+            }), 200
+
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            print("=" * 80 + "\n")
+            return jsonify({"error": str(e)}), 500
+    
+
+    #GET RELEVANT COURSES FROM SCHEDULED_COURSES
+    @app.route("/schedules/<schedule_id>/scheduled_courses", methods=["GET"])
+    def get_scheduled_courses(schedule_id):
+        if not schedule_id:
+            return jsonify({"error": "Missing schedule_id"}), 400
+
+        try:
+            response = supabase_client.table("scheduled_courses")\
+                .select("*")\
+                .eq("schedule_id", schedule_id)\
+                .execute()
+            
+            print("Supabase response:", response)  # DEBUG LINE
+
+            if hasattr(response, "error") and response.error:
+                return jsonify({"error": response.error.message}), 500
+
+            return jsonify({"scheduled_courses": getattr(response, "data", [])})
+
+        except Exception as e:
+            print("Error fetching scheduled courses:", e)
+            return jsonify({"error": "Internal server error"}), 500
+        
+    # GET scheduled instructors for a schedule
+    @app.route("/schedules/<schedule_id>/scheduled_instructors", methods=["GET"])
+    def get_scheduled_instructors(schedule_id):
+        try:
+            print(f"[DEBUG] Fetching scheduled instructors for schedule_id: {schedule_id}")
+            result = supabase_client.table("scheduled_instructors") \
+                .select("*, instructors(*)") \
+                .eq("schedule_id", schedule_id) \
+                .execute()
+
+            data = result.data or []
+            print(f"[DEBUG] Retrieved {len(data)} scheduled instructors")
+
+            instructors_list = []
+            for row in data:
+                instr = row.get("instructors") or {}
+                instructors_list.append({
+                    "instructor_id": row.get("instructor_id"),
+                    "full_name": instr.get("full_name") or f"{instr.get('instructor_name','')} {instr.get('instructor_lastname','')}".strip(),
+                    "contract_type": instr.get("contract_type"),
+                    "winter_cch": instr.get("winter_cch", "0:00:00"),
+                    "spring_summer_cch": instr.get("spring_summer_cch", "0:00:00"),
+                    "fall_cch": instr.get("fall_cch", "0:00:00"),
+                    "total_cch": instr.get("total_cch", "0:00:00"),
+                })
+            return jsonify(instructors_list)
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch scheduled instructors: {e}")
+            return jsonify({"error": str(e)}), 500
+
+
+    # POST to add instructor to scheduled_instructors table
+    @app.route("/scheduled_instructors", methods=["POST"])
+    def add_scheduled_instructor():
+        payload = request.json
+        schedule_id = payload.get("schedule_id")
+        instructor_id = payload.get("instructor_id")
+
+        print(f"[DEBUG] Adding instructor: schedule_id={schedule_id}, instructor_id={instructor_id}")
+
+        if not schedule_id or not instructor_id:
+            print("[ERROR] Missing schedule_id or instructor_id in payload")
+            return jsonify({"error": "schedule_id and instructor_id are required"}), 400
+
+        try:
+            response = supabase_client.table("scheduled_instructors").insert({
+                "schedule_id": schedule_id,
+                "instructor_id": instructor_id
+            }).execute()
+
+            print(f"[DEBUG] Insert response: {response.data}")
+            return jsonify({"success": True})
+        except Exception as e:
+            print(f"[ERROR] Failed to add instructor: {e}")
+            return jsonify({"error": str(e)}), 500
+
+
+    # DELETE to remove instructor from scheduled_instructors table
+    @app.route("/scheduled_instructors", methods=["DELETE"])
+    def remove_scheduled_instructor():
+        payload = request.json
+        schedule_id = payload.get("schedule_id")
+        instructor_id = payload.get("instructor_id")
+
+        print(f"[DEBUG] Removing instructor: schedule_id={schedule_id}, instructor_id={instructor_id}")
+
+        if not schedule_id or not instructor_id:
+            print("[ERROR] Missing schedule_id or instructor_id in payload")
+            return jsonify({"error": "schedule_id and instructor_id are required"}), 400
+
+        try:
+            response = supabase_client.table("scheduled_instructors") \
+                .delete() \
+                .eq("schedule_id", schedule_id) \
+                .eq("instructor_id", instructor_id) \
+                .execute()
+
+            print(f"[DEBUG] Delete response: {response.data}")
+            return jsonify({"success": True})
+        except Exception as e:
+            print(f"[ERROR] Failed to remove instructor: {e}")
+            return jsonify({"error": str(e)}), 500
+    
+    #GET section counts for courses in a schedule
+    @app.route("/schedules/<schedule_id>/section_counts", methods=["GET"])
+    def get_section_counts(schedule_id):
+        rows = supabase_client.table("sections").select("*").eq("schedule_id", schedule_id).execute().data
+        
+        section_counts = {}
+        for row in rows:
+            course_id = row["course_id"]
+            section_counts[course_id] = section_counts.get(course_id, 0) + 1
+
+        return jsonify(section_counts)
+    
+    # GET all the courses in a schedule
+    @app.route("/schedules/<schedule_id>/courses", methods=["GET"])
+    def get_schedule_courses(schedule_id):
+        try:
+            print("\n" + "="*60)
+            print(f"[DEBUG] Incoming request: GET /schedules/{schedule_id}/courses")
+            print("="*60)
+
+            # Fetch sections from Supabase, including course info via foreign key
+            print(f"[DEBUG] Fetching sections for schedule_id={schedule_id} ...")
+            sections_res = supabase_client.table("sections")\
+                .select("scheduled_course_id, course_id, section_letter, term, course:course_id(course_code, course_name)")\
+                .eq("schedule_id", schedule_id).execute()
+
+            print(f"[DEBUG] Supabase sections response: {sections_res}")
+            sections = sections_res.data or []
+            print(f"[DEBUG] Retrieved {len(sections)} sections")
+
+            if not sections:
+                print("[WARN] No sections found for this schedule")
+
+            # Initialize result structure
+            result = {"winter": [], "spring": [], "summer":[], "fall": []}
+            print("[DEBUG] Initialized result structure:", result)
+
+            # Group sections by scheduled_course_id + term
+            courses_map = {}
+            for s in sections:
+                cid = s.get("scheduled_course_id")
+                term = s.get("term")
+                course_info = s.get("course") or {}
+
+                if not cid or not term:
+                    print(f"[WARN] Section missing scheduled_course_id or term: {s}")
+                    continue
+
+                if term not in result:
+                    print(f"[WARN] Unknown term '{term}' found, skipping section: {s}")
+                    continue
+
+                if cid not in courses_map:
+                    courses_map[cid] = {
+                        "course_id": cid,
+                        "course_code": course_info.get("course_code"),
+                        "title": course_info.get("course_name"),  # use course_name instead of title
+                        "sections": [],
+                        "term": term
+                    }
+
+                courses_map[cid]["sections"].append(s.get("section_letter"))
+                print(f"[DEBUG] Added section '{s.get('section_letter')}' to course '{cid}'")
+
+            print(f"[DEBUG] Completed courses_map:")
+            for cid, c in courses_map.items():
+                print(f"  {cid}: {c}")
+
+            # Build final result grouped by term
+            for course in courses_map.values():
+                course["num_sections"] = len(course["sections"])
+                result[course["term"]].append(course)
+
+            print("[DEBUG] Final formatted result:")
+            print(result)
+            print("="*60 + "\n")
+
+            return jsonify(result), 200
+
+        except Exception as e:
+            print("[ERROR] Exception in get_schedule_courses:", e)
+            return jsonify({"error": str(e)}), 500
+        
+    #GET sections with assigned instructors
+    @app.route("/schedules/<schedule_id>/sections", methods=["GET"])
+    def get_sections(schedule_id):
+        try:
+            print("\n" + "="*60)
+            print(f"[DEBUG] Incoming request: GET /schedules/{schedule_id}/sections")
+            print("="*60)
+
+            # Fetch all sections for the schedule
+            print(f"[DEBUG] Fetching sections for schedule_id={schedule_id} ...")
+            res = supabase_client.table("sections").select("*").eq("schedule_id", schedule_id).execute()
+            print(f"[DEBUG] Supabase response: {res}")
+
+            sections = res.data or []
+            print(f"[DEBUG] Retrieved {len(sections)} sections")
+
+            if not sections:
+                print("[WARN] No sections found for this schedule")
+
+            # Build assignment lookup
+            assignment_lookup = {}
+            for s in sections:
+                instructor_id = s.get("instructor_id")
+                scheduled_course_id = s.get("scheduled_course_id")
+                section_letter = s.get("section_letter")
+
+                if instructor_id:
+                    key = f"{instructor_id}-{scheduled_course_id}-{section_letter}"
+                    assignment_lookup[key] = True
+                    print(f"[DEBUG] Assigned section added: {key}")
+                else:
+                    print(f"[DEBUG] Section unassigned: {scheduled_course_id}-{section_letter}")
+
+            print(f"[DEBUG] Final assignment_lookup: {assignment_lookup}")
+            print("="*60 + "\n")
+
+            return jsonify({"sections": sections, "assignedSections": assignment_lookup}), 200
+
+        except Exception as e:
+            print(f"[ERROR] Exception in get_sections: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    #POST toggle instructors on a section
+    @app.route("/schedules/<schedule_id>/sections/toggle-instructor", methods=["POST"])
+    def toggle_instructor(schedule_id):
+        """
+        Expects JSON:
+        {
+            "instructor_id": 123,
+            "scheduled_course_id": "...",
+            "section_letter": "A"
+        }
+        """
+        try:
+            print("\n" + "="*60)
+            print(f"[DEBUG] Incoming request: POST /schedules/{schedule_id}/sections/toggle-instructor")
+            data = request.json
+            print(f"[DEBUG] Request JSON: {data}")
+
+            instructor_id = data.get("instructor_id")
+            scheduled_course_id = data.get("scheduled_course_id")
+            section_letter = data.get("section_letter")
+
+            if not (instructor_id and scheduled_course_id and section_letter):
+                print("[ERROR] Missing required fields in request")
+                return jsonify({"error": "Missing instructor_id, scheduled_course_id, or section_letter"}), 400
+
+            # Fetch the section
+            print(f"[DEBUG] Fetching section for schedule_id={schedule_id}, "
+                f"scheduled_course_id={scheduled_course_id}, section_letter={section_letter}")
+            section_res = supabase_client.table("sections") \
+                .select("*") \
+                .eq("schedule_id", schedule_id) \
+                .eq("scheduled_course_id", scheduled_course_id) \
+                .eq("section_letter", section_letter) \
+                .execute()
+
+            print(f"[DEBUG] Supabase response: {section_res}")
+            if not section_res.data or len(section_res.data) == 0:
+                print("[WARN] Section not found")
+                return jsonify({"error": "Section not found"}), 404
+
+            section = section_res.data[0]
+            current_instructor = section.get("instructor_id")
+            print(f"[DEBUG] Current instructor_id: {current_instructor}")
+
+            # Toggle assignment
+            new_instructor_id = None if current_instructor == instructor_id else instructor_id
+            print(f"[DEBUG] Updating instructor_id to: {new_instructor_id}")
+
+            update_res = supabase_client.table("sections") \
+                .update({"instructor_id": new_instructor_id}) \
+                .eq("id", section["id"]) \
+                .execute()
+
+            print(f"[DEBUG] Supabase update response: {update_res}")
+            print("="*60 + "\n")
+
+            return jsonify({"success": True, "instructor_id": new_instructor_id}), 200
+
+        except Exception as e:
+            print(f"[ERROR] Exception in toggle_instructor: {e}")
+            return jsonify({"error": str(e)}), 500
+
+
+    # GET assigned instructors for sections in a schedule
+    # @app.route("/schedules/<schedule_id>/assignments", methods=["GET"])
+    # def get_assignments(schedule_id):
+    #     try:
+    #         result = supabase_client.table("assigned_instructors").select("*").execute()
+
+    #         assignedInstructors = result.data or []
+
+    #         return jsonify(assignedInstructors)
+    #     except Exception as e:
+    #         return jsonify({"error": str(e)}), 500
+
