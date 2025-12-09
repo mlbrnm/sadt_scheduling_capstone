@@ -424,7 +424,7 @@ def register_schedule_routes(app):
 
             except Exception as solver_error:
                 import traceback
-                print("\n🔥🔥🔥 [AUTO ASSIGN] solver_main() crashed!")
+                print("\n [AUTO ASSIGN] solver_main() crashed!")
                 print(str(solver_error))
                 print(traceback.format_exc())
                 return jsonify({"error": "Solver crashed — see backend logs"}), 500
