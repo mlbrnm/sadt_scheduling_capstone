@@ -472,169 +472,306 @@ supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 #     main(schedule_id)
 
 
-def print_header(title):
-    print("\n" + "="*len(title))
-    print(title)
-    print("="*len(title) + "\n")
 
+# ------------------------------------------------------------
+# Utility printing
+# ------------------------------------------------------------
+def print_header(title):
+    print("\n" + "=" * len(title))
+    print(title)
+    print("=" * len(title) + "\n")
+
+# ------------------------------------------------------------
+# Data Fetching
+# ------------------------------------------------------------
 def get_sections(schedule_id):
     print_header(f"Fetching Sections for Schedule: {schedule_id}")
-    response = supabase_client.table("sections").select("*").eq("schedule_id", schedule_id).execute()
-    sections = response.data
-    if sections:
-        print(f"Found {len(sections)} sections:")
-        for s in sections:
-            print(f"  - Section ID: {s['id']}, Course ID: {s['course_id']}, Instructor: {s.get('instructor_id')}")
-    else:
-        print("No sections found.")
+    response = (
+        supabase_client.table("sections")
+        .select("*")
+        .eq("schedule_id", schedule_id)
+        .order("course_id")      # optional but nicer output
+        .order("section_letter")
+        .execute()
+    )
+
+    sections = response.data or []
+    print(f"Found {len(sections)} sections")
+
+    for s in sections:
+        print(f"  - Section {s['id']} | Course {s['course_id']} | Letter {s['section_letter']} | Instructor {s.get('instructor_id')}")
+
     return sections
+
 
 def get_active_instructors():
     print_header("Fetching Active Instructors")
     response = (
         supabase_client.table("instructors")
         .select("*")
-        .ilike("instructor_status", "%active%")  # Case-insensitive, matches anywhere in the string
+        .ilike("instructor_status", "%active%")
         .execute()
     )
-    instructors = response.data
-    if instructors:
-        print(f"Found {len(instructors)} active instructors:")
-        for i in instructors:
-            print(f"  - Instructor ID: {i['instructor_id']}, Name: {i.get('full_name', 'N/A')}")
-    else:
-        print("No active instructors found.")
+
+    instructors = response.data or []
+    print(f"Found {len(instructors)} active instructors")
+
+    for i in instructors:
+        print(f"  - Instructor {i['instructor_id']} | {i.get('full_name')}")
+
     return instructors
+
 
 def count_current_assignments(sections):
     print_header("Counting Current Assignments")
+
     instructor_load = {}
+
     for section in sections:
         instr_id = section.get("instructor_id")
         if instr_id:
             instructor_load[instr_id] = instructor_load.get(instr_id, 0) + 1
-    for instr_id, load in instructor_load.items():
-        print(f"  - Instructor {instr_id} is currently assigned {load} section(s)")
+
+    for instr, load in instructor_load.items():
+        print(f"  - Instructor {instr} currently teaching {load} section(s)")
+
     return instructor_load
+
 
 def build_section_eligibility(sections, instructors):
     print_header("Building Section Eligibility")
-    instructor_ids = [i['instructor_id'] for i in instructors]
-    eligibility = {section['id']: instructor_ids for section in sections}
-    for sec_id, instrs in eligibility.items():
-        print(f"  - Section {sec_id} eligible instructors: {instrs}")
+
+    instructor_ids = [i["instructor_id"] for i in instructors]
+    eligibility = {}
+
+    for s in sections:
+        sec_id = s["id"]
+
+        # You can filter by course, discipline, credentials here later.
+        eligibility[sec_id] = instructor_ids.copy()
+
+        print(f"  - Section {sec_id} eligible instructors: {eligibility[sec_id]}")
+
     return eligibility
 
+# ------------------------------------------------------------
+# Model Construction
+# ------------------------------------------------------------
 def create_model(sections, section_eligibility, instructor_load, instructors):
     print_header("Creating OR-Tools Model")
+
     model = cp_model.CpModel()
     assignments = {}
 
-    # -----------------------------
-    # Create assignment variables
-    # -----------------------------
     print("Creating assignment variables...")
     for section in sections:
-        sec_id = section['id']
+        sec_id = section["id"]
         for instr_id in section_eligibility[sec_id]:
             assignments[(sec_id, instr_id)] = model.NewBoolVar(f"{sec_id}_{instr_id}")
 
-    # -----------------------------
-    # Constraint: each section must have exactly 1 instructor
-    # -----------------------------
     print("Adding section assignment constraints...")
     for section in sections:
-        sec_id = section['id']
+        sec_id = section["id"]
         eligible = section_eligibility[sec_id]
-        if eligible:
-            model.AddExactlyOne(assignments[(sec_id, instr)] for instr in eligible)
-        else:
-            print(f"  [WARNING] Section {sec_id} has NO eligible instructors!")
 
-    # -----------------------------
-    # Create per-instructor load variables
-    # -----------------------------
+        if len(eligible) == 0:
+            print(f"  [WARNING] Section {sec_id} has NO eligible instructors — solver will allow leaving it unassigned.")
+            continue
+
+        model.AddExactlyOne(assignments[(sec_id, instr)] for instr in eligible)
+
+    # Instructor load vars
     print("Building instructor load constraints...")
-    all_instructors = {i['instructor_id'] for i in instructors}
+    all_instructors = {i["instructor_id"] for i in instructors}
 
     load_vars = {}
     for instr_id in all_instructors:
         load_vars[instr_id] = model.NewIntVar(0, len(sections), f"load_{instr_id}")
-        model.Add(load_vars[instr_id] == sum(
-            assignments[(section['id'], instr_id)]
-            for section in sections
-            if (section['id'], instr_id) in assignments
-        ))
+        model.Add(
+            load_vars[instr_id] ==
+            sum(assignments[(s["id"], instr_id)]
+                for s in sections
+                if (s["id"], instr_id) in assignments)
+        )
 
-    # -----------------------------
-    # Fairness constraint: L_max limits maximum load
-    # -----------------------------
     L_max = model.NewIntVar(0, len(sections), "L_max")
 
-    # Every instructor must have load <= L_max
     for instr_id in load_vars:
         model.Add(load_vars[instr_id] <= L_max)
 
-    # -----------------------------
-    # Objective:
-    #   1. Minimize L_max (most important)
-    #   2. Minimize total load (tie-breaker for cleaner distribution)
-    # -----------------------------
-    print("Setting fairness objective...")
-    model.Minimize(
-        L_max * 1000 + sum(load_vars.values())
-    )
+    print("Setting fairness optimization...")
+    model.Minimize(L_max * 1000 + sum(load_vars.values()))
 
-    print("\n[DEBUG] Model creation complete with fair load constraints.\n")
+    print("[DEBUG] Model creation complete.\n")
     return model, assignments
 
+# ------------------------------------------------------------
+# Solve and Return Results
+# ------------------------------------------------------------
 def solve_and_save(sections, assignments, model):
     print_header("Solving Model")
+
     solver = cp_model.CpSolver()
     status = solver.Solve(model)
 
-    status_str = {0: "UNKNOWN", 1: "FEASIBLE", 2: "INFEASIBLE", 3: "OPTIMAL", 4: "MODEL_INVALID"}.get(status, status)
-    # print(f"Solver Status: {status_str}")
+    status_codes = {
+        cp_model.OPTIMAL: "OPTIMAL",
+        cp_model.FEASIBLE: "FEASIBLE",
+        cp_model.INFEASIBLE: "INFEASIBLE",
+        cp_model.UNKNOWN: "UNKNOWN",
+        cp_model.MODEL_INVALID: "INVALID"
+    }
+    print(f"[SOLVER STATUS] {status_codes.get(status, status)}")
 
-    if status in (cp_model.FEASIBLE, cp_model.OPTIMAL):
-        updates = []
-        print("\nAssignments:")
-        for section in sections:
-            section_id = section['id']
-            assigned = None
-            for (sec_id, instr_id), var in assignments.items():
-                if sec_id == section_id and solver.Value(var):
-                    assigned = instr_id
+    # -------------------------
+    # Map: scheduled_course_id -> section_letter -> instructor_id
+    # -------------------------
+    assigned_map = {}
+
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        print("\nAssignments Found:")
+
+        for sec in sections:
+            sec_id = sec["id"]
+            scid = sec["scheduled_course_id"]
+            letter = sec.get("section_letter")
+            course_id = sec.get("course_id")
+
+            if not letter or not course_id:
+                print(f"[WARNING] Skipping section {sec_id}: missing section_letter or course_id")
+                continue
+
+            # Find assigned instructor
+            assigned_instr = None
+            for (s_id, instr_id), var in assignments.items():
+                if s_id == sec_id and solver.Value(var) == 1:
+                    assigned_instr = instr_id
                     break
-            if assigned:
-                updates.append({"id": section_id, "instructor_id": assigned, "schedule_id": section['schedule_id'], "course_id":section['course_id'], "section_letter": section['section_letter'], "delivery_mode": section['delivery_mode']})
-                print(f"  - Section {section_id} assigned to Instructor {assigned}")
 
-        if updates:
-            response = supabase_client.table("sections").upsert(updates).execute()
-            print_header(f"Updated {len(updates)} sections in Supabase")
+            # Build map
+            if scid not in assigned_map:
+                assigned_map[scid] = {}
+            assigned_map[scid][letter] = assigned_instr
+
+            print(f"  - Section {sec_id} ({course_id}-{letter}) → Instructor {assigned_instr}")
+
+        # -------------------------
+        # Upsert to sections table (safely handling NOT NULL columns)
+        # -------------------------
+        upserts = []
+        for sec in sections:
+            scid = sec.get("scheduled_course_id")
+            letter = sec.get("section_letter")
+            course_id = sec.get("course_id")
+            delivery_mode = sec.get("delivery_mode") or "TBD"  # default if null
+
+            if not letter or not course_id:
+                print(f"[WARNING] Skipping section {sec['id']}: missing section_letter or course_id")
+                continue
+
+            instructor_id = assigned_map.get(scid, {}).get(letter)
+
+            upserts.append({
+                "id": sec["id"],
+                "schedule_id": sec["schedule_id"],
+                "course_id": course_id,
+                "section_letter": letter,
+                "delivery_mode": delivery_mode,  # now included
+                "instructor_id": instructor_id
+            })
+
+        if upserts:
+            supabase_client.table("sections").upsert(upserts).execute()
+            print_header(f"Updated {len(upserts)} sections in Supabase")
+
+        # -------------------------
+        # Upsert to scheduled_instructors table
+        # -------------------------
+        si_upserts = []
+        for scid, sec_dict in assigned_map.items():
+            for letter, instr_id in sec_dict.items():
+                if not instr_id:
+                    continue
+                si_upserts.append({
+                    "schedule_id": sections[0]["schedule_id"],  # assumes all sections have same schedule_id
+                    "scheduled_course_id": scid,
+                    "section_letter": letter,
+                    "instructor_id": instr_id
+                })
+
+        if si_upserts:
+            supabase_client.table("scheduled_instructors").upsert(
+                si_upserts, on_conflict="schedule_id,scheduled_course_id,section_letter"
+            ).execute()
+            print_header(f"Upserted {len(si_upserts)} scheduled_instructors rows")
+
+        # -------------------------
+        # Remove outdated scheduled_instructors assignments
+        # -------------------------
+        existing_res = supabase_client.table("scheduled_instructors").select(
+            "scheduled_course_id, section_letter"
+        ).eq("schedule_id", sections[0]["schedule_id"]).execute()
+
+        existing_pairs = {(row["scheduled_course_id"], row["section_letter"]) for row in existing_res.data}
+        assigned_pairs = {(scid, letter) for scid, sec_dict in assigned_map.items() for letter in sec_dict.keys()}
+        to_delete = existing_pairs - assigned_pairs
+
+        for scid, letter in to_delete:
+            print(f"[AUTO ASSIGN] Removing outdated assignment scid={scid}, letter={letter}")
+            supabase_client.table("scheduled_instructors") \
+                .delete() \
+                .eq("scheduled_course_id", scid) \
+                .eq("section_letter", letter) \
+                .eq("schedule_id", sections[0]["schedule_id"]) \
+                .execute()
+
+        print("[AUTO ASSIGN] Sync complete")
+
     else:
-        print("\n[WARNING] No feasible solution found.")
+        print("\n[WARNING] Solver could not find a feasible solution.")
+        return {}
 
-def main(schedule_id):
+    print_header("Solver Completed")
+    return assigned_map
+# ------------------------------------------------------------
+# Public entry point — this is what Flask should call
+# ------------------------------------------------------------
+def solver_main(schedule_id):
     print_header(f"Running Auto-Assign Solver for Schedule {schedule_id}")
+
     sections = get_sections(schedule_id)
     if not sections:
-        return
+        print("[SOLVER] No sections found — returning empty result")
+        return {}
 
     instructors = get_active_instructors()
     if not instructors:
-        return
+        print("[SOLVER] No instructors found — returning empty result")
+        return {}
 
     instructor_load = count_current_assignments(sections)
-    section_eligibility = build_section_eligibility(sections, instructors)
-    model, assignments = create_model(sections, section_eligibility, instructor_load, instructors)
-    solve_and_save(sections, assignments, model)
+    eligibility = build_section_eligibility(sections, instructors)
 
+    model, assignments = create_model(
+        sections, eligibility, instructor_load, instructors
+    )
+
+    result = solve_and_save(sections, assignments, model)
+
+    if not result:
+        print("[SOLVER] No assignment results — returning {}")
+
+    return result
+
+
+# ------------------------------------------------------------
+# CLI
+# ------------------------------------------------------------
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python solver.py <schedule_id>")
         sys.exit(1)
 
     schedule_id = sys.argv[1]
-    main(schedule_id)
+    output = solver_main(schedule_id)
+    print("\nFinal Output:", output)

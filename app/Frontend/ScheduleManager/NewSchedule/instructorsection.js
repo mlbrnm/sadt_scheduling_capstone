@@ -135,12 +135,19 @@ export default function InstructorSection({
             </tr>
           </thead>
           <tbody className="divide-y divide-black">
-            {normalizedAddedInstructors.map((instr) => (
+            {normalizedAddedInstructors.map((instr, idx) => (
               <tr
-                key={instr.instructor_id}
+                key={`${instr.instructor_id}-${instr.section_id || idx}`}
                 ref={(el) => {
-                  if (el) rowRefs.current.set(instr.instructor_id, el);
-                  else rowRefs.current.delete(instr.instructor_id);
+                  if (el)
+                    rowRefs.current.set(
+                      `${instr.instructor_id}-${instr.section_id || idx}`,
+                      el
+                    );
+                  else
+                    rowRefs.current.delete(
+                      `${instr.instructor_id}-${instr.section_id || idx}`
+                    );
                 }}
                 onClick={() => handleRemoveInstructor(instr)}
                 className="cursor-pointer hover:bg-red-100"
@@ -222,9 +229,11 @@ export default function InstructorSection({
                       </td>
                     </tr>
                   ) : (
-                    filteredInstructors.map((instr) => (
+                    filteredInstructors.map((instr, idx) => (
                       <tr
-                        key={instr.instructor_id}
+                        key={`${instr.instructor_id}-${
+                          instr.schedule_id ?? "no-sched"
+                        }-${instr.section_id ?? "no-sec"}`}
                         onClick={() => handleAddInstructor(instr)}
                         className="cursor-pointer hover:bg-gray-100"
                       >

@@ -3,7 +3,7 @@ from datetime import time, timedelta
 from flask import jsonify, request
 from postgrest import APIError
 from database import supabase_client
-from artifacts.schedulingprototype.scheduling import main as solver_main
+from artifacts.schedulingprototype.scheduling import solver_main
 
 def register_schedule_routes(app):
 
@@ -403,18 +403,112 @@ def register_schedule_routes(app):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
         
-    #AUTO ASSIGNMENT    
+    # AUTO ASSIGNMENT    
     @app.route("/schedules/<schedule_id>/auto_assign", methods=["POST"])
     def auto_assign_route(schedule_id):
         if not schedule_id:
             return jsonify({"error": "Missing schedule_id"}), 400
 
         try:
-            # Run your solver with the given schedule_id
-            solver_main(schedule_id)
+            print("\n" + "="*100)
+            print(f"[AUTO ASSIGN] Starting auto-assign for schedule_id={schedule_id}")
 
-            return jsonify({"success": True, "message": f"Auto-assignment completed for schedule {schedule_id}"})
+            # ---------------------------------------------------------------------
+            # 1. Run solver (with internal debugging)
+            # ---------------------------------------------------------------------
+            try:
+                print("[AUTO ASSIGN] Calling solver_main()...")
+                assigned_map = solver_main(schedule_id)
+                print(f"[AUTO ASSIGN] Solver returned type: {type(assigned_map)}")
+                print(f"[AUTO ASSIGN] Solver raw output: {assigned_map}")
+
+            except Exception as solver_error:
+                import traceback
+                print("\n🔥🔥🔥 [AUTO ASSIGN] solver_main() crashed!")
+                print(str(solver_error))
+                print(traceback.format_exc())
+                return jsonify({"error": "Solver crashed — see backend logs"}), 500
+
+            # If solver returned None or empty, fail early
+            if assigned_map is None:
+                print("🔥 [AUTO ASSIGN ERROR] solver_main() returned None (unexpected!)")
+                return jsonify({"error": "solver_main() returned None"}), 500
+
+            if not isinstance(assigned_map, dict):
+                print(f"🔥 [AUTO ASSIGN ERROR] solver_main() returned non-dict: {type(assigned_map)}")
+                return jsonify({"error": "Invalid solver return format"}), 500
+
+            # ---------------------------------------------------------------------
+            # 2. Update SECTIONS + SCHEDULED_INSTRUCTORS
+            # ---------------------------------------------------------------------
+            for scid, section_dict in assigned_map.items():
+
+                print(f"[AUTO ASSIGN] Processing scheduled_course_id={scid}, section_dict={section_dict}")
+
+                if section_dict is None:
+                    print(f"⚠️ WARNING: section_dict for scid={scid} is None — skipping")
+                    continue
+
+                for letter, instructor_id in section_dict.items():
+                    print(f"[AUTO ASSIGN] Updating SC={scid} Letter={letter} → Instructor={instructor_id}")
+
+                    # Update SECTIONS table
+                    supabase_client.table("sections") \
+                        .update({"instructor_id": instructor_id}) \
+                        .eq("scheduled_course_id", scid) \
+                        .eq("section_letter", letter) \
+                        .execute()
+
+                    # UPSERT into scheduled_instructors table
+                    supabase_client.table("scheduled_instructors").upsert(
+                        {
+                            "schedule_id": schedule_id,
+                            "scheduled_course_id": scid,
+                            "section_letter": letter,
+                            "instructor_id": instructor_id
+                        },
+                        on_conflict="schedule_id,scheduled_course_id,section_letter"
+                    ).execute()
+
+            # ---------------------------------------------------------------------
+            # 3. Cleanup stale assignments
+            # ---------------------------------------------------------------------
+            print("[AUTO ASSIGN] Cleaning up stale scheduled_instructors rows...")
+
+            existing_res = (
+                supabase_client.table("scheduled_instructors")
+                .select("scheduled_course_id, section_letter")
+                .eq("schedule_id", schedule_id)
+                .execute()
+            )
+
+            existing_pairs = {(row["scheduled_course_id"], row["section_letter"]) for row in existing_res.data}
+            assigned_pairs = {(scid, letter) for scid, sec in assigned_map.items() for letter in sec.keys()}
+            to_delete = existing_pairs - assigned_pairs
+
+            for scid, letter in to_delete:
+                print(f"[AUTO ASSIGN] Deleting outdated assignment scid={scid}, letter={letter}")
+                supabase_client.table("scheduled_instructors") \
+                    .delete() \
+                    .eq("schedule_id", schedule_id) \
+                    .eq("scheduled_course_id", scid) \
+                    .eq("section_letter", letter) \
+                    .execute()
+
+            print("[AUTO ASSIGN] Auto-assign sync complete.")
+            print("="*100 + "\n")
+
+            return jsonify({
+                "success": True,
+                "message": f"Auto-assignment completed for schedule {schedule_id}",
+                "assigned_map": assigned_map
+            })
+
         except Exception as e:
+            import traceback
+            print("\n🔥🔥🔥 [AUTO ASSIGN] Uncaught exception:")
+            print(str(e))
+            print(traceback.format_exc())
             return jsonify({"error": str(e)}), 500
 
     @app.route("/admin/schedules/generate", methods=["POST"])
@@ -1176,10 +1270,9 @@ def register_schedule_routes(app):
             print("[GET ASSIGNMENTS] Exception:", e)
             return jsonify({"error": str(e)}), 500
         
-#ENDPOINT FOR TOGGLING SECTION
-# ============================================================
-# TOGGLE SECTION LETTER FOR A SCHEDULED COURSE
-# ============================================================
+    # ============================================================
+    # TOGGLE SECTION LETTER FOR A SCHEDULED COURSE
+    # ============================================================
     @app.route("/scheduled_courses/<scid>/sections/toggle", methods=["POST"])
     def toggle_section(scid):
         print("\n" + "=" * 80)
@@ -1189,24 +1282,14 @@ def register_schedule_routes(app):
             data = request.json
             print(f"[DEBUG] Request JSON: {data}")
 
-            section_letter = data.get("section_letter")
             schedule_id = data.get("scheduleId")
 
-            # --------------------------
-            # Validate
-            # --------------------------
-            if not section_letter or not schedule_id:
-                print("[ERROR] Missing required fields (section_letter, scheduleId)")
-                return jsonify({
-                    "error": "Missing required fields: section_letter, scheduleId"
-                }), 400
+            if not schedule_id:
+                print("[ERROR] Missing scheduleId")
+                return jsonify({"error": "Missing scheduleId"}), 400
 
-            # --------------------------
-            # Get course_id from scheduled_course
-            # --------------------------
-            print(f"[DEBUG] Fetching scheduled_course: scid={scid}")
-
-            scheduled_course_res = (
+            # --- Get scheduled course info ---
+            sc_res = (
                 supabase_client.table("scheduled_courses")
                 .select("course_id, schedule_id")
                 .eq("scheduled_course_id", scid)
@@ -1214,79 +1297,74 @@ def register_schedule_routes(app):
                 .execute()
             )
 
-            print(f"[DEBUG] Supabase scheduled_course result: {scheduled_course_res}")
-
-            if not scheduled_course_res.data:
-                print("[ERROR] Scheduled course not found")
+            if not sc_res.data:
                 return jsonify({"error": "Scheduled course not found"}), 404
 
-            course_id = scheduled_course_res.data["course_id"]
-            backend_schedule_id = scheduled_course_res.data["schedule_id"]
+            course_id = sc_res.data["course_id"]
+            backend_schedule_id = sc_res.data["schedule_id"]
 
-            print(f"[DEBUG] course_id={course_id}, schedule_id(found)={backend_schedule_id}")
-
-            # --------------------------
-            # Ensure schedule_id matches
-            # --------------------------
-            if str(backend_schedule_id) != str(schedule_id):
-                print("[WARN] scheduleId mismatch between payload and DB")
-                print(f"Payload scheduleId={schedule_id}, DB scheduleId={backend_schedule_id}")
-
-            # --------------------------
-            # Check if the section already exists
-            # --------------------------
-            print(f"[DEBUG] Checking if section exists: {section_letter}")
-
-            existing_res = (
+            # --- Fetch all existing section letters ---
+            sec_res = (
                 supabase_client.table("sections")
-                .select("*")
+                .select("section_letter")
                 .eq("scheduled_course_id", scid)
-                .eq("section_letter", section_letter)
+                .order("section_letter")
                 .execute()
             )
 
-            print(f"[DEBUG] Section query result: {existing_res}")
+            existing = sorted([row["section_letter"] for row in sec_res.data])
+            print(f"[DEBUG] Existing sections: {existing}")
 
-            if existing_res.data:
-                # ----------------------------------------
-                # REMOVE SECTION
-                # ----------------------------------------
-                print(f"[DEBUG] Section {section_letter} exists → removing")
+            # Ensure A always exists
+            if "A" not in existing:
+                print("[DEBUG] Section A missing → creating it now")
+                supabase_client.table("sections").insert({
+                    "schedule_id": backend_schedule_id,
+                    "course_id": course_id,
+                    "scheduled_course_id": scid,
+                    "section_letter": "A",
+                    "delivery_mode": "both",
+                    "instructor_id": None,
+                }).execute()
+                existing = ["A"]
 
-                delete_res = (
-                    supabase_client.table("sections")
-                    .delete()
-                    .eq("scheduled_course_id", scid)
-                    .eq("section_letter", section_letter)
-                    .execute()
-                )
-                print(f"[DEBUG] Delete response: {delete_res}")
+            # --- Apply stack logic ---
+            if len(existing) == 1:
+                # Only A exists → next add is B
+                next_letter = chr(ord("A") + 1)
+                mode = "add"
+            else:
+                last_letter = existing[-1]
+                mode = "remove" if data.get("section_letter") in existing else "add"
+
+            print(f"[DEBUG] MODE={mode}")
+
+            if mode == "add":
+                next_letter = chr(ord(existing[-1]) + 1)
+                print(f"[DEBUG] Adding new section: {next_letter}")
+
+                supabase_client.table("sections").insert({
+                    "schedule_id": backend_schedule_id,
+                    "course_id": course_id,
+                    "scheduled_course_id": scid,
+                    "section_letter": next_letter,
+                    "delivery_mode": "both",
+                    "instructor_id": None,
+                }).execute()
 
             else:
-                # ----------------------------------------
-                # ADD SECTION
-                # ----------------------------------------
-                print(f"[DEBUG] Section {section_letter} does NOT exist → adding")
+                # REMOVE LAST (but never A)
+                if len(existing) > 1:
+                    to_remove = existing[-1]
+                    print(f"[DEBUG] Removing LAST section: {to_remove}")
 
-                insert_res = (
-                    supabase_client.table("sections")
-                    .insert({
-                        "schedule_id": backend_schedule_id,
-                        "course_id": course_id,
-                        "scheduled_course_id": scid,
-                        "section_letter": section_letter,
-                        "delivery_mode": "both",
-                        "instructor_id": None,   # always start empty
-                    })
-                    .execute()
-                )
-                print(f"[DEBUG] Insert response: {insert_res}")
+                    supabase_client.table("sections") \
+                        .delete() \
+                        .eq("scheduled_course_id", scid) \
+                        .eq("section_letter", to_remove) \
+                        .execute()
 
-            # --------------------------
-            # Fetch and return updated letters
-            # --------------------------
-            print("[DEBUG] Fetching updated section list")
-
+            # --- Fetch updated list ---
             final_res = (
                 supabase_client.table("sections")
                 .select("section_letter")
@@ -1295,18 +1373,28 @@ def register_schedule_routes(app):
                 .execute()
             )
 
-            print(f"[DEBUG] Final section list: {final_res.data}")
+            letters = [row["section_letter"] for row in final_res.data]
+            print(f"[DEBUG] Final letters: {letters}")
+
+            # --- Update num_sections ---
+            update_res = supabase_client.table("scheduled_courses") \
+                .update({"num_sections": len(letters)}) \
+                .eq("scheduled_course_id", scid) \
+                .execute()
+
+            print(f"[DEBUG] Updated num_sections to {len(letters)}")
             print("=" * 80 + "\n")
 
-            # Return ONLY letters (cleaner for frontend)
-            letters = [row["section_letter"] for row in final_res.data]
-
-            return jsonify({"sections": letters}), 200
+            return jsonify({
+                "sections": letters,
+                "num_sections": len(letters)
+            }), 200
 
         except Exception as e:
-            print(f"[ERROR] toggle_section exception: {e}")
+            print(f"[ERROR] {e}")
             print("=" * 80 + "\n")
             return jsonify({"error": str(e)}), 500
+    
 
     #GET RELEVANT COURSES FROM SCHEDULED_COURSES
     @app.route("/schedules/<schedule_id>/scheduled_courses", methods=["GET"])
