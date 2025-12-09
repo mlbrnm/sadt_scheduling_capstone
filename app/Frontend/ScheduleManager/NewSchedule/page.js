@@ -1187,9 +1187,7 @@ export default function NewSchedule() {
 
       setSaveStatus({
         type: "success",
-        message: `Schedule saved successfully! ${
-          data.sections_created || 0
-        } section(s) created.`,
+        message: `Schedule saved successfully!`,
       });
       setTimeout(() => setSaveStatus(null), 5000);
     } catch (err) {

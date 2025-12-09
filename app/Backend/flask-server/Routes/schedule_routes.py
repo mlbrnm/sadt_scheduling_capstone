@@ -185,25 +185,24 @@ def register_schedule_routes(app):
                 instructor_hours[instructor_id][semester] += weekly_hours
                 print(f"Tracking {weekly_hours} weekly hours for instructor {instructor_id} in {semester}")
 
+            # --- Update instructor CCH totals ---
+            total_weeks = 15
+            for instr_id, hrs in instructor_hours.items():
+                total_hours = sum(hrs.values()) * total_weeks
+                winter_hours = hrs["winter"] * total_weeks
+                spring_summer_hours = hrs["springSummer"] * total_weeks
+                fall_hours = hrs["fall"] * total_weeks
 
-                # --- Update instructor CCH totals ---
-                total_weeks = 15
-                for instr_id, hrs in instructor_hours.items():
-                    total_hours = sum(hrs.values()) * total_weeks
-                    winter_hours = hrs["winter"] * total_weeks
-                    spring_summer_hours = hrs["springSummer"] * total_weeks
-                    fall_hours = hrs["fall"] * total_weeks
+                print(f"Updating instructor {instr_id} CCH: total={total_hours}, winter={winter_hours}, spring/summer={spring_summer_hours}, fall={fall_hours}")
+                supabase_client.table("instructors").update({
+                    "total_cch": f"{int(total_hours)} hours",
+                    "winter_cch": f"{int(winter_hours)} hours",
+                    "spring_summer_cch": f"{int(spring_summer_hours)} hours",
+                    "fall_cch": f"{int(fall_hours)} hours"
+                }).eq("instructor_id", instr_id).execute()
 
-                    print(f"Updating instructor {instr_id} CCH: total={total_hours}, winter={winter_hours}, spring/summer={spring_summer_hours}, fall={fall_hours}")
-                    supabase_client.table("instructors").update({
-                        "total_cch": f"{int(total_hours)} hours",
-                        "winter_cch": f"{int(winter_hours)} hours",
-                        "spring_summer_cch": f"{int(spring_summer_hours)} hours",
-                        "fall_cch": f"{int(fall_hours)} hours"
-                    }).eq("instructor_id", instr_id).execute()
-
-                print("=== FINISHED INSTRUCTOR ASSIGNMENTS ===")
-                return jsonify({"message": "Schedule saved successfully"}), 200
+            print("=== FINISHED INSTRUCTOR ASSIGNMENTS ===")
+            return jsonify({"message": "Schedule saved successfully"}), 200
 
         except Exception as e:
             print("Error saving schedule:", e)
@@ -1523,4 +1522,3 @@ def register_schedule_routes(app):
     #         return jsonify(assignedInstructors)
     #     except Exception as e:
     #         return jsonify({"error": str(e)}), 500
-
