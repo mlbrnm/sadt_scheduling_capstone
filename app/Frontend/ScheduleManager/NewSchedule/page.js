@@ -136,6 +136,46 @@ export default function NewSchedule() {
     fetchScheduleCourses();
   }, [scheduleId]);
 
+  // Fetch schedule metadata (academic_year, academic_chair_id)
+  useEffect(() => {
+    if (!scheduleId) return;
+
+    const fetchScheduleMetadata = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/schedules/${scheduleId}/json`
+        );
+        if (!res.ok) throw new Error("Failed to fetch schedule metadata");
+        const data = await res.json();
+
+        const schedule = data.schedule || {};
+        const metaData = data.metaData || {};
+
+        // Set academic chair ID
+        setScheduleAcademicChairId(schedule.academic_chair_id || null);
+
+        // Set metadata including academic year
+        setNewScheduleDraft((prev) => ({
+          ...prev,
+          metaData: {
+            ...prev.metaData,
+            year: metaData.year || schedule.academic_year,
+            activeSemesters: metaData.activeSemesters || {},
+          },
+        }));
+
+        console.log("Loaded schedule metadata:", {
+          academic_year: metaData.year || schedule.academic_year,
+          academic_chair_id: schedule.academic_chair_id,
+        });
+      } catch (err) {
+        console.error("Error fetching schedule metadata:", err);
+      }
+    };
+
+    fetchScheduleMetadata();
+  }, [scheduleId]);
+
   //Fetch courses
   // useEffect(() => {
   //   const fetchCourses = async () => {
@@ -196,33 +236,36 @@ export default function NewSchedule() {
   }, [scheduleId]);
 
   //TOGGLE SECTION HANDLER
-  const handleToggleSection = (scheduledCourseId, sectionLetter) => {
+  const handleToggleSection = async (scheduledCourseId, sectionLetter) => {
+    // 1. Call backend toggle API
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/scheduled_courses/${scheduledCourseId}/sections/toggle`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section_letter: sectionLetter, scheduleId }),
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Failed to toggle section:", data.error);
+      return;
+    }
+
+    // 2. Update local state with returned sections
     setScheduleCoursesBySemester((prev) => {
-      // Copy the previous state
       const newState = { ...prev };
 
-      // Ensure all semesters exist
       ["winter", "spring", "summer", "fall"].forEach((sem) => {
-        const courses = newState[sem] || []; // fallback if undefined
+        const courses = newState[sem] || [];
         newState[sem] = courses.map((course) => {
           if (course.course_id === scheduledCourseId) {
-            const currentSections = course.sections || [];
-            let updatedSections;
-
-            if (currentSections.includes(sectionLetter)) {
-              // Remove section
-              updatedSections = currentSections.filter(
-                (s) => s !== sectionLetter
-              );
-            } else {
-              // Add section
-              updatedSections = [...currentSections, sectionLetter];
-            }
-
             return {
               ...course,
-              sections: updatedSections,
-              num_sections: updatedSections.length,
+              sections: data.sections.map((s) => s.section_letter),
+              num_sections: data.sections.length,
             };
           }
           return course;
@@ -898,10 +941,10 @@ export default function NewSchedule() {
         : course.scheduled_course_id || course.course_id;
 
     const key = `${instructorId}-${scid}-${sectionLetter}`;
-    const existing = assignments[key];
+    const existing = assignedSections[key];
 
     // Optimistic UI: flip assignment locally
-    setAssignments((prev) => {
+    setAssignedSections((prev) => {
       const updated = { ...prev };
       if (existing) {
         delete updated[key]; // unassign
@@ -934,7 +977,7 @@ export default function NewSchedule() {
       // Backend returns the new instructor_id or null
       const newInstructorId = data.instructor_id;
 
-      setAssignments((prev) => {
+      setAssignedSections((prev) => {
         const updated = { ...prev };
 
         if (newInstructorId === instructorId) {
@@ -947,11 +990,13 @@ export default function NewSchedule() {
 
         return updated;
       });
+
+      console.log("Assignment toggled successfully:", { key, assigned: newInstructorId === instructorId });
     } catch (err) {
       console.error("Failed to toggle section assignment:", err);
 
       // rollback optimistic update
-      setAssignments((prev) => {
+      setAssignedSections((prev) => {
         const updated = { ...prev };
 
         if (existing) {
